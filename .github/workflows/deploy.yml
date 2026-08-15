@@ -1,0 +1,56 @@
+name: Deploy
+
+# Publishes the rendered builder registry to Cloudflare Pages at
+# builders.kya-os.org (planned; the subdomain-vs-path decision is still open,
+# see README.md - only the custom-domain binding changes if it goes the other
+# way).
+#
+# One-time setup:
+#   1. Create a Pages project named `kya-os-usergroup` in the DIF Cloudflare
+#      account (Workers & Pages -> Create -> Pages, direct upload).
+#   2. Bind builders.kya-os.org as a custom domain on that project.
+#   3. Set repository secrets CLOUDFLARE_API_TOKEN (a token with the
+#      "Cloudflare Pages: Edit" permission) and CLOUDFLARE_ACCOUNT_ID.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "registry/**"
+      - "site/**"
+      - "scripts/**"
+      - "package.json"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+      # Re-run the same validation gates as the Validate workflow INSIDE the
+      # deploy job, before any upload. A push to main runs Validate and this
+      # workflow concurrently, so a workflow_run/needs dependency would still
+      # race (and would be skipped on workflow_dispatch); running the gates
+      # here makes the deploy itself fail-closed - dist/ is never published
+      # unless validation and the build pass on the exact commit being
+      # deployed.
+      - name: Validate registry entries
+        run: node scripts/validate.mjs
+      - name: Build Pages artifact
+        run: node site/build-pages.mjs
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=kya-os-usergroup --branch=main

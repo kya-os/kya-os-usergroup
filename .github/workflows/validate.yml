@@ -1,0 +1,27 @@
+name: Validate
+
+# Gating check for every PR and every push to main: the registry must
+# validate structurally and the site must build. Zero npm dependencies, so
+# there is nothing to install beyond Node itself. No third-party actions
+# beyond actions/checkout and actions/setup-node.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+      - name: Validate registry entries
+        run: node scripts/validate.mjs
+      - name: Build Pages artifact
+        run: node site/build-pages.mjs

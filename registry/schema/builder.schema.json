@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "KYA-OS Usergroup Builder Entry",
+  "description": "One builder listing in the KYA-OS usergroup registry. Each entry lives at registry/builders/<slug>.json and the filename must equal the `slug` property. Structural validation is enforced by scripts/validate.mjs; keep that script and this schema in sync.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "slug", "description", "homepage", "listedAt"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "description": "Display name of the builder or project."
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]{2,40}$",
+      "description": "URL-safe identifier. Must match the entry filename: registry/builders/<slug>.json."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 280,
+      "description": "Short description of what this builder ships on KYA-OS (280 characters max)."
+    },
+    "homepage": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://",
+      "description": "Project homepage. https only."
+    },
+    "repo": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://",
+      "description": "Source repository. https only."
+    },
+    "categories": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": ["implementation", "integration", "tooling", "demo", "research", "service"]
+      },
+      "description": "What kind of work this is."
+    },
+    "kyaOsRepos": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Which KYA-OS packages or specs this builder builds on (for example: kya-os-mcp, schema)."
+    },
+    "contact": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Contact email address."
+        },
+        "github": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9-]{1,39}$",
+          "description": "GitHub username (no @ prefix)."
+        }
+      },
+      "description": "How maintainers can reach you about this entry."
+    },
+    "listedAt": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the entry was added, YYYY-MM-DD."
+    }
+  }
+}

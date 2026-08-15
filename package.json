@@ -1,0 +1,13 @@
+{
+  "name": "kya-os-usergroup",
+  "version": "0.1.0",
+  "private": true,
+  "description": "KYA-OS builder community registry: a PR-able listing of teams and projects building on the KYA-OS protocol, rendered to a static Cloudflare Pages site.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "validate": "node scripts/validate.mjs",
+    "build": "node site/build-pages.mjs",
+    "test": "npm run validate && npm run build"
+  }
+}
