@@ -128,15 +128,34 @@ function conformanceLabel(conformance) {
  * validator guarantee attestationUrl exists when status is verified; the chip
  * itself is the credential link. No credential link, no green - by
  * construction there is no other code path.
+ *
+ * Non-verified chips follow the same pattern one tier down: when the entry
+ * carries evidenceUrl (the public submission issue or verification thread),
+ * the chip links it, so the middle credibility tiers are auditable on-page
+ * instead of dead-ending at the claim text.
  */
 function conformanceStatusChip(conformance) {
   if (conformance.status === "verified") {
     return `<a class="chip st-verified" href="${esc(conformance.attestationUrl)}">verified</a>`;
   }
-  if (conformance.status === "in-verification") {
-    return '<span class="chip st-inverif">in verification</span>';
+  const label = conformance.status === "in-verification" ? "in verification" : "self-reported";
+  const cls = conformance.status === "in-verification" ? "st-inverif" : "st-self";
+  if (conformance.evidenceUrl) {
+    return `<a class="chip ${cls}" href="${esc(conformance.evidenceUrl)}">${label}</a>`;
   }
-  return '<span class="chip st-self">self-reported</span>';
+  return `<span class="chip ${cls}">${label}</span>`;
+}
+
+// Where each claimed level is defined; the claim text links here so
+// "L1 subset (signed-proof)" is one click from its requirements table.
+const LEVEL_ANCHORS = {
+  L1: "level-1--core-crypto",
+  L2: "level-2--full-session",
+  L3: "level-3--full-delegation",
+};
+
+function conformanceLevelUrl(conformance) {
+  return `${CONFORMANCE_MD_URL}#${LEVEL_ANCHORS[conformance.level]}`;
 }
 
 function interopStatusChip(status) {
@@ -157,11 +176,12 @@ function tagRow(entry) {
 
 function entryCard(entry) {
   const conformance = entry.conformance
-    ? `\n          <div class="conf-line"><span class="chip conf">${esc(conformanceLabel(entry.conformance))}</span> ${conformanceStatusChip(entry.conformance)}</div>`
+    ? `\n          <div class="conf-line"><a class="chip conf" href="${esc(conformanceLevelUrl(entry.conformance))}">${esc(conformanceLabel(entry.conformance))}</a> ${conformanceStatusChip(entry.conformance)}</div>`
     : "";
   const deploys = (entry.deploy ?? [])
     .map((target) => `<a class="deploy-btn" href="${esc(target.url)}">Deploy on ${esc(platformName(target.platform))}</a>`)
     .join("\n            ");
+  const repoLink = entry.repo && entry.repo !== entry.homepage ? `\n            <a href="${esc(entry.repo)}">repo</a>` : "";
   return `        <article class="card" id="${esc(entry.slug)}">
           <div class="card-head">
             <h3><a href="${esc(entry.homepage)}">${esc(entry.name)}</a></h3>
@@ -169,7 +189,7 @@ function entryCard(entry) {
           </div>
           <p class="desc">${esc(entry.description)}</p>${conformance}
           <div class="links">
-            <a href="${esc(entry.homepage)}">homepage</a>${entry.repo ? `\n            <a href="${esc(entry.repo)}">repo</a>` : ""}${tagRow(entry)}
+            <a href="${esc(entry.homepage)}">homepage</a>${repoLink}${tagRow(entry)}
           </div>${deploys ? `\n          <div class="deploys">\n            ${deploys}\n          </div>` : ""}
         </article>`;
 }
@@ -188,12 +208,13 @@ function sectionConformance() {
   const rows = conformanceEntries
     .map((entry) => {
       const c = entry.conformance;
+      const repoLink = entry.repo && entry.repo !== entry.homepage ? ` <a href="${esc(entry.repo)}">repo</a>` : "";
       return `          <tr>
             <td><a href="#${esc(entry.slug)}">${esc(entry.name)}</a></td>
-            <td class="mono">${esc(conformanceLabel(c))}</td>
+            <td class="mono"><a class="claim-link" href="${esc(conformanceLevelUrl(c))}">${esc(conformanceLabel(c))}</a></td>
             <td class="mono">${esc(c.suiteVersion)}</td>
             <td>${conformanceStatusChip(c)}</td>
-            <td class="links-cell"><a href="${esc(entry.homepage)}">homepage</a>${entry.repo ? ` <a href="${esc(entry.repo)}">repo</a>` : ""}</td>
+            <td class="links-cell"><a href="${esc(entry.homepage)}">homepage</a>${repoLink}</td>
           </tr>`;
     })
     .join("\n");
@@ -212,11 +233,12 @@ ${rows}
       <h2>Conformance</h2>
       <p class="section-lede">Conformance to KYA-OS is measured, not asserted: the program attests exactly the bytes it re-runs against the published vector suite at your pinned commit.
       Requirements live in <a href="${CONFORMANCE_MD_URL}">CONFORMANCE.md</a> (levels L1 core crypto, L2 full session, L3 full delegation), and any language that can read JSON and do Ed25519 + SHA-256 can play.
+      A level is claimed in full or as a named subset of vector categories - a subset claim covers exactly the categories it names and never rounds up to the bare level.
       The fastest on-ramp is the <a href="${STARTER_URL}">conformance starter</a>: clone to a submission-ready claim in under an hour.</p>
       <div class="pin mono">suite <b>${esc(SUITE.version)}</b> &middot; <b>${SUITE.vectors}</b> vectors &middot; pinned <span class="hash">${esc(SUITE.vectorSetHash)}</span></div>
       <div class="steps">
-        <div class="step"><span class="step-n">1</span>Run the suite</div>
-        <div class="step"><span class="step-n">2</span>Submit the claim</div>
+        <a class="step" href="${STARTER_URL}"><span class="step-n">1</span>Run the suite</a>
+        <a class="step" href="${SUBMISSION_ISSUE_URL}"><span class="step-n">2</span>Submit the claim</a>
         <div class="step"><span class="step-n">3</span>Independent re-run</div>
         <div class="step"><span class="step-n">4</span>Credential + badge</div>
       </div>
@@ -225,6 +247,9 @@ ${table}
     </section>`;
 }
 
+// SCALE TRIGGER: when the rendered entry count passes ~25, add a zero-dep
+// inline filter (a vanilla-JS <input>; the CSP script-src must gain a hash)
+// or a per-kind/per-letter anchor strip. Below that, group counts suffice.
 function sectionBuilders() {
   const groups = [
     ["implementation", "Implementations"],
@@ -232,21 +257,25 @@ function sectionBuilders() {
     ["integration", "Integrations"],
     ["marketplace", "Marketplaces"],
   ];
-  const blocks = groups
+  // Empty kinds collapse into one invitation line instead of manufacturing
+  // empty sections that read as weakness at launch.
+  const nonEmpty = groups.filter(([kind]) => byKind(kind).length > 0);
+  const empty = groups.filter(([kind]) => byKind(kind).length === 0);
+  const blocks = nonEmpty
     .map(([kind, heading]) => {
       const list = byKind(kind);
       const cards = list.map((entry) => entryCard(entry)).join("\n");
-      const body =
-        list.length > 0
-          ? `      <div class="cards">\n${cards}\n      </div>`
-          : `      <p class="empty">None listed yet.</p>`;
-      return `      <h3 class="group-head">${esc(heading)}<span class="group-count mono">${list.length}</span></h3>\n${body}`;
+      return `      <h3 class="group-head">${esc(heading)}<span class="group-count mono">${list.length}</span></h3>\n      <div class="cards">\n${cards}\n      </div>`;
     })
     .join("\n");
+  const emptyLine =
+    empty.length > 0
+      ? `\n      <p class="empty">No ${esc(empty.map(([, heading]) => heading.toLowerCase()).join(" or "))} yet - <a href="${esc(ADD_PROJECT_URL)}">be the first -&gt;</a></p>`
+      : "";
   return `    <section id="builders">
       <h2>Builders</h2>
       <p class="section-lede">Who is building on KYA-OS, grouped by what they ship. Listing is one JSON file and one pull request; the criteria are in <a href="${REPO_URL}/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>.</p>
-${blocks}
+${blocks}${emptyLine}
       ${addCta("Add your project")}
     </section>`;
 }
@@ -297,13 +326,14 @@ function sectionStandards() {
       const rows = interopSorted
         .filter((entry) => entry.category === category)
         .map((entry) => {
-          const evidence = entry.evidence ? `<a href="${esc(entry.evidence)}">evidence</a>` : "";
+          const evidence = entry.evidence ? `<a href="${esc(entry.evidence)}">evidence</a> ` : "";
+          const editLink = `<a href="${REPO_URL}/edit/main/registry/interop/${esc(entry.slug)}.json">edit</a>`;
           const notes = entry.notes ? `<div class="row-notes">${esc(entry.notes)}</div>` : "";
           return `          <tr id="std-${esc(entry.slug)}">
             <td class="std-name">${esc(entry.standard)}</td>
             <td>${esc(entry.relationship)}${notes}</td>
-            <td>${interopStatusChip(entry.status)}</td>
-            <td class="links-cell">${evidence}</td>
+            <td>${interopStatusChip(entry.status)}<div class="row-listed mono">listed ${esc(entry.listedAt)}</div></td>
+            <td class="links-cell">${evidence}${editLink}</td>
           </tr>`;
         })
         .join("\n");
@@ -319,7 +349,8 @@ ${rows}
   return `    <section id="standards">
       <h2>Standards rails: what KYA-OS provides, carries, and projects onto</h2>
       <p class="section-lede">Every row is grounded: <span class="chip st-shipping demo">shipping</span> means code at the current release, <span class="chip st-specified demo">specified</span> means normative spec text, <span class="chip st-planned demo">planned</span> is on the roadmap, <span class="chip st-exploring demo">exploring</span> is under evaluation, and <span class="chip st-none demo">none</span> means exactly that - listed so nobody has to guess.
-      A status is never listed above what its evidence link shows. The machine-readable matrix is <a href="/interop.json">interop.json</a>.</p>
+      A status is never listed above what its evidence link shows, and every row carries the date it was listed.
+      Disputes and updates are one pull request: each row's <b>edit</b> link opens its file in <code>registry/interop/</code>. The machine-readable matrix is <a href="/interop.json">interop.json</a>.</p>
 ${blocks}
     </section>`;
 }
@@ -327,12 +358,14 @@ ${blocks}
 function sectionSubmit() {
   return `    <section id="submit">
       <h2>Submit</h2>
-      <p class="section-lede">Three paths, all public, none gatekept.</p>
+      <p class="section-lede">Three paths, all public, none gatekept.
+      Corrections count too: every standards-matrix row is one file in <code>registry/interop/</code> - use the row's edit link, or PR the file directly.</p>
       <div class="paths">
         <article class="path primary">
           <h3>1. Add your project (prefilled)</h3>
           <p>One click opens the GitHub editor on <code>registry/builders/</code> with the entry template already filled in.
           Rename the file to <code>&lt;your-slug&gt;.json</code>, edit the fields, and propose the change: GitHub forks the repo for you and opens the pull request.</p>
+          <p>Two fields CI will not forgive: set <code>listedAt</code> to today's real date (the <code>YYYY-MM-DD</code> placeholder is rejected), and keep <code>slug</code> equal to your filename.</p>
           <p><a class="btn" href="${esc(ADD_PROJECT_URL)}">Add your project -&gt;</a></p>
         </article>
         <article class="path">
@@ -365,12 +398,13 @@ const SHARED_CSS = `
   code,.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
   ::selection{background:var(--accent);color:var(--bg)}
   header.bar{border-bottom:1px solid var(--grid);position:sticky;top:0;background:rgba(10,10,10,.92);backdrop-filter:blur(6px);z-index:2}
-  header.bar .wrap{display:flex;align-items:center;gap:16px;height:64px}
+  header.bar .wrap{display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px;min-height:64px;padding-top:10px;padding-bottom:10px}
   .brand{color:var(--accent);font-weight:600;font-size:16px;letter-spacing:-.01em;white-space:nowrap}
   .brand .sub{color:var(--muted);font-weight:400}
-  nav{margin-left:auto;display:flex;gap:18px;font-family:ui-monospace,monospace;font-size:13px;flex-wrap:wrap}
+  nav{margin-left:auto;display:flex;gap:8px 18px;font-family:ui-monospace,monospace;font-size:13px;flex-wrap:wrap}
   nav a{color:var(--muted)}
   nav a:hover{color:var(--accent)}
+  @media(max-width:800px){header.bar{position:static}}
   footer{border-top:1px solid var(--grid);margin-top:72px;padding:28px 0 64px;color:var(--muted);font-size:13px}
   footer .wrap{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center}
   footer a{color:var(--muted)}
@@ -465,6 +499,7 @@ ${sectionSubmit()}
   .btn:hover{background:var(--bg);color:var(--accent)}
   main{padding:8px 0}
   section{padding:44px 0 8px;scroll-margin-top:76px}
+  @media(max-width:800px){section{scroll-margin-top:12px}}
   h2{font-size:26px;font-weight:400;letter-spacing:-.01em;color:var(--accent);margin-bottom:14px}
   .section-lede{max-width:760px;font-size:15px;color:var(--fg);margin-bottom:20px}
   .section-lede a{text-decoration:underline;text-underline-offset:3px}
@@ -482,7 +517,7 @@ ${sectionSubmit()}
   .chip.kind{text-transform:none}
   .chip.conf{color:var(--fg);text-transform:none}
   .st-verified{color:var(--green);border-color:var(--green)}
-  a.st-verified{text-decoration:underline;text-underline-offset:3px}
+  a.st-verified,a.st-inverif,a.st-self,a.chip.conf,.claim-link{text-decoration:underline;text-underline-offset:3px}
   .st-inverif{color:var(--amber);border-color:var(--amber)}
   .st-self{color:var(--muted);border-color:var(--grid)}
   .st-shipping{color:var(--green);border-color:var(--green)}
@@ -502,6 +537,8 @@ ${sectionSubmit()}
   .deploy-btn{font-family:ui-monospace,monospace;font-size:12px;color:var(--fg);border:1px solid var(--muted);padding:6px 12px}
   .deploy-btn:hover{color:var(--bg);background:var(--accent);border-color:var(--accent)}
   .empty{color:var(--muted);font-size:14px;padding:6px 0 10px}
+  .empty a{color:var(--muted);text-decoration:underline;text-underline-offset:3px}
+  .empty a:hover{color:var(--accent)}
   .add-cta{margin-top:20px;font-family:ui-monospace,monospace;font-size:13px}
   .add-cta a{color:var(--muted)}
   .add-cta a:hover{color:var(--accent)}
@@ -510,6 +547,8 @@ ${sectionSubmit()}
   .pin .hash{color:var(--fg)}
   .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:22px}
   .step{border:1px solid var(--grid);background:rgba(255,255,255,.02);padding:14px;font-size:13.5px;display:flex;align-items:center;gap:10px}
+  a.step{text-decoration:underline;text-underline-offset:3px}
+  a.step:hover{border-color:var(--muted);background:rgba(255,255,255,.04)}
   .step-n{font-family:ui-monospace,monospace;font-size:12px;color:var(--muted);border:1px solid var(--grid);width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
   .table-wrap{overflow-x:auto;border:1px solid var(--grid);background:rgba(255,255,255,.02);margin-bottom:14px}
   table{width:100%;border-collapse:collapse;font-size:13.5px}
@@ -522,6 +561,7 @@ ${sectionSubmit()}
   td.links-cell a{color:var(--muted);text-decoration:underline;text-underline-offset:3px}
   td.links-cell a:hover{color:var(--accent)}
   .row-notes{color:var(--muted);font-size:12.5px;margin-top:6px}
+  .row-listed{color:var(--muted);font-size:11px;margin-top:6px;white-space:nowrap}
   .note{color:var(--muted);font-size:13.5px;max-width:760px}
   .paths{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
   .path{padding:24px;border:1px solid var(--grid);background:rgba(255,255,255,.02)}
@@ -688,6 +728,21 @@ for (const entry of conformanceEntries) {
 assertBuild(
   !/<span class="chip st-verified(?! demo)/.test(indexHtml),
   'a "verified" chip rendered without a credential link',
+);
+// Non-verified claims that carry public evidence must render it (the chip is the link).
+for (const entry of conformanceEntries) {
+  const c = entry.conformance;
+  if (c.status !== "verified" && c.evidenceUrl) {
+    assertBuild(
+      indexHtml.includes(`href="${esc(c.evidenceUrl)}"`),
+      `evidenceUrl for "${entry.slug}" did not render`,
+    );
+  }
+}
+// Every standards row shows its listing date - freshness is auditable on-page.
+assertBuild(
+  (indexHtml.match(/class="row-listed/g) ?? []).length === interopSorted.length,
+  "every interop row must render its listedAt date",
 );
 
 const published = JSON.parse(readFileSync(join(distDir, "builders.json"), "utf8"));
