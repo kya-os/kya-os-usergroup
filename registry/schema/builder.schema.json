@@ -95,6 +95,12 @@
           "format": "uri",
           "pattern": "^https://",
           "description": "Canonical URL of the verification credential. Required when status is verified."
+        },
+        "evidenceUrl": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://",
+          "description": "Public URL grounding the claim at its current status - the conformance submission issue or verification thread. The site renders non-verified status chips as links to it. Distinct from attestationUrl, which is the credential itself."
         }
       },
       "if": {

@@ -21,7 +21,8 @@
  *   - standards: optional non-empty unique array of slugs, each of which MUST
  *     resolve to registry/interop/<slug>.json (cross-file check)
  *   - conformance: optional object; scope=subset requires categories;
- *     status=verified requires attestationUrl; suiteVersion is semver
+ *     status=verified requires attestationUrl; optional evidenceUrl is the
+ *     public claim/verification thread; suiteVersion is semver
  *   - deploy: optional non-empty array of {platform, url(https)}
  *   - contact: optional object with at least one of email / github
  *   - listedAt: real calendar date, YYYY-MM-DD
@@ -69,7 +70,7 @@ export const INTEROP_CATEGORIES = [
 export const INTEROP_STATUSES = ["shipping", "specified", "planned", "exploring", "none"];
 
 const BUILDER_KEYS = ["name", "slug", "description", "homepage", "repo", "kind", "buildsOn", "standards", "conformance", "deploy", "contact", "listedAt"];
-const CONFORMANCE_KEYS = ["level", "scope", "categories", "suiteVersion", "status", "attestationUrl"];
+const CONFORMANCE_KEYS = ["level", "scope", "categories", "suiteVersion", "status", "attestationUrl", "evidenceUrl"];
 const DEPLOY_KEYS = ["platform", "url"];
 const CONTACT_KEYS = ["email", "github"];
 const INTEROP_KEYS = ["standard", "slug", "category", "relationship", "status", "evidence", "notes", "listedAt"];
@@ -207,6 +208,9 @@ function checkConformance(conformance, fail) {
   }
   if (conformance.attestationUrl !== undefined && !isHttpsUrl(conformance.attestationUrl)) {
     fail('"conformance.attestationUrl" must be a valid https:// URL');
+  }
+  if (conformance.evidenceUrl !== undefined && !isHttpsUrl(conformance.evidenceUrl)) {
+    fail('"conformance.evidenceUrl" must be a valid https:// URL');
   }
 }
 

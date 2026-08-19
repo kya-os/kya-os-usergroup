@@ -61,13 +61,16 @@ A `conformance` block states what you proved against the [pinned vector suite](c
   "scope": "subset",
   "categories": ["signed-proof"],
   "suiteVersion": "1.0.0",
-  "status": "in-verification"
+  "status": "in-verification",
+  "evidenceUrl": "https://github.com/decentralized-identity/kya-os-mcp/issues/149"
 }
 ```
 
 - `scope: "subset"` requires `categories` - a subset never renders as a bare level.
 - `status` starts at `self-reported`; it becomes `in-verification` when your [submission issue](https://github.com/decentralized-identity/kya-os-mcp/issues/new?template=conformance_submission.md) is open, and `verified` only when the program's re-run issues a credential - at which point `attestationUrl` (the credential's canonical URL) is required.
   The validator enforces both rules, and the site renders `verified` green only as a link to that credential.
+- `evidenceUrl` (optional, strongly recommended) is the public record grounding a non-verified claim - your submission issue or verification thread.
+  The site renders `self-reported` and `in-verification` chips as links to it, so put it on the entry as soon as the issue exists.
 - Run the suite first: the [conformance starter](conformance/starter/) takes you from an existing implementation to a submission-ready `claim.json` in under an hour.
 
 ### 3. Validate locally

@@ -60,6 +60,7 @@ The registry renders what an entry proves, nothing more:
 
 - A subset claim always names its categories ("L1 subset (signed-proof)") and never renders as a bare level.
 - `verified` renders green only as a link to the verification credential; `in-verification` is amber; `self-reported` is grey.
+- Non-verified chips link their public grounding (`conformance.evidenceUrl`, e.g. the submission issue) when the entry carries one, so the middle tiers are auditable too.
 - A claim is an attestation of an observed re-run, never a seal of approval, and listing implies no endorsement by the working group (see [GOVERNANCE.md](GOVERNANCE.md)).
 - Live badges at `badge.kya-os.org` ship at Phase B of the program.
 
