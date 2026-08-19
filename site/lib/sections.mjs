@@ -18,6 +18,7 @@ import {
 } from "./constants.mjs";
 import { byKind, conformanceLabel, conformanceLevelUrl, interopByCategory, withConformance } from "./data.mjs";
 import { addCta, conformanceStatusChip, entryCard, esc, interopStatusChip, pageShell } from "./html.mjs";
+import { INDEX_CSS } from "./theme.mjs";
 
 function sectionHero({ rendered, interopSorted }) {
   return `    <section class="hero">
@@ -218,92 +219,6 @@ const NAV_LINKS = `
       <a href="#examples">Examples</a>
       <a href="#standards">Standards</a>
       <a href="#submit">Submit</a>`;
-
-const INDEX_CSS = `
-  .hero{padding:72px 0 20px}
-  .eyebrow{font-family:ui-monospace,monospace;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:24px}
-  h1{font-size:clamp(42px,7vw,64px);font-weight:300;letter-spacing:-.02em;line-height:1.05;color:var(--accent)}
-  .lede{max-width:680px;font-size:18px;line-height:1.85;margin-top:24px}
-  .chips-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:32px;align-items:center}
-  .stat{font-family:ui-monospace,monospace;font-size:12.5px;color:var(--muted);border:1px solid var(--grid);padding:7px 13px;background:rgba(255,255,255,.02)}
-  .stat b{color:var(--fg);font-weight:500}
-  a.stat:hover{color:var(--accent);border-color:var(--muted)}
-  .btn{display:inline-block;font-family:ui-monospace,monospace;font-size:13px;color:var(--bg);background:var(--accent);padding:9px 16px;font-weight:600;border:1px solid var(--accent)}
-  .btn:hover{background:var(--bg);color:var(--accent)}
-  main{padding:8px 0}
-  section{padding:44px 0 8px;scroll-margin-top:76px}
-  @media(max-width:800px){section{scroll-margin-top:12px}}
-  h2{font-size:26px;font-weight:400;letter-spacing:-.01em;color:var(--accent);margin-bottom:14px}
-  .section-lede{max-width:760px;font-size:15px;color:var(--fg);margin-bottom:20px}
-  .section-lede a{text-decoration:underline;text-underline-offset:3px}
-  .group-head{font-family:ui-monospace,monospace;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:26px 0 12px;display:flex;align-items:center;gap:10px}
-  .group-count{font-size:11px;border:1px solid var(--grid);padding:1px 7px;color:var(--muted)}
-  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(390px,1fr));gap:16px}
-  @media(max-width:520px){.cards{grid-template-columns:1fr}}
-  .card{padding:26px;background:rgba(255,255,255,.02);border:1px solid var(--grid);transition:background .2s ease,border-color .2s ease}
-  .card:hover{background:rgba(255,255,255,.04);border-color:var(--muted)}
-  .card-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px;flex-wrap:wrap}
-  .card h3{font-size:18px;font-weight:600;letter-spacing:-.01em}
-  .card h3 a{color:var(--accent)}
-  .chip{font-family:ui-monospace,monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border:1px solid var(--grid);padding:3px 8px;white-space:nowrap}
-  .chip.demo{font-size:10px;padding:1px 6px}
-  .chip.kind{text-transform:none}
-  .chip.conf{color:var(--fg);text-transform:none}
-  .st-verified{color:var(--green);border-color:var(--green)}
-  a.st-verified,a.st-inverif,a.st-self,a.chip.conf,.claim-link{text-decoration:underline;text-underline-offset:3px}
-  .st-inverif{color:var(--amber);border-color:var(--amber)}
-  .st-self{color:var(--muted);border-color:var(--grid)}
-  .st-shipping{color:var(--green);border-color:var(--green)}
-  .st-specified{color:var(--blue);border-color:var(--blue)}
-  .st-planned{color:var(--muted);border-color:var(--muted)}
-  .st-exploring{color:var(--muted);border-style:dashed;border-color:var(--muted)}
-  .st-none{color:var(--muted);border-color:var(--grid)}
-  .conf-line{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
-  .card .desc{font-size:15px;line-height:1.6;margin-bottom:16px}
-  .card .links{display:flex;gap:14px;flex-wrap:wrap;font-family:ui-monospace,monospace;font-size:12.5px;align-items:baseline}
-  .card .links a{color:var(--muted);text-decoration:underline;text-underline-offset:3px}
-  .card .links a:hover{color:var(--accent)}
-  .builds-on{color:var(--muted);font-size:12px}
-  .krepo{color:var(--fg);font-size:12px}
-  .stdtag{color:var(--fg);font-family:ui-monospace,monospace;font-size:12px;text-decoration:underline;text-underline-offset:3px}
-  .deploys{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
-  .deploy-btn{font-family:ui-monospace,monospace;font-size:12px;color:var(--fg);border:1px solid var(--muted);padding:6px 12px}
-  .deploy-btn:hover{color:var(--bg);background:var(--accent);border-color:var(--accent)}
-  .empty{color:var(--muted);font-size:14px;padding:6px 0 10px}
-  .empty a{color:var(--muted);text-decoration:underline;text-underline-offset:3px}
-  .empty a:hover{color:var(--accent)}
-  .add-cta{margin-top:20px;font-family:ui-monospace,monospace;font-size:13px}
-  .add-cta a{color:var(--muted)}
-  .add-cta a:hover{color:var(--accent)}
-  .pin{font-size:12.5px;color:var(--muted);border:1px solid var(--grid);background:rgba(255,255,255,.02);padding:10px 14px;margin-bottom:18px;overflow-x:auto;white-space:nowrap}
-  .pin b{color:var(--fg);font-weight:500}
-  .pin .hash{color:var(--fg)}
-  .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:22px}
-  .step{border:1px solid var(--grid);background:rgba(255,255,255,.02);padding:14px;font-size:13.5px;display:flex;align-items:center;gap:10px}
-  a.step{text-decoration:underline;text-underline-offset:3px}
-  a.step:hover{border-color:var(--muted);background:rgba(255,255,255,.04)}
-  .step-n{font-family:ui-monospace,monospace;font-size:12px;color:var(--muted);border:1px solid var(--grid);width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
-  .table-wrap{overflow-x:auto;border:1px solid var(--grid);background:rgba(255,255,255,.02);margin-bottom:14px}
-  table{width:100%;border-collapse:collapse;font-size:13.5px}
-  th{font-family:ui-monospace,monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:10px 14px;border-bottom:1px solid var(--grid)}
-  td{padding:12px 14px;border-bottom:1px solid var(--grid);vertical-align:top}
-  tr:last-child td{border-bottom:none}
-  td.mono{font-size:12.5px;white-space:nowrap}
-  td.std-name{color:var(--accent);min-width:180px}
-  td.links-cell{font-family:ui-monospace,monospace;font-size:12px;white-space:nowrap}
-  td.links-cell a{color:var(--muted);text-decoration:underline;text-underline-offset:3px}
-  td.links-cell a:hover{color:var(--accent)}
-  .row-notes{color:var(--muted);font-size:12.5px;margin-top:6px}
-  .row-listed{color:var(--muted);font-size:11px;margin-top:6px;white-space:nowrap}
-  .note{color:var(--muted);font-size:13.5px;max-width:760px}
-  .paths{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
-  .path{padding:24px;border:1px solid var(--grid);background:rgba(255,255,255,.02)}
-  .path.primary{border-color:var(--muted)}
-  .path h3{font-size:15px;font-weight:600;color:var(--accent);margin-bottom:10px}
-  .path p{font-size:14px;margin-bottom:10px}
-  .path a{text-decoration:underline;text-underline-offset:3px}
-  .path a.btn{text-decoration:none}
-  .path code{font-size:12.5px;color:var(--fg)}`;
 
 export function renderIndexHtml({ rendered, interopSorted }) {
   const body = `

@@ -1,6 +1,7 @@
 /**
  * Shared HTML primitives for the site build: escaping, the chip and card
- * helpers, the shared page shell and CSS, and the 404 page.
+ * helpers, the shared page shell, and the 404 page. All CSS (tokens and
+ * rules, light and dark) lives in lib/theme.mjs.
  *
  * CONFORMANCE HONESTY RULES are enforced here at render time (and asserted
  * against the finished artifact in lib/assertions.mjs):
@@ -12,6 +13,7 @@
  */
 import { ADD_PROJECT_URL, DIF_URL, MCP_REPO_URL, REPO_URL, SITE_URL, TITLE } from "./constants.mjs";
 import { conformanceLabel, conformanceLevelUrl } from "./data.mjs";
+import { NOT_FOUND_CSS, SHARED_CSS, THEME_COLORS } from "./theme.mjs";
 
 /** Minimal HTML entity escaping for interpolated registry data. */
 export function esc(value) {
@@ -85,35 +87,6 @@ export function addCta(label) {
   return `<p class="add-cta"><a href="${esc(ADD_PROJECT_URL)}">[ ${esc(label)} -&gt; ]</a></p>`;
 }
 
-// The base look every page shares; page-specific CSS is appended into the
-// same <style> block by the page renderers (see the .replace in render404Html
-// and lib/sections.mjs renderIndexHtml).
-const SHARED_CSS = `
-  :root{ --bg:#0a0a0a; --fg:#e0e0e0; --muted:#666; --accent:#fff; --grid:#1a1a1a;
-    --green:#3fb950; --amber:#d29922; --blue:#58a6ff; --red:#f85149; }
-  *{margin:0;padding:0;box-sizing:border-box}
-  html{scroll-behavior:smooth}
-  body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--fg);
-    line-height:1.6;-webkit-font-smoothing:antialiased;position:relative;overflow-x:hidden;min-height:100vh}
-  body::before{content:"";position:fixed;inset:0;background-image:radial-gradient(circle,var(--grid) 1px,transparent 1px);background-size:40px 40px;opacity:.5;pointer-events:none;z-index:0}
-  .wrap{max-width:980px;margin:0 auto;padding:0 40px;position:relative;z-index:1}
-  a{color:var(--fg);text-decoration:none}
-  a:hover{color:var(--accent)}
-  code,.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
-  ::selection{background:var(--accent);color:var(--bg)}
-  header.bar{border-bottom:1px solid var(--grid);position:sticky;top:0;background:rgba(10,10,10,.92);backdrop-filter:blur(6px);z-index:2}
-  header.bar .wrap{display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px;min-height:64px;padding-top:10px;padding-bottom:10px}
-  .brand{color:var(--accent);font-weight:600;font-size:16px;letter-spacing:-.01em;white-space:nowrap}
-  .brand .sub{color:var(--muted);font-weight:400}
-  nav{margin-left:auto;display:flex;gap:8px 18px;font-family:ui-monospace,monospace;font-size:13px;flex-wrap:wrap}
-  nav a{color:var(--muted)}
-  nav a:hover{color:var(--accent)}
-  @media(max-width:800px){header.bar{position:static}}
-  footer{border-top:1px solid var(--grid);margin-top:72px;padding:28px 0 64px;color:var(--muted);font-size:13px}
-  footer .wrap{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center}
-  footer a{color:var(--muted)}
-  footer a:hover{color:var(--accent)}`;
-
 export function pageShell({ title, headExtra = "", body, nav = "" }) {
   return `<!doctype html>
 <html lang="en">
@@ -121,7 +94,9 @@ export function pageShell({ title, headExtra = "", body, nav = "" }) {
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${esc(title)}</title>
-<meta name="theme-color" content="#0a0a0a" />
+<meta name="color-scheme" content="light dark" />
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="${THEME_COLORS.light}" />
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="${THEME_COLORS.dark}" />
 ${headExtra}<style>${SHARED_CSS}
 </style>
 </head>
@@ -157,16 +132,9 @@ export function render404Html() {
       <p><a class="back" href="/">&larr; The community hub</a></p>
     </section>
   </article>`;
-  const extraCss = `
-  .nf{padding:120px 0 40px;max-width:560px}
-  .nf .code{font-size:13px;letter-spacing:.18em;color:var(--muted);margin-bottom:16px}
-  .nf h1{font-size:42px;font-weight:300;color:var(--accent);margin-bottom:16px}
-  .nf p{color:var(--fg);margin-bottom:10px}
-  .nf .back{font-family:ui-monospace,monospace;font-size:13px;color:var(--muted);text-decoration:underline;text-underline-offset:3px}
-  .nf .back:hover{color:var(--accent)}`;
   return pageShell({
     title: `Not found · ${TITLE}`,
     headExtra: '<meta name="robots" content="noindex" />\n',
     body,
-  }).replace("\n</style>", `${extraCss}\n</style>`);
+  }).replace("\n</style>", `${NOT_FOUND_CSS}\n</style>`);
 }

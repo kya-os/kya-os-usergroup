@@ -6,9 +6,10 @@
  *
  * Validates both registries first (via the shared core in scripts/validate.mjs;
  * refuses to render on any error), then emits to dist/ (gitignored):
- *   - index.html      single dark page: conformance program, kind-grouped
- *                     builder directory, templates, examples, the standards
- *                     rails matrix, and the three submission paths
+ *   - index.html      single page (light by default, dark via
+ *                     prefers-color-scheme; CSS-only): conformance program,
+ *                     kind-grouped builder directory, templates, examples,
+ *                     the standards rails matrix, and the submission paths
  *   - 404.html        real not-found page
  *   - builders.json   machine-readable merged builder registry (open CORS)
  *   - interop.json    machine-readable standards-rail registry (open CORS)
@@ -30,7 +31,9 @@
  *   lib/html.mjs        escaping, chips, cards, page shell, the 404 page
  *                       (the conformance honesty rules are enforced there)
  *   lib/sections.mjs    the index page sections and their assembly
- *   lib/assertions.mjs  post-build render checks: completeness + honesty
+ *   lib/theme.mjs       the color tokens (light/dark pairs) + all page CSS
+ *   lib/assertions.mjs  post-build render checks: completeness, honesty,
+ *                       and theme integrity (closed token layer)
  *
  * Output is deterministic: a pure function of registry/**.json (entries
  * sorted by slug, no build timestamps), so re-running on the same commit

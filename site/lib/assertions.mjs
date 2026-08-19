@@ -21,6 +21,38 @@ function assertBuild(condition, message) {
   }
 }
 
+/**
+ * Theme integrity: the token layer must be closed. Every page must carry
+ * both theme branches (light default in :root, dark via prefers-color-scheme
+ * plus the data-theme hooks a future toggle needs), every var(--x) the CSS
+ * references must be defined in a :root block, and no raw color may bypass
+ * the token layer. `requireAllUsed` additionally rejects dead tokens - it is
+ * asserted on index.html (which exercises the full sheet), not on 404.html,
+ * whose smaller page CSS legitimately leaves shared tokens untouched.
+ */
+function assertThemeIntegrity(name, html, { requireAllUsed = false } = {}) {
+  const styles = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join("\n");
+  assertBuild(styles.length > 0, `${name}: no <style> block found`);
+  assertBuild(styles.includes("@media (prefers-color-scheme: dark)"), `${name}: the dark prefers-color-scheme branch is missing`);
+  assertBuild(styles.includes(':root:not([data-theme="light"])'), `${name}: OS-dark must yield to a data-theme="light" override`);
+  assertBuild(styles.includes(':root[data-theme="dark"]'), `${name}: the data-theme="dark" hook is missing`);
+
+  const rootBlocks = [...styles.matchAll(/:root[^{}]*\{([^{}]*)\}/g)].map((m) => m[1]);
+  const defined = new Set(rootBlocks.flatMap((body) => [...body.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1])));
+  const referenced = new Set([...styles.matchAll(/var\((--[a-z0-9-]+)/g)].map((m) => m[1]));
+  for (const token of referenced) {
+    assertBuild(defined.has(token), `${name}: var(${token}) is referenced but never defined in :root`);
+  }
+  if (requireAllUsed) {
+    for (const token of defined) {
+      assertBuild(referenced.has(token), `${name}: token ${token} is defined but never used`);
+    }
+  }
+  const outsideTokens = styles.replace(/:root[^{}]*\{[^{}]*\}/g, "");
+  const rawHex = outsideTokens.match(/#[0-9a-fA-F]{3,8}\b/);
+  assertBuild(rawHex === null, `${name}: raw color ${rawHex?.[0]} bypasses the token layer (use var())`);
+}
+
 /** Verify every dist/ artifact against the shaped registry data; exits non-zero on the first failure. */
 export function runRenderChecks({ distDir, rendered, interopSorted }) {
   const conformanceEntries = withConformance(rendered);
@@ -82,4 +114,8 @@ export function runRenderChecks({ distDir, rendered, interopSorted }) {
   assertBuild(publishedInterop.count === interopSorted.length, "interop.json count mismatch");
   const notFoundHtml = readFileSync(join(distDir, "404.html"), "utf8");
   assertBuild(notFoundHtml.includes("404"), "dist/404.html is not a not-found page");
+
+  // Theme assertions: both pages ship both themes and a closed token layer.
+  assertThemeIntegrity("index.html", indexHtml, { requireAllUsed: true });
+  assertThemeIntegrity("404.html", notFoundHtml);
 }
