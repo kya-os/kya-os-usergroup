@@ -4,8 +4,9 @@
   "description": "This is the template entry to copy. Duplicate this file to registry/builders/<your-slug>.json, replace every field with your project's details, and open a PR. This entry validates against the schema but is never rendered on the site.",
   "homepage": "https://example.com",
   "repo": "https://github.com/example/example-builder",
-  "categories": ["demo"],
-  "kyaOsRepos": ["kya-os-mcp"],
+  "kind": "example",
+  "buildsOn": ["kya-os-mcp"],
+  "standards": ["rfc-8785"],
   "contact": {
     "github": "example"
   },
