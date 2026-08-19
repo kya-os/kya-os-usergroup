@@ -11,7 +11,8 @@
     "scope": "subset",
     "categories": ["signed-proof"],
     "suiteVersion": "1.0.0",
-    "status": "in-verification"
+    "status": "in-verification",
+    "evidenceUrl": "https://github.com/decentralized-identity/kya-os-mcp/issues/149"
   },
   "listedAt": "2026-08-19"
 }
