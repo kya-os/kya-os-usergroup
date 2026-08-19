@@ -1,0 +1,5 @@
+{
+  "WARNING": "DEV FIXTURE - throwaway key, NON-PRODUCTION. Regenerate with generate-fixtures.mjs.",
+  "suiteVersion": "1.0.0",
+  "vectorSetHash": "sha256:81d537d4574d3f66d651a03ca41c0b18493b67ea6f3e61aba47d1bda4f3cf49b"
+}
