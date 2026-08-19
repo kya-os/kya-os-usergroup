@@ -1,0 +1,10 @@
+{
+  "standard": "A2A AgentExtension",
+  "slug": "a2a-agentextension",
+  "category": "discovery-projection",
+  "relationship": "Emits an AgentCard.capabilities.extensions[] entry (uri https://kya-os.org/a2a/ext/entity-card/v1); scoped to entityType \"agent\" only, throws otherwise.",
+  "status": "shipping",
+  "evidence": "https://github.com/decentralized-identity/kya-os-mcp/blob/main/src/card/emit.ts",
+  "notes": "toA2AExtension in src/card/emit.ts; SPEC-ENTITY-CARD section 6.2. Activated via the A2A-Extensions header; unaware peers ignore it.",
+  "listedAt": "2026-08-19"
+}

@@ -1,0 +1,10 @@
+{
+  "standard": "RFC 9421 HTTP Message Signatures",
+  "slug": "rfc-9421",
+  "category": "transport",
+  "relationship": "OPTIONAL dual-carrier sibling: a second raw EdDSA/ES256 signature by the same DID key over the 9421 signature base (label kyaos), verifiable by stock 9421 verifiers.",
+  "status": "shipping",
+  "evidence": "https://github.com/decentralized-identity/kya-os-mcp/blob/main/src/card/proof/http-sig.ts",
+  "notes": "SPEC-ENTITY-CARD section 8.5; conformance/verify.py verifies both carriers. Covers content-digest, kya-audience, kya-nonce, kya-cnf. Degrades away if the signer lacks signRaw; detached JWS stays canonical; Layer-2 headers are NOT required to be 9421-covered (CONFORMANCE.md). Interop targets: SEP-1960, Cloudflare Web Bot Auth.",
+  "listedAt": "2026-08-19"
+}

@@ -1,0 +1,10 @@
+{
+  "standard": "OAuth 2.1/OIDC hardening: RFC 9207 iss validation, PKCE S256, RFC 8707 resource",
+  "slug": "oauth-oidc-hardening",
+  "category": "transport",
+  "relationship": "SPEC.md section 9.4 aligns with MCP 2026-07-28 authz hardening: the client MUST validate iss per RFC 9207 on callback; PKCE and protected-resource metadata live in @kya-os/mcp/authz.",
+  "status": "specified",
+  "evidence": "https://github.com/decentralized-identity/kya-os-mcp/blob/main/SPEC.md",
+  "notes": "Mixed maturity, listed at the conservative tier: the PKCE/OIDC adapter is shipping (src/authz/oidc/), but RFC 9207 iss validation is spec text ([RFC9207] in SPEC.md section 9.4 and SPEC-MCP-EXTENSION) with no iss-validation code in src/authz - it is a client-side MUST.",
+  "listedAt": "2026-08-19"
+}

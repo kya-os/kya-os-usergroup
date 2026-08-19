@@ -1,0 +1,9 @@
+{
+  "standard": "x402 payments",
+  "slug": "x402",
+  "category": "payments",
+  "relationship": "None. KYA-OS neither implements nor references x402 today.",
+  "status": "none",
+  "notes": "Confirmed zero at origin/main: a repo-wide search for x402 returns nothing. Not shipping, not specified, not planned. Listed so nobody has to guess.",
+  "listedAt": "2026-08-19"
+}

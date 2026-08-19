@@ -1,0 +1,10 @@
+{
+  "standard": "RFC 9162 (Certificate Transparency v2 Merkle trees)",
+  "slug": "rfc-9162",
+  "category": "transparency",
+  "relationship": "Audit ledger checkpoints are RFC 9162 section 2 tree heads with inclusion and consistency proofs; profile ID KYA-AUDIT-RFC9162-SHA256-JWS-2026.",
+  "status": "shipping",
+  "evidence": "https://github.com/decentralized-identity/kya-os-mcp/blob/main/src/audit/merkle.ts",
+  "notes": "Rfc9162MerkleTree in src/audit/merkle.ts; SPEC-AUDIT-READ.md, AUDITABILITY.md, conformance vectors/audit-integrity.json.",
+  "listedAt": "2026-08-19"
+}

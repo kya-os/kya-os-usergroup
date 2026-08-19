@@ -1,0 +1,10 @@
+{
+  "standard": "W3C Bitstring Status List v1.0",
+  "slug": "bitstring-status-list",
+  "category": "revocation",
+  "relationship": "Card revocation field is a BitstringStatusListEntry; fail-closed reader treats unreachable or malformed lists as revoked; MSB-first bits, GZIP+multibase decode, statusPurpose asserted.",
+  "status": "shipping",
+  "evidence": "https://github.com/decentralized-identity/kya-os-mcp/blob/main/src/card/revocation.ts",
+  "notes": "src/card/revocation.ts and src/delegation/bitstring.ts; SPEC-ENTITY-CARD section 10.3. Shared bit mechanics in src/utils/statuslist-bits.ts (16 MiB inflation cap).",
+  "listedAt": "2026-08-19"
+}

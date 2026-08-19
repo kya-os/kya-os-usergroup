@@ -1,0 +1,10 @@
+{
+  "standard": "MCP catalog.json index entry",
+  "slug": "mcp-catalog-entry",
+  "category": "discovery-projection",
+  "relationship": "Emits an always-by-ref catalog index row, so the index stays cheap and the card lazy-fetches.",
+  "status": "shipping",
+  "evidence": "https://github.com/decentralized-identity/kya-os-mcp/blob/main/src/card/emit.ts",
+  "notes": "toCatalogEntry in src/card/emit.ts; SPEC-ENTITY-CARD section 6.4. All four discovery projections gate proof-posture advertising identically; golden fixture at src/card/__tests__/__fixtures__/emit-golden.json.",
+  "listedAt": "2026-08-19"
+}
