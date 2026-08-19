@@ -1,0 +1,22 @@
+{
+  "name": "kya-os-conformance-starter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Template: prove your KYA-OS implementation against the conformance vector suite and emit a submission-ready claim - clone to report in under an hour",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "fetch-suite": "node scripts/fetch-suite.mjs",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.json",
+    "conformance": "npm run build && node dist/src/run.js",
+    "claim": "node scripts/make-claim.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.6.0"
+  }
+}
