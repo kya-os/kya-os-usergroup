@@ -2,17 +2,23 @@
  * The token + CSS layer for the community hub: every color on the site is
  * defined here, once per theme, and every rule consumes them through var().
  *
- * THEMING MODEL (CSS-only, zero client JS):
+ * THEMING MODEL (CSS tokens + one deliberate inline script):
  *   - :root defines the LIGHT tokens; no OS preference means light.
  *   - @media (prefers-color-scheme: dark) redefines them under
  *     :root:not([data-theme="light"]), so the OS preference flips the page
- *     but an explicit data-theme="light" attribute would win.
- *   - :root[data-theme="dark"] carries the same dark tokens, so a future
- *     toggle can force either theme by setting one attribute - no CSS
- *     changes, and no script ships today.
+ *     but an explicit data-theme="light" attribute wins.
+ *   - :root[data-theme="dark"] carries the same dark tokens, so the toggle
+ *     forces either theme by setting one attribute - no CSS changes.
  *   Both dark blocks are emitted from ONE template string so they can never
  *   drift apart. color-scheme follows the active tokens so form controls and
  *   scrollbars match.
+ *
+ * THEME_SCRIPT below is the site's ONLY client JS: the one deliberate
+ * exception to the zero-JS rule. It is a fixed string, emitted byte-identical
+ * into the <head> of every page, and allowed by a sha256 CSP hash that
+ * build-pages.mjs computes from these exact bytes (assertions.mjs verifies
+ * the match on every page). The first statement runs before paint, so a
+ * stored preference never flashes the wrong theme.
  *
  * PALETTE: the KYA-OS house pairs (light / dark). Where a raw status hue
  * cannot hold 4.5:1 as text on the light surface, a text-safe -ink variant
@@ -46,6 +52,26 @@ const DARK_TOKENS = `color-scheme:dark;
 /** Per-theme page background for the <meta name="theme-color"> pair. */
 export const THEME_COLORS = { light: "#f9f9f7", dark: "#0d0d0d" };
 
+/**
+ * The one inline script (see the theming model above). Two halves, one
+ * script: the pre-paint half applies the stored preference to <html>
+ * immediately (the button does not exist yet - a(g()) tolerates that), and
+ * the interactive half labels the button on DOMContentLoaded and cycles
+ * system -> light -> dark -> system on click via document-level delegation.
+ * Keep this string byte-stable: its sha256 is pinned in the CSP.
+ */
+export const THEME_SCRIPT =
+  '(function(){var d=document;' +
+  'function g(){try{var v=localStorage.getItem("theme");return v==="light"||v==="dark"?v:null}catch(e){return null}}' +
+  'function s(v){try{v?localStorage.setItem("theme",v):localStorage.removeItem("theme")}catch(e){}}' +
+  'function a(v){var r=d.documentElement;if(v){r.setAttribute("data-theme",v)}else{r.removeAttribute("data-theme")}' +
+  'var b=d.getElementById("theme-toggle");if(b){b.textContent=v||"auto";b.setAttribute("aria-label","Theme: "+(v||"system")+". Click to change.")}}' +
+  'a(g());' +
+  'd.addEventListener("DOMContentLoaded",function(){a(g())});' +
+  'd.addEventListener("click",function(e){var t=e.target&&e.target.closest?e.target.closest("#theme-toggle"):null;if(!t)return;' +
+  'var c=g(),n=c==="light"?"dark":c==="dark"?null:"light";s(n);a(n)});' +
+  "})();";
+
 /** Strip source indentation from an emitted sheet; one rule per line stays inspectable. */
 const strip = (css) => css.replace(/\n\s+/g, "\n");
 
@@ -69,9 +95,14 @@ export const SHARED_CSS = strip(`
   header.bar .wrap{display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px;min-height:64px;padding-top:10px;padding-bottom:10px}
   .brand{color:var(--ink);font-weight:600;font-size:16px;letter-spacing:-.01em;white-space:nowrap}
   .brand .sub{color:var(--muted);font-weight:400}
-  nav{margin-left:auto;display:flex;gap:8px 18px;font-size:13.5px;flex-wrap:wrap}
+  nav{margin-left:auto;display:flex;gap:8px 16px;font-size:13.5px;flex-wrap:wrap;align-items:center}
   nav a{color:var(--ink-2)}
   nav a:hover{color:var(--ink)}
+  nav a.active{color:var(--ink);font-weight:600}
+  .theme-btn{font-family:var(--mono);font-size:12px;font-weight:600;line-height:1.5;color:var(--ink-2);background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:4px 12px;cursor:pointer;min-width:62px;text-align:center}
+  .theme-btn:hover{color:var(--ink);border-color:var(--baseline)}
+  nav a.nav-cta{font-size:12.5px;font-weight:600;color:var(--page);background:var(--accent-deep);border-radius:6px;padding:6px 12px;white-space:nowrap}
+  nav a.nav-cta:hover{color:var(--page);background:color-mix(in srgb,var(--accent-deep) 85%,var(--ink))}
   @media(max-width:800px){header.bar{position:static}}
   footer{border-top:1px solid var(--grid);margin-top:72px;padding:28px 0 64px;color:var(--muted);font-size:13px}
   footer .wrap{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center}
@@ -94,6 +125,12 @@ export const INDEX_CSS = strip(`
   .eyebrow{font-size:12px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-deep);margin-bottom:22px}
   h1{font-size:clamp(36px,6vw,56px);font-weight:300;letter-spacing:-.02em;line-height:1.1;color:var(--ink)}
   .lede{max-width:640px;font-size:17.5px;line-height:1.65;color:var(--ink-2);margin-top:18px}
+  .page-hero{padding:52px 0 6px}
+  .page-hero h1{font-size:clamp(30px,5vw,42px)}
+  .page-hero .lede{font-size:16px;margin-top:14px}
+  .nav-card{display:block}
+  .nav-card .go{font-family:var(--mono);font-size:12.5px;color:var(--accent-deep)}
+  .nav-card:hover .go{text-decoration:underline}
   .chips-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:30px;align-items:center}
   .btn{display:inline-block;font-size:13.5px;font-weight:600;color:var(--page);background:var(--accent-deep);border-radius:6px;padding:10px 19px}
   .btn:hover{background:color-mix(in srgb,var(--accent-deep) 85%,var(--ink))}
@@ -172,4 +209,7 @@ export const NOT_FOUND_CSS = strip(`
   .nf h1{font-size:42px;font-weight:300;color:var(--ink);margin-bottom:16px}
   .nf p{color:var(--ink-2);margin-bottom:10px}
   .nf .back{font-family:var(--mono);font-size:13px;color:var(--accent-deep);text-decoration:underline}
-  .nf .back:hover{color:var(--accent)}`);
+  .nf .back:hover{color:var(--accent)}
+  .nf .nf-pages{font-size:13px;margin-top:18px}
+  .nf .nf-pages a{color:var(--ink-2);text-decoration:underline}
+  .nf .nf-pages a:hover{color:var(--accent)}`);

@@ -13,7 +13,7 @@
  */
 import { ADD_PROJECT_URL, DIF_URL, MCP_REPO_URL, REPO_URL, SITE_URL, TITLE } from "./constants.mjs";
 import { conformanceLabel, conformanceLevelUrl } from "./data.mjs";
-import { NOT_FOUND_CSS, SHARED_CSS, THEME_COLORS } from "./theme.mjs";
+import { NOT_FOUND_CSS, SHARED_CSS, THEME_COLORS, THEME_SCRIPT } from "./theme.mjs";
 
 /** Minimal HTML entity escaping for interpolated registry data. */
 export function esc(value) {
@@ -51,7 +51,7 @@ export function interopStatusChip(status) {
 function tagRow(entry) {
   const buildsOn = (entry.buildsOn ?? []).map((repo) => `<code class="krepo">${esc(repo)}</code>`).join(" ");
   const standards = (entry.standards ?? [])
-    .map((slug) => `<a class="stdtag" href="#std-${esc(slug)}">${esc(slug)}</a>`)
+    .map((slug) => `<a class="stdtag" href="/standards/#std-${esc(slug)}">${esc(slug)}</a>`)
     .join(" ");
   const parts = [];
   if (buildsOn) parts.push(`<span class="builds-on">builds on ${buildsOn}</span>`);
@@ -87,7 +87,25 @@ export function addCta(label) {
   return `<p class="add-cta"><a href="${esc(ADD_PROJECT_URL)}">[ ${esc(label)} -&gt; ]</a></p>`;
 }
 
-export function pageShell({ title, headExtra = "", body, nav = "" }) {
+// The site's page set, in nav order. Root-absolute hrefs (never relative):
+// both Cloudflare Pages and a local `python3 -m http.server` on dist/ serve
+// from the root, so the links hold from any subfolder page.
+export const NAV_PAGES = [
+  ["/builders/", "Builders"],
+  ["/conformance/", "Conformance"],
+  ["/standards/", "Standards"],
+];
+
+/**
+ * The shared shell: head (meta, style, THE inline theme script - the site's
+ * only JS, CSP-pinned by hash), the top nav with the current page
+ * highlighted, and the footer. `current` is the page's root-absolute path
+ * ("/builders/"); null (the 404 page) highlights nothing.
+ */
+export function pageShell({ title, headExtra = "", body, current = null }) {
+  const navLinks = NAV_PAGES.map(
+    ([href, label]) => `\n      <a href="${href}"${href === current ? ' class="active" aria-current="page"' : ""}>${label}</a>`,
+  ).join("");
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -99,12 +117,14 @@ export function pageShell({ title, headExtra = "", body, nav = "" }) {
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="${THEME_COLORS.dark}" />
 ${headExtra}<style>${SHARED_CSS}
 </style>
+<script>${THEME_SCRIPT}</script>
 </head>
 <body>
   <header class="bar"><div class="wrap">
     <a class="brand" href="/">KYA-OS<span class="sub"> / community</span></a>
-    <nav>${nav}
-      <a href="${REPO_URL}">GitHub</a>
+    <nav>${navLinks}
+      <button id="theme-toggle" type="button" class="theme-btn" aria-label="Theme: system. Click to change.">auto</button>
+      <a class="nav-cta" href="${esc(ADD_PROJECT_URL)}">Add project -&gt;</a>
     </nav>
   </div></header>
 ${body}
@@ -113,6 +133,7 @@ ${body}
     <a href="${SITE_URL}">Protocol</a>
     <a href="${MCP_REPO_URL}">Spec repo</a>
     <a href="${DIF_URL}">DIF</a>
+    <a href="${REPO_URL}">GitHub</a>
     <a href="/builders.json">builders.json</a>
     <a href="/interop.json">interop.json</a>
     <a href="${REPO_URL}/blob/main/CONTRIBUTING.md">Get listed</a>
@@ -130,6 +151,7 @@ export function render404Html() {
       <h1>Not found</h1>
       <p>No page or registry resource matches this path.</p>
       <p><a class="back" href="/">&larr; The community hub</a></p>
+      <p class="nf-pages mono"><a href="/builders/">/builders/</a> &middot; <a href="/conformance/">/conformance/</a> &middot; <a href="/standards/">/standards/</a></p>
     </section>
   </article>`;
   return pageShell({
