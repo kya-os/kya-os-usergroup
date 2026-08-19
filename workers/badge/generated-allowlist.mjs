@@ -4,4 +4,8 @@
 // canonical credential location when a verified claim exists, else null
 // (the worker renders those as unverified).
 export const BADGE_ALLOWLIST = {
+  "conformance-starter": { name: "Conformance Starter", claim: null, credentialUrl: null },
+  "kya-os-demo-server": { name: "KYA-OS Demo Server", claim: null, credentialUrl: null },
+  "mycelium-trails": { name: "Mycelium Trails", claim: "L1 subset (signed-proof)", credentialUrl: null },
+  "revoked-demo": { name: "REVOKED", claim: null, credentialUrl: null },
 };
