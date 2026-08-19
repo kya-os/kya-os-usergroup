@@ -7,20 +7,20 @@ Everything here is a public pull request away, and nothing here requires touchin
 
 ## The hub
 
-The site renders as a single page at **builders.kya-os.org** with six sections:
+The site renders as four pages at **builders.kya-os.org**:
 
-| Section | What it shows | Backed by |
+| Page | What it shows | Backed by |
 | --- | --- | --- |
-| `#conformance` | The conformance program, the suite pin, and the implementations table with honest status chips | `registry/builders/` entries with a `conformance` claim |
-| `#builders` | Implementations, services, integrations, and marketplaces building on KYA-OS | `registry/builders/` (`kind`-grouped) |
-| `#templates` | Copyable starting points, with one-click deploy buttons where they exist | `registry/builders/` (`kind: template`) |
-| `#examples` | Working demonstrations of the protocol | `registry/builders/` (`kind: example`) |
-| `#standards` | The standards rails: what KYA-OS provides, carries, and projects onto, with evidence | `registry/interop/` |
-| `#submit` | The three submission paths below | - |
+| `/` | A calm landing: the mission, three navigation cards with live counts, and the add-your-project CTA | build-time counts |
+| `/builders/` | The directory (implementations, services, integrations, marketplaces), templates with one-click deploy buttons, examples, and the three submission paths | `registry/builders/` (`kind`-grouped) |
+| `/conformance/` | The conformance program, the suite pin, the four verification steps, and the implementations table with honest status chips | `registry/builders/` entries with a `conformance` claim |
+| `/standards/` | The standards rails: what KYA-OS provides, carries, and projects onto, with evidence | `registry/interop/` |
 
-Machine-readable mirrors ship next to the page: [`/builders.json`](https://builders.kya-os.org/builders.json) and [`/interop.json`](https://builders.kya-os.org/interop.json), both with open CORS.
+Every page carries a light/dark toggle (system, light, dark) backed by the one inline script the site ships; its sha256 is pinned in the CSP, and a build assertion fails if script and policy ever drift.
 
-> **Open decision:** whether the page ultimately lives at the `builders.kya-os.org` subdomain or at a path under the main site has not been settled; nothing in the registry format depends on the outcome.
+Machine-readable mirrors ship next to the pages: [`/builders.json`](https://builders.kya-os.org/builders.json) and [`/interop.json`](https://builders.kya-os.org/interop.json), both with open CORS.
+
+> **Open decision:** whether the site ultimately lives at the `builders.kya-os.org` subdomain or at a path under the main site has not been settled; nothing in the registry format depends on the outcome.
 
 ## What lives here
 
