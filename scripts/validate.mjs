@@ -39,8 +39,9 @@
  *   - listedAt: real calendar date, YYYY-MM-DD
  *
  * Run directly (node scripts/validate.mjs) for CI / local use: prints every
- * error per file and exits non-zero on any failure. site/build-pages.mjs
- * imports validateRegistry() and refuses to render when it reports errors.
+ * error per file and exits non-zero on any failure. The site build imports
+ * validateRegistry() (via site/lib/data.mjs) and refuses to render when it
+ * reports errors.
  */
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
