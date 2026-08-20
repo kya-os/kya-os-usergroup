@@ -1,17 +1,19 @@
-// hub-init - the community hub's motion entry point (NOT vendored; see
-// VENDORED.md). Reproduces kya-os-site's PageInit.js sequence with its exact
-// timings, mapped onto the hub's selectors, using the vendored modules
-// unchanged. Two deliberate divergences from the reference, both documented:
-// modified clicks (cmd/ctrl/shift/alt or a non-left button) are never
-// intercepted, so open-in-new-tab keeps working (the reference swallows
-// cmd+click - a real bug); and the overlay color is theme-aware - the gated
-// CSS in lib/theme.mjs paints it var(--page), so the wipe matches light and
+// hub-init - the community hub's motion entry point. NOT registry-managed:
+// it is the hub's own counterpart of kya-os-site's PageInit.js, reproducing
+// that sequence with its exact timings, mapped onto the hub's selectors,
+// driving the @kya-os/aliencn motion family under ./motion/ (installed and
+// re-verified by the aliencn CLI; see aliencn.json) unchanged. Two deliberate
+// divergences from the reference, both documented: modified clicks
+// (cmd/ctrl/shift/alt or a non-left button) are never intercepted, so
+// open-in-new-tab keeps working (the reference swallows cmd+click - a real
+// bug); and the overlay color is theme-aware - the gated CSS in the hub
+// stylesheet paints it var(--aliencn-canvas), so the wipe matches light and
 // dark mode instead of the reference's hard #0a0a0a.
-import { GlitchText } from "./GlitchText.js";
-import { PageTransition } from "./PageTransition.js";
-import { ScrollSkew } from "./SmoothScroll.js";
-import { Title } from "./Title.js";
-import { wait } from "./UIUtils.js";
+import { GlitchText } from "./motion/GlitchText.js";
+import { PageTransition } from "./motion/PageTransition.js";
+import { ScrollSkew } from "./motion/SmoothScroll.js";
+import { Title } from "./motion/Title.js";
+import { wait } from "./motion/UIUtils.js";
 
 // The inline theme script sets html.js-anim only when prefers-reduced-motion
 // does not match; re-checking both here keeps this module fully inert (no

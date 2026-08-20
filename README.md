@@ -17,7 +17,9 @@ The site renders as four pages at **builders.kya-os.org**:
 | `/standards/` | The standards rails: what KYA-OS provides, carries, and projects onto, with evidence | `registry/interop/` |
 
 Every page ships exactly one inline script: the theme toggle (system, light, dark), which also gates the page choreography behind an `html.js-anim` class unless `prefers-reduced-motion` is set.
-The motion itself - title decrypt, staggered entry, page transitions - runs from same-origin ES modules under `/ui/`: kya-os-site's own vanilla motion modules, vendored byte-identical and manifest-pinned in `site/assets/ui/VENDORED.md`, driven by the hub's `hub-init.js`; without JavaScript (or with reduced motion) the site is fully visible with native navigation.
+The hub consumes [@kya-os/aliencn](https://github.com/H0BB5/pschroen-alienjs), the KYA-OS design system, for both its motion and its design language: `aliencn.json` records the consumer paths, the CLI installs the vanilla motion family verbatim under `site/assets/ui/motion/`, and `aliencn diff --all` re-verifies the installed files against the registry at any time.
+The motion itself - title decrypt, staggered entry, page transitions - runs from same-origin ES modules under `/ui/`, driven by the hub's own `hub-init.js`; without JavaScript (or with reduced motion) the site is fully visible with native navigation.
+CI stays self-contained: it never runs the CLI, and instead the build assertions pin each motion module by sha256 (`site/lib/assertions.mjs`), so registry drift fails the build.
 The inline script is sha256-pinned in the CSP (`script-src 'self' 'sha256-...'`), and build assertions fail if script and policy drift, if any `dist/ui/` module is not a byte copy of its committed source, or if any vendored module drifts from its manifest hash.
 Typography is self-hosted: the two brand faces (Space Grotesk, JetBrains Mono) ship as committed variable woff2 files under `site/assets/fonts/` with their OFL licenses, copied to `/fonts/` at build time.
 

@@ -19,10 +19,12 @@
  *   - fonts/                   byte copies of site/assets/fonts/ (the two
  *                              self-hosted variable woff2 faces + their OFL
  *                              licenses)
- *   - ui/                      byte copies of site/assets/ui/*.js: the motion
- *                              modules vendored from kya-os-site (manifest-
- *                              pinned in site/assets/ui/VENDORED.md) plus the
- *                              hub's own hub-init.js entry module
+ *   - ui/                      byte copies of site/assets/ui/**\/*.js: the
+ *                              @kya-os/aliencn motion family under ui/motion/
+ *                              (CLI-installed per aliencn.json, sha256-pinned
+ *                              in lib/assertions.mjs, re-verifiable with
+ *                              `aliencn diff motion`) plus the hub's own
+ *                              hub-init.js entry module
  *   - _headers                 security headers + content types; the CSP pins
  *                              the one inline script by sha256 (computed here
  *                              from the exact THEME_SCRIPT bytes), covers the
@@ -140,13 +142,14 @@ for (const name of readdirSync(fontsSrcDir).sort()) {
   copyFileSync(join(fontsSrcDir, name), join(distDir, "fonts", name));
 }
 
-// Motion modules: deterministic byte copies of site/assets/ui/*.js (the
-// vendored kya-os-site modules + the hub's hub-init.js), sorted for a stable
-// order. VENDORED.md stays out of dist/; assertions verify byte equality and
-// the manifest hashes so vendor drift fails the build.
-mkdirSync(join(distDir, "ui"), { recursive: true });
-for (const name of readdirSync(uiSrcDir).sort()) {
-  if (name.endsWith(".js")) copyFileSync(join(uiSrcDir, name), join(distDir, "ui", name));
+// Motion modules: deterministic byte copies of site/assets/ui/**/*.js - the
+// @kya-os/aliencn motion family under ui/motion/ (installed by the aliencn
+// CLI at the paths recorded in aliencn.json; `aliencn diff motion` is the
+// drift gate) plus the hub's own hub-init.js entry module. Assertions verify
+// byte equality and the pinned registry hashes so drift fails the build.
+mkdirSync(join(distDir, "ui", "motion"), { recursive: true });
+for (const entry of readdirSync(uiSrcDir, { recursive: true }).map(String).sort()) {
+  if (entry.endsWith(".js")) copyFileSync(join(uiSrcDir, entry), join(distDir, "ui", entry));
 }
 
 // The badge worker's slug allowlist is committed, not a dist/ artifact: the

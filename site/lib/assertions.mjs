@@ -10,8 +10,8 @@
  * formatter cannot make its own assertion pass. The CSP check recomputes the
  * script hash from the emitted page bytes for the same reason, and the font
  * and ui-module checks re-read the committed files rather than trusting the
- * copy step (the vendored modules additionally against the sha256 manifest
- * in site/assets/ui/VENDORED.md, so vendor drift fails the build). The suite
+ * copy step (the registry-managed motion modules additionally against the
+ * sha256 pins in MOTION_PINS below, so drift fails the build). The suite
  * pin check reads every committed copy of the pin as bytes and asserts
  * agreement with SUITE in lib/constants.mjs, so no copy can drift silently.
  */
@@ -25,6 +25,19 @@ import { esc } from "./html.mjs";
 const PAGE_FILES = ["index.html", "builders/index.html", "conformance/index.html", "standards/index.html", "404.html"];
 const FONT_FILES = ["fonts/space-grotesk-latin-wght.woff2", "fonts/jetbrains-mono-latin-wght.woff2"];
 const FONT_LICENSES = ["fonts/space-grotesk-OFL.txt", "fonts/jetbrains-mono-OFL.txt"];
+
+// The @kya-os/aliencn motion family under site/assets/ui/motion/, pinned by
+// sha256 so CI stays self-contained (it never runs the CLI). These are the
+// registry's verbatim vanilla templates; `aliencn diff motion` (aliencn.json
+// points the CLI at this repo's paths) is the drift gate against the registry
+// itself. Update = re-add via the CLI, never edit in place.
+const MOTION_PINS = {
+  "GlitchText.js": "7ddc58770d7677de9c38b3bd096f6d7103e366e5d1f532eba36569436248a81c",
+  "PageTransition.js": "179e109bdacf6a24c52fc412b75676fbe997b635ead940de1b5a280fec992e7a",
+  "SmoothScroll.js": "27179c8ffd18a87dc9ed4781d3b858a4be8686dc3e97b23beb0e61e87fbdc93b",
+  "Title.js": "3fbfc6d1375a17f4015fc714deab9edc483f89161a6aec7ecce155f117ec1338",
+  "UIUtils.js": "eb03cfa3bd58c0f8075c7c37a7e8249676f202c1ea68defe2400a57c32380f10",
+};
 
 function assertBuild(condition, message) {
   if (!condition) {
@@ -193,25 +206,28 @@ export function runRenderChecks({ distDir, rendered, interopSorted }) {
     assertAnimGating(name, html);
   }
 
-  // Motion modules: dist/ui/*.js must be exact byte copies of the committed
-  // site/assets/ui/*.js (both directions - same file set), every vendored
-  // module must match its sha256 in VENDORED.md (vendor drift fails the
-  // build; update = re-copy from source, never edit in place), and hub-init
-  // must keep its reduced-motion / js-anim guard.
+  // Motion modules: dist/ui/**/*.js must be exact byte copies of the
+  // committed site/assets/ui/**/*.js (both directions - same file set), every
+  // registry-managed module under ui/motion/ must match its pinned sha256
+  // (MOTION_PINS above; drift fails the build - reconcile with
+  // `aliencn diff motion` / `aliencn add motion --overwrite`, never edit in
+  // place), and hub-init must keep its reduced-motion / js-anim guard.
   const uiSrcDir = join(distDir, "..", "site", "assets", "ui");
-  const uiCommitted = readdirSync(uiSrcDir).filter((n) => n.endsWith(".js")).sort();
-  const uiBuilt = readdirSync(join(distDir, "ui")).sort();
-  assertBuild(uiBuilt.join(",") === uiCommitted.join(","), `dist/ui/ (${uiBuilt.join(", ")}) must mirror site/assets/ui/*.js (${uiCommitted.join(", ")})`);
+  const uiCommitted = readdirSync(uiSrcDir, { recursive: true }).map(String).filter((n) => n.endsWith(".js")).sort();
+  const uiBuilt = readdirSync(join(distDir, "ui"), { recursive: true }).map(String).filter((n) => n.endsWith(".js")).sort();
+  assertBuild(uiBuilt.join(",") === uiCommitted.join(","), `dist/ui/ (${uiBuilt.join(", ")}) must mirror site/assets/ui/**/*.js (${uiCommitted.join(", ")})`);
   for (const name of uiCommitted) {
     const built = readFileSync(join(distDir, "ui", name));
     assertBuild(built.equals(readFileSync(join(uiSrcDir, name))), `dist/ui/${name} is not a byte copy of site/assets/ui/${name}`);
   }
-  const manifest = readFileSync(join(uiSrcDir, "VENDORED.md"), "utf8");
-  const vendored = [...manifest.matchAll(/\|\s*([\w.]+\.js)\s*\|\s*`([0-9a-f]{64})`\s*\|/g)];
-  assertBuild(vendored.length === 5, `VENDORED.md must pin exactly the five vendored modules, found ${vendored.length}`);
-  for (const [, name, expected] of vendored) {
-    const actual = createHash("sha256").update(readFileSync(join(uiSrcDir, name))).digest("hex");
-    assertBuild(actual === expected, `vendor drift: ${name} sha256 ${actual} does not match VENDORED.md (re-copy from kya-os-site, never edit in place)`);
+  const pinned = Object.entries(MOTION_PINS);
+  assertBuild(
+    uiCommitted.filter((n) => n.startsWith("motion/")).join(",") === pinned.map(([name]) => `motion/${name}`).join(","),
+    "site/assets/ui/motion/ must hold exactly the five pinned @kya-os/aliencn motion modules",
+  );
+  for (const [name, expected] of pinned) {
+    const actual = createHash("sha256").update(readFileSync(join(uiSrcDir, "motion", name))).digest("hex");
+    assertBuild(actual === expected, `motion drift: ${name} sha256 ${actual} does not match the registry pin (run \`aliencn diff motion\`; update via the aliencn CLI, never edit in place)`);
   }
   const hubInit = readFileSync(join(distDir, "ui", "hub-init.js"), "utf8");
   assertBuild(

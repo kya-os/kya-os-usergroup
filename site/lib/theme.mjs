@@ -21,9 +21,10 @@
  * user prefers reduced motion (so the MOTION_CSS hidden states below never
  * apply without JS or against a reduced-motion preference), and the theme
  * half applies the stored preference so it never flashes the wrong theme.
- * All remaining motion runs from same-origin ES modules under /ui/ (vendored
- * from kya-os-site, manifest-pinned; see site/assets/ui/VENDORED.md), driven
- * by the hub's own hub-init.js and covered by script-src 'self'.
+ * All remaining motion runs from same-origin ES modules under /ui/ (the
+ * @kya-os/aliencn motion family, CLI-installed per aliencn.json and
+ * sha256-pinned in lib/assertions.mjs), driven by the hub's own hub-init.js
+ * and covered by script-src 'self'.
  *
  * FONTS: the two brand faces (Space Grotesk for UI, JetBrains Mono for
  * identifiers) are self-hosted variable woff2 files, committed under
@@ -236,7 +237,7 @@ export const NOT_FOUND_CSS = strip(`
 
 // The motion layer's CSS, on every page: the entry-state and page-transition
 // rules that accompany the vendored /ui/ modules, adapted from kya-os-site
-// css/main.css (see site/assets/ui/VENDORED.md). Selectors are mapped to the
+// css/main.css (the reference site of the aliencn motion family). Selectors are mapped to the
 // hub's markup and ONLY color values diverge, onto the hub's theme tokens:
 // the overlay wipes in var(--page) (the reference hard-codes #0a0a0a; the hub
 // has a light mode), scanlines/glows derive from var(--ink), and the glitch
