@@ -103,7 +103,7 @@ ${[
 function directoryRow(entry) {
   const c = entry.conformance;
   const chip = c
-    ? conformanceStatusChip(c, { link: false })
+    ? conformanceStatusChip(c)
     : `<span class="chip st-listed">&middot; listed</span>`;
   const liveDot =
     entry.kind === "service"
@@ -114,6 +114,7 @@ function directoryRow(entry) {
     : `<div class="dconf-line tone-faint"><p>Listed in the registry — no conformance claim yet.</p></div>`;
   const links = [`<a href="${esc(entry.homepage)}">homepage -&gt;</a>`];
   if (entry.repo && entry.repo !== entry.homepage) links.push(`<a href="${esc(entry.repo)}">repo -&gt;</a>`);
+  if (c?.attestationUrl) links.push(`<a href="${esc(c.attestationUrl)}">credential -&gt;</a>`);
   if (c?.evidenceUrl) links.push(`<a href="${esc(c.evidenceUrl)}">evidence -&gt;</a>`);
   const buildsOn = (entry.buildsOn ?? []).map((repo) => esc(repo)).join(", ");
   return `      <details class="drow k-${esc(entry.kind)}" id="${esc(entry.slug)}">
@@ -211,7 +212,7 @@ export function sectionSubmit() {
       </div>
       <div class="panel-card">
         <div class="pc-title">3 &middot; claim conformance</div>
-        <p>Run the pinned vector suite (the <a href="/conformance/">starter</a> automates it), then open a conformance submission issue with your <code>claim.json</code>. The program re-runs your suite independently and attests what it observes; your registry entry then carries the claim.</p>
+        <p>Run the pinned vector suite (the <a href="${STARTER_URL}">starter</a> automates it), then open a conformance submission issue with your <code>claim.json</code>. The program re-runs your suite independently and attests what it observes; your registry entry then carries the claim.</p>
       </div>
     </div>
     ${promptBlock("prompt-get-listed")}

@@ -8,7 +8,7 @@
  * measured-not-asserted language, subset claims never render bare, and the
  * badge states are labeled as the Phase B state machine, not live claims.
  */
-import { CONFORMANCE_MD_URL, SUITE } from "./constants.mjs";
+import { CONFORMANCE_MD_URL, SUITE, STARTER_URL } from "./constants.mjs";
 import { conformanceLabel, conformanceLevelUrl, withConformance } from "./data.mjs";
 import { conformanceStatusChip, esc, promptBlock } from "./html.mjs";
 import { waveformSvg } from "./waveform.mjs";
@@ -67,7 +67,7 @@ export function sectionsConformance(rendered) {
       </div>
     </div>
     <div class="pipeline"><span class="pipe-dot"></span></div>
-    <p class="note">Fastest on-ramp: the <a href="/builders/">conformance starter</a> — clone to a submission-ready claim in under an hour.</p>
+    <p class="note">Fastest on-ramp: the <a href="${STARTER_URL}">conformance starter</a> — clone to a submission-ready claim in under an hour.</p>
     ${promptBlock("prompt-prove-conformance")}
   </section>
   <section class="fx fxd-25">
