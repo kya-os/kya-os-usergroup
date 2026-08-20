@@ -365,7 +365,10 @@ html.js-anim [data-title-reveal]{visibility:hidden}
 html.js-anim .fade-overlay{position:fixed;inset:0;background:var(--canvas);z-index:9999;pointer-events:none;opacity:0;transition:opacity .4s ease-out}
 html.js-anim .fade-overlay.active{opacity:1;pointer-events:all}
 .title-letter{display:inline-block}
-.title-letter.glitching,.glitching{color:var(--ink-muted);text-shadow:2px 0 var(--ink-bright),-2px 0 var(--alert),0 0 10px color-mix(in srgb,var(--ink-bright) 30%,transparent)}
+.title-letter.glitching{color:var(--ink-muted);text-shadow:2px 0 var(--ink-bright),-2px 0 var(--alert),0 0 10px color-mix(in srgb,var(--ink-bright) 30%,transparent)}
+/* Hover glitch: kya-os.org css/main.css textGlitch, colors via tokens (dark values identical). */
+.glitching:not(.title-letter){animation:textGlitch .1s infinite}
+@keyframes textGlitch{0%,100%{text-shadow:1px 0 var(--alert),-1px 0 var(--signal)}25%{text-shadow:-1px 0 var(--alert),1px 0 var(--signal)}50%{text-shadow:1px 0 var(--signal),-1px 0 var(--alert)}75%{text-shadow:0 1px var(--alert),0 -1px var(--signal)}}
 .title-letter.revealed{animation:letterReveal .3s ease-out}
 
 /* Reduced motion: no choreography (js-anim is never added) and no ambient
