@@ -13,7 +13,7 @@
  */
 import { ADD_PROJECT_URL, DIF_URL, MCP_REPO_URL, REPO_URL, SITE_URL, TITLE } from "./constants.mjs";
 import { conformanceLabel, conformanceLevelUrl } from "./data.mjs";
-import { NOT_FOUND_CSS, SHARED_CSS, THEME_COLORS, THEME_SCRIPT } from "./theme.mjs";
+import { MOTION_CSS, NOT_FOUND_CSS, SHARED_CSS, THEME_COLORS, THEME_SCRIPT } from "./theme.mjs";
 
 /** Minimal HTML entity escaping for interpolated registry data. */
 export function esc(value) {
@@ -97,14 +97,15 @@ export const NAV_PAGES = [
 ];
 
 /**
- * The shared shell: head (meta, style, the inline theme script - CSP-pinned
- * by hash), the top nav with the current page highlighted, and the footer.
- * `current` is the page's root-absolute path ("/builders/"); null (the 404
- * page) highlights nothing. `animScript` (landing page only) emits a second
- * hashed inline script right after the theme script, still in <head> so its
- * pre-paint half runs before first render.
+ * The shared shell: head (meta, style, the ONE inline script - the theme
+ * toggle + js-anim gate, CSP-pinned by hash - and the hub-init module tag,
+ * covered by script-src 'self'), the top nav with the current page
+ * highlighted, and the footer. `current` is the page's root-absolute path
+ * ("/builders/"); null (the 404 page) highlights nothing. Both scripts sit
+ * in <head>: the inline script's pre-paint halves must run before first
+ * render, and the module is deferred by nature.
  */
-export function pageShell({ title, headExtra = "", body, current = null, animScript = null }) {
+export function pageShell({ title, headExtra = "", body, current = null }) {
   const navLinks = NAV_PAGES.map(
     ([href, label]) => `\n      <a href="${href}"${href === current ? ' class="active" aria-current="page"' : ""}>${label}</a>`,
   ).join("");
@@ -117,13 +118,14 @@ export function pageShell({ title, headExtra = "", body, current = null, animScr
 <meta name="color-scheme" content="light dark" />
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="${THEME_COLORS.light}" />
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="${THEME_COLORS.dark}" />
-${headExtra}<style>${SHARED_CSS}
+${headExtra}<style>${SHARED_CSS}${MOTION_CSS}
 </style>
 <script>${THEME_SCRIPT}</script>
-${animScript ? `<script>${animScript}</script>\n` : ""}</head>
+<script type="module" src="/ui/hub-init.js"></script>
+</head>
 <body>
   <header class="bar"><div class="wrap">
-    <a class="brand" href="/">KYA-OS<span class="sub"> / community</span></a>
+    <a class="brand" href="/"><span class="brand-name">KYA-OS</span><span class="sub"> / community</span></a>
     <nav>${navLinks}
       <button id="theme-toggle" type="button" class="theme-btn" aria-label="Theme: system. Click to change.">auto</button>
       <a class="nav-cta" href="${esc(ADD_PROJECT_URL)}">Add project -&gt;</a>

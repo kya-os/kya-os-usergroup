@@ -13,14 +13,17 @@
  *   drift apart. color-scheme follows the active tokens so form controls and
  *   scrollbars match.
  *
- * CLIENT JS: the site ships exactly two fixed inline scripts, each allowed by
- * a sha256 CSP hash that build-pages.mjs computes from these exact bytes
- * (assertions.mjs verifies the match against the emitted pages).
- *   - THEME_SCRIPT: the toggle, emitted byte-identical into the <head> of
- *     every page. Its first statement runs before paint, so a stored
- *     preference never flashes the wrong theme.
- *   - ANIM_SCRIPT: the landing hero choreography, emitted ONLY on
- *     dist/index.html (see the block comment above it).
+ * CLIENT JS: the site ships exactly ONE fixed inline script per page
+ * (THEME_SCRIPT, emitted byte-identical into every <head>), allowed by a
+ * sha256 CSP hash that build-pages.mjs computes from these exact bytes
+ * (assertions.mjs verifies the match against the emitted pages). Its first
+ * statements run before paint: the js-anim gate adds html.js-anim unless the
+ * user prefers reduced motion (so the MOTION_CSS hidden states below never
+ * apply without JS or against a reduced-motion preference), and the theme
+ * half applies the stored preference so it never flashes the wrong theme.
+ * All remaining motion runs from same-origin ES modules under /ui/ (vendored
+ * from kya-os-site, manifest-pinned; see site/assets/ui/VENDORED.md), driven
+ * by the hub's own hub-init.js and covered by script-src 'self'.
  *
  * FONTS: the two brand faces (Space Grotesk for UI, JetBrains Mono for
  * identifiers) are self-hosted variable woff2 files, committed under
@@ -62,15 +65,20 @@ const DARK_TOKENS = `color-scheme:dark;
 export const THEME_COLORS = { light: "#f9f9f7", dark: "#0d0d0d" };
 
 /**
- * The one inline script (see the theming model above). Two halves, one
- * script: the pre-paint half applies the stored preference to <html>
- * immediately (the button does not exist yet - a(g()) tolerates that), and
- * the interactive half labels the button on DOMContentLoaded and cycles
- * system -> light -> dark -> system on click via document-level delegation.
- * Keep this string byte-stable: its sha256 is pinned in the CSP.
+ * The one inline script (see the theming model above). Three parts, one
+ * script, all pre-paint where it matters: the js-anim gate adds html.js-anim
+ * unless prefers-reduced-motion matches (every hidden initial state in
+ * MOTION_CSS is gated under that class, so no JS / blocked JS / reduced
+ * motion always yields a fully visible static page); the theme half applies
+ * the stored preference to <html> immediately (the button does not exist yet
+ * - a(g()) tolerates that); and the interactive half labels the button on
+ * DOMContentLoaded and cycles system -> light -> dark -> system on click via
+ * document-level delegation. Keep this string byte-stable: its sha256 is
+ * pinned in the CSP.
  */
 export const THEME_SCRIPT =
   '(function(){var d=document;' +
+  'if(!matchMedia("(prefers-reduced-motion: reduce)").matches){d.documentElement.classList.add("js-anim")}' +
   'function g(){try{var v=localStorage.getItem("theme");return v==="light"||v==="dark"?v:null}catch(e){return null}}' +
   'function s(v){try{v?localStorage.setItem("theme",v):localStorage.removeItem("theme")}catch(e){}}' +
   'function a(v){var r=d.documentElement;if(v){r.setAttribute("data-theme",v)}else{r.removeAttribute("data-theme")}' +
@@ -226,73 +234,36 @@ export const NOT_FOUND_CSS = strip(`
   .nf .nf-pages a{color:var(--ink-2);text-decoration:underline}
   .nf .nf-pages a:hover{color:var(--accent)}`);
 
-/**
- * The landing hero choreography, emitted ONLY into dist/index.html (its own
- * CSP hash rides next to the theme script's). Progressive enhancement in
- * both directions:
- *   - The pre-paint half adds html.js-anim UNLESS the user prefers reduced
- *     motion. Every hidden initial state lives in ANIM_CSS under html.js-anim
- *     selectors ONLY, so no script / blocked script / reduced motion means
- *     everything is fully visible with zero animation.
- *   - The h1 is real text in the HTML (SEO, no-JS); it is spanified only at
- *     runtime, with the original text kept as the h1 aria-label so assistive
- *     tech never reads letter soup.
- * Sequence (~1.4s total): letter-by-letter decrypt on the hero h1 (3 glitch
- * frames of random glyphs per letter, settling left to right on a 30ms
- * stagger), then the mission line + CTA fade in, then the three nav cards
- * stagger in 175ms apart. A bfcache restore drops html.js-anim and restores
- * the h1 text, so a mid-flight back-navigation can never strand hidden or
- * scrambled content. Keep this string byte-stable: its sha256 is pinned in
- * the CSP.
- */
-export const ANIM_SCRIPT =
-  '(function(){var d=document,r=d.documentElement;' +
-  'if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;' +
-  'r.classList.add("js-anim");' +
-  'var G="!<>-_\\\\/[]{}=+*^?#";' +
-  'function gl(){return G.charAt(Math.floor(Math.random()*G.length))}' +
-  'd.addEventListener("DOMContentLoaded",function(){' +
-  'var h=d.querySelector(".hero h1"),txt=h?h.textContent:"",end=140;' +
-  'if(h){' +
-  'h.setAttribute("aria-label",txt);' +
-  'h.textContent="";' +
-  'for(var i=0;i<txt.length;i++){(function(c,j){' +
-  'if(c===" "){h.appendChild(d.createTextNode(" "));return}' +
-  'var s=d.createElement("span");' +
-  's.className="tl";' +
-  's.setAttribute("aria-hidden","true");' +
-  's.textContent=c;' +
-  'h.appendChild(s);' +
-  'var t=j*30;' +
-  'setTimeout(function(){s.classList.add("on");s.textContent=gl()},t);' +
-  'setTimeout(function(){s.textContent=gl()},t+35);' +
-  'setTimeout(function(){s.textContent=gl()},t+70);' +
-  'setTimeout(function(){s.textContent=c},t+105);' +
-  '})(txt.charAt(i),i)}' +
-  'h.classList.add("live");' +
-  'end=(txt.length-1)*30+140' +
-  '}' +
-  'setTimeout(function(){var m=d.querySelector(".hero .lede"),b=d.querySelector(".hero .chips-row");if(m)m.classList.add("in");if(b)b.classList.add("in")},end);' +
-  'var cs=d.querySelectorAll(".nav-card");' +
-  'for(var k=0;k<cs.length;k++){(function(el,j){setTimeout(function(){el.classList.add("in")},end+150+j*175)})(cs[k],k)}' +
-  '});' +
-  'addEventListener("pageshow",function(e){' +
-  'if(!e.persisted)return;' +
-  'r.classList.remove("js-anim");' +
-  'var h=d.querySelector(".hero h1"),l=h?h.getAttribute("aria-label"):null;' +
-  'if(h&&l){h.textContent=l;h.removeAttribute("aria-label")}' +
-  '});' +
-  "})();";
-
-// The choreography's initial + revealed states, landing page only. RULE: any
-// hidden initial state (opacity:0) may exist ONLY under an html.js-anim
-// selector - lib/assertions.mjs fails the build otherwise. Without the class
-// (no JS, blocked JS, reduced motion) none of this applies and the page is
-// fully visible, static.
-export const ANIM_CSS = strip(`
-  html.js-anim .hero h1{opacity:0}
-  html.js-anim .hero h1.live{opacity:1}
-  html.js-anim .hero h1 .tl{opacity:0}
-  html.js-anim .hero h1 .tl.on{opacity:1}
-  html.js-anim .hero .lede,html.js-anim .hero .chips-row,html.js-anim .nav-card{opacity:0;transform:translateY(10px)}
-  html.js-anim .hero .lede.in,html.js-anim .hero .chips-row.in,html.js-anim .nav-card.in{opacity:1;transform:none;transition:opacity .4s ease,transform .4s ease}`);
+// The motion layer's CSS, on every page: the entry-state and page-transition
+// rules that accompany the vendored /ui/ modules, adapted from kya-os-site
+// css/main.css (see site/assets/ui/VENDORED.md). Selectors are mapped to the
+// hub's markup and ONLY color values diverge, onto the hub's theme tokens:
+// the overlay wipes in var(--page) (the reference hard-codes #0a0a0a; the hub
+// has a light mode), scanlines/glows derive from var(--ink), and the glitch
+// hues map to var(--warning)/var(--good)/var(--accent). RULE: any hidden
+// initial state (opacity:0), including all overlay rules, may exist ONLY
+// under an html.js-anim selector - lib/assertions.mjs fails the build
+// otherwise (keyframe frames are exempt there: they apply only mid-animation,
+// never as an initial state). Without the class (no JS, blocked JS, reduced
+// motion) none of this applies and the page is fully visible, static. The
+// overlay element itself is created only by PageTransition at runtime.
+export const MOTION_CSS = strip(`
+  html.js-anim article.wrap{opacity:0}
+  html.js-anim article.wrap.visible{opacity:1;transition:opacity 0.4s ease-out}
+  html.js-anim .hero .lede{opacity:0;transform:translateY(10px)}
+  html.js-anim .hero .lede.visible{opacity:1;transform:translateY(0);transition:opacity 0.5s ease-out,transform 0.5s ease-out}
+  html.js-anim .group-head,html.js-anim .section-lede{opacity:0;transform:translateY(10px);transition:opacity 0.4s ease-out,transform 0.4s ease-out}
+  html.js-anim .group-head.visible,html.js-anim .section-lede.visible{opacity:1;transform:translateY(0)}
+  html.js-anim .card,html.js-anim .path,html.js-anim .step{opacity:0;transform:translateY(15px);transition:border-color 0.15s ease,opacity 0.4s ease-out,transform 0.4s ease-out}
+  .title-letter{display:inline-block;transition:opacity 0.3s ease,transform 0.3s ease}
+  .title-letter.glitching{color:var(--muted);text-shadow:2px 0 var(--accent),-2px 0 var(--warning),0 0 10px color-mix(in srgb,var(--ink) 30%,transparent)}
+  .title-letter.revealed{animation:letterReveal 0.3s ease-out}
+  @keyframes letterReveal{0%{opacity:0.7;transform:translateY(-5px);text-shadow:0 0 20px var(--accent)}100%{opacity:1;transform:translateY(0);text-shadow:none}}
+  .glitching{animation:textGlitch 0.1s infinite}
+  @keyframes textGlitch{0%,100%{text-shadow:1px 0 var(--warning),-1px 0 var(--good)}25%{text-shadow:-1px 0 var(--warning),1px 0 var(--good)}50%{text-shadow:1px 0 var(--good),-1px 0 var(--warning)}75%{text-shadow:0 1px var(--warning),0 -1px var(--good)}}
+  html.js-anim .page-transition-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--page);z-index:9999;pointer-events:none;opacity:0;transform:translateY(100%)}
+  html.js-anim .page-transition-overlay.active{pointer-events:all}
+  html.js-anim .transition-scanlines{position:absolute;top:0;left:0;width:100%;height:100%;background:repeating-linear-gradient(0deg,transparent,transparent 2px,color-mix(in srgb,var(--ink) 3%,transparent) 2px,color-mix(in srgb,var(--ink) 3%,transparent) 4px);pointer-events:none}
+  html.js-anim .transition-glitch{position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;background:linear-gradient(90deg,transparent 0%,color-mix(in srgb,var(--warning) 10%,transparent) 25%,color-mix(in srgb,var(--good) 10%,transparent) 50%,color-mix(in srgb,var(--accent) 10%,transparent) 75%,transparent 100%);animation:none}
+  html.js-anim .transition-glitch.active{opacity:1;animation:glitchFlash 0.15s ease-out}
+  @keyframes glitchFlash{0%,100%{transform:translateX(0);opacity:0}25%{transform:translateX(-5px);opacity:1}50%{transform:translateX(5px);opacity:0.5}75%{transform:translateX(-2px);opacity:1}}`);

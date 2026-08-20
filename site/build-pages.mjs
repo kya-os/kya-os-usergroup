@@ -19,10 +19,15 @@
  *   - fonts/                   byte copies of site/assets/fonts/ (the two
  *                              self-hosted variable woff2 faces + their OFL
  *                              licenses)
+ *   - ui/                      byte copies of site/assets/ui/*.js: the motion
+ *                              modules vendored from kya-os-site (manifest-
+ *                              pinned in site/assets/ui/VENDORED.md) plus the
+ *                              hub's own hub-init.js entry module
  *   - _headers                 security headers + content types; the CSP pins
- *                              both inline scripts by sha256 (computed here
- *                              from the exact THEME_SCRIPT / ANIM_SCRIPT
- *                              bytes) and allows font-src 'self'
+ *                              the one inline script by sha256 (computed here
+ *                              from the exact THEME_SCRIPT bytes), covers the
+ *                              same-origin modules with script-src 'self',
+ *                              and allows font-src 'self'
  * plus one COMMITTED artifact outside dist/: the badge worker's slug
  * allowlist (workers/badge/generated-allowlist.mjs).
  *
@@ -45,16 +50,17 @@
  *   lib/sections.mjs    the section renderers (the page bodies)
  *   lib/pages.mjs       page assembly: hero + sections per page, per-page meta
  *   lib/theme.mjs       the color tokens (light/dark pairs), the self-hosted
- *                       font faces, all page CSS, and the site's two inline
- *                       scripts: THEME_SCRIPT (every page) and ANIM_SCRIPT
- *                       (the landing hero choreography)
+ *                       font faces, all page CSS (including MOTION_CSS, the
+ *                       js-anim-gated motion rules), and THEME_SCRIPT, the
+ *                       site's one inline script (theme toggle + js-anim gate)
  *   lib/assertions.mjs  post-build render checks, run per page: completeness,
  *                       honesty, theme integrity, and the CSP script hash
  *
  * Output is deterministic: a pure function of registry/**.json, fixed
- * strings, and committed font binaries (entries sorted by slug, no build
- * timestamps; the script hashes are sha256 of constants; fonts are byte
- * copies), so re-running on the same commit yields byte-identical dist/.
+ * strings, and committed binaries/modules (entries sorted by slug, no build
+ * timestamps; the script hash is sha256 of a constant; fonts and ui modules
+ * are byte copies), so re-running on the same commit yields byte-identical
+ * dist/.
  *
  * Run: node site/build-pages.mjs   (or: npm run build)
  */
@@ -66,27 +72,29 @@ import { runRenderChecks } from "./lib/assertions.mjs";
 import { loadSiteData, renderBadgeAllowlist, renderBuildersJson, renderInteropJson } from "./lib/data.mjs";
 import { render404Html } from "./lib/html.mjs";
 import { renderBuildersHtml, renderConformanceHtml, renderLandingHtml, renderStandardsHtml } from "./lib/pages.mjs";
-import { ANIM_SCRIPT, THEME_SCRIPT } from "./lib/theme.mjs";
+import { THEME_SCRIPT } from "./lib/theme.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "..");
 const distDir = join(repoRoot, "dist");
 const fontsSrcDir = join(here, "assets", "fonts");
+const uiSrcDir = join(here, "assets", "ui");
 
 function renderHeaders() {
   // Security headers for every route; content type + open CORS for the
-  // machine-readable registries. The pages ship exactly two inline scripts
-  // (the theme toggle everywhere, the hero choreography on the landing), so
-  // script-src allows exactly their two sha256 hashes - computed from the
-  // same constants the pages embed, so policy and pages can never drift.
-  // font-src 'self' covers the self-hosted woff2 files; nothing else loosens.
+  // machine-readable registries. The pages ship exactly ONE inline script
+  // (the theme toggle + js-anim gate), so script-src allows exactly its
+  // sha256 hash - computed from the same constant the pages embed, so policy
+  // and pages can never drift - plus 'self' for the same-origin /ui/ ES
+  // modules. font-src 'self' covers the self-hosted woff2 files; nothing
+  // else loosens.
   const sha256 = (script) => createHash("sha256").update(script, "utf8").digest("base64");
   return [
     "/*",
     "  X-Content-Type-Options: nosniff",
     "  X-Frame-Options: DENY",
     "  Referrer-Policy: strict-origin-when-cross-origin",
-    `  Content-Security-Policy: default-src 'none'; script-src 'sha256-${sha256(THEME_SCRIPT)}' 'sha256-${sha256(ANIM_SCRIPT)}'; style-src 'unsafe-inline'; img-src 'self' data:; font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
+    `  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-${sha256(THEME_SCRIPT)}'; style-src 'unsafe-inline'; img-src 'self' data:; font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
     "/builders.json",
     "  Content-Type: application/json; charset=utf-8",
     "  Access-Control-Allow-Origin: *",
@@ -132,6 +140,15 @@ for (const name of readdirSync(fontsSrcDir).sort()) {
   copyFileSync(join(fontsSrcDir, name), join(distDir, "fonts", name));
 }
 
+// Motion modules: deterministic byte copies of site/assets/ui/*.js (the
+// vendored kya-os-site modules + the hub's hub-init.js), sorted for a stable
+// order. VENDORED.md stays out of dist/; assertions verify byte equality and
+// the manifest hashes so vendor drift fails the build.
+mkdirSync(join(distDir, "ui"), { recursive: true });
+for (const name of readdirSync(uiSrcDir).sort()) {
+  if (name.endsWith(".js")) copyFileSync(join(uiSrcDir, name), join(distDir, "ui", name));
+}
+
 // The badge worker's slug allowlist is committed, not a dist/ artifact: the
 // worker deploy must never depend on a site build having run.
 const badgeDir = join(repoRoot, "workers", "badge");
@@ -143,5 +160,5 @@ writeFileSync(join(badgeDir, "generated-allowlist.mjs"), renderBadgeAllowlist(re
 runRenderChecks({ distDir, rendered, interopSorted });
 
 console.log(
-  `Built Pages artifact: ${rendered.length} entr${rendered.length === 1 ? "y" : "ies"}, ${interopSorted.length} standards rails -> dist/ (4 pages, static + two hashed inline scripts, self-hosted fonts, real 404.html, no worker)`,
+  `Built Pages artifact: ${rendered.length} entr${rendered.length === 1 ? "y" : "ies"}, ${interopSorted.length} standards rails -> dist/ (4 pages, static + one hashed inline script + vendored motion modules, self-hosted fonts, real 404.html, no worker)`,
 );

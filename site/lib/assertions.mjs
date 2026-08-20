@@ -7,12 +7,14 @@
  * are applied at render time. Two of the checks deliberately do NOT reuse
  * the shared formatters: the subset check reconstructs the expected label
  * inline and the certified check scans raw bytes, so a regression in the
- * formatter cannot make its own assertion pass. The CSP check recomputes both
- * script hashes from the emitted page bytes for the same reason, and the font
- * check re-reads the committed binaries rather than trusting the copy step.
+ * formatter cannot make its own assertion pass. The CSP check recomputes the
+ * script hash from the emitted page bytes for the same reason, and the font
+ * and ui-module checks re-read the committed files rather than trusting the
+ * copy step (the vendored modules additionally against the sha256 manifest
+ * in site/assets/ui/VENDORED.md, so vendor drift fails the build).
  */
 import { createHash } from "node:crypto";
-import { readFileSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { TEMPLATE_SLUG } from "./constants.mjs";
 import { withConformance } from "./data.mjs";
@@ -62,55 +64,55 @@ function assertThemeIntegrity(name, html, { requireAllUsed = false } = {}) {
 }
 
 /**
- * The inline-script contract, per page: the landing carries exactly TWO
- * inline scripts (theme, then the hero choreography), every other page
- * exactly ONE (theme) - which is also the proof the anim script exists on
- * the landing page only. All scripts sit in <head> (their pre-paint halves
- * must run before first render), the theme script is byte-identical across
- * pages, and each script's sha256 is exactly a hash the _headers CSP allows,
- * in order. Hashes are recomputed here from the page bytes, never trusted
- * from the build's own constants.
+ * The script contract, per page: exactly ONE inline script (the theme toggle
+ * + js-anim pre-paint gate), byte-identical across pages, whose sha256 is
+ * exactly the hash the _headers CSP allows - recomputed here from the page
+ * bytes, never trusted from the build's own constants - plus the hub-init
+ * module tag ('self' covers same-origin modules). All script tags sit in
+ * <head> (the inline script's pre-paint halves must run before first
+ * render), and the inline script must keep both the reduced-motion guard
+ * and the js-anim gate.
  */
-function assertInlineScripts(name, html, [themeHash, animHash], referenceScript) {
+function assertPageScripts(name, html, themeHash, referenceScript) {
   const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
-  const isLanding = name === "index.html";
-  const expected = isLanding ? 2 : 1;
-  assertBuild(scripts.length === expected, `${name}: expected exactly ${expected} inline script(s), found ${scripts.length}`);
+  assertBuild(scripts.length === 1, `${name}: expected exactly one inline script, found ${scripts.length}`);
   const headEnd = html.indexOf("</head>");
-  assertBuild(headEnd !== -1 && html.lastIndexOf("<script>") < headEnd, `${name}: every inline script must run in <head>, before paint`);
+  assertBuild(headEnd !== -1 && html.lastIndexOf("<script") < headEnd, `${name}: every script tag must sit in <head>, before paint`);
   assertBuild(scripts[0] === referenceScript, `${name}: the theme script drifted from the other pages' bytes`);
   const hash = createHash("sha256").update(scripts[0], "utf8").digest("base64");
   assertBuild(hash === themeHash, `${name}: theme script sha256 ${hash} does not match the CSP allowance ${themeHash}`);
+  assertBuild(scripts[0].includes("prefers-reduced-motion"), `${name}: the theme script lost its reduced-motion guard`);
+  assertBuild(scripts[0].includes('classList.add("js-anim")'), `${name}: the theme script lost the js-anim pre-paint gate`);
   assertBuild(html.includes('id="theme-toggle"'), `${name}: the theme toggle button is missing`);
-  if (!isLanding) return;
-  const anim = scripts[1];
-  const animPageHash = createHash("sha256").update(anim, "utf8").digest("base64");
-  assertBuild(animPageHash === animHash, `${name}: anim script sha256 ${animPageHash} does not match the CSP allowance ${animHash}`);
-  assertBuild(anim.includes("prefers-reduced-motion"), `${name}: the anim script lost its reduced-motion guard`);
-  assertBuild(anim.includes('classList.add("js-anim")'), `${name}: the anim script no longer gates the page behind html.js-anim`);
+  assertBuild(
+    html.includes('<script type="module" src="/ui/hub-init.js"></script>'),
+    `${name}: the hub-init module tag is missing`,
+  );
 }
 
 /**
  * Choreography safety, per page: any hidden initial state (opacity:0) must be
- * gated under an html.js-anim selector - EVERY selector of the rule's list -
- * so no JS, blocked JS, or reduced motion always yields a fully visible page.
- * The landing must actually carry those gated rules (the check is never
- * vacuous there).
+ * gated under an html.js-anim selector - EVERY selector of the rule's list,
+ * the page-transition overlay rules included - so no JS, blocked JS, or
+ * reduced motion always yields a fully visible page. Keyframe frames (from /
+ * to / percentages) are exempt: they apply only while an animation runs on
+ * an already-gated element, never as an initial state. Every page must
+ * actually carry the gated motion rules (the check is never vacuous).
  */
 function assertAnimGating(name, html) {
   const styles = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join("\n");
   for (const rule of styles.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
     if (!rule[2].includes("opacity:0")) continue;
     for (const selector of rule[1].split(",")) {
+      const sel = selector.trim();
+      if (/^(from|to|[\d.]+%)$/.test(sel)) continue;
       assertBuild(
-        selector.includes("html.js-anim"),
+        sel.includes("html.js-anim"),
         `${name}: hidden initial state "${selector.trim()}" is not gated under html.js-anim`,
       );
     }
   }
-  if (name === "index.html") {
-    assertBuild(styles.includes("html.js-anim"), `${name}: the landing page lost its html.js-anim choreography CSS`);
-  }
+  assertBuild(styles.includes("html.js-anim"), `${name}: the html.js-anim motion CSS is missing`);
 }
 
 /** Verify every dist/ artifact against the shaped registry data; exits non-zero on the first failure. */
@@ -124,19 +126,45 @@ export function runRenderChecks({ distDir, rendered, interopSorted }) {
   const pages = Object.fromEntries(PAGE_FILES.map((name) => [name, readFileSync(join(distDir, name), "utf8")]));
   const headers = readFileSync(join(distDir, "_headers"), "utf8");
 
-  // The CSP must allow exactly two script hashes (theme, then anim - nothing
-  // else in script-src) plus self-hosted fonts; every page's scripts must
-  // hash to them.
+  // The CSP must be exactly 'self' (the same-origin /ui/ modules) plus ONE
+  // script hash (the theme script) - nothing else in script-src - plus
+  // self-hosted fonts; every page's inline script must hash to it.
   const scriptSrc = headers.match(/script-src ([^;]+);/)?.[1] ?? "";
   const cspHashes = [...scriptSrc.matchAll(/'sha256-([A-Za-z0-9+/=]+)'/g)].map((m) => m[1]);
-  assertBuild(cspHashes.length === 2, `_headers must pin exactly two script-src hashes, found ${cspHashes.length}`);
-  assertBuild(scriptSrc.trim() === cspHashes.map((h) => `'sha256-${h}'`).join(" "), "script-src must contain the two hashes and nothing else");
+  assertBuild(cspHashes.length === 1, `_headers must pin exactly one script-src hash, found ${cspHashes.length}`);
+  assertBuild(scriptSrc.trim() === `'self' 'sha256-${cspHashes[0]}'`, "script-src must be exactly 'self' plus the theme script hash");
   assertBuild(headers.includes("font-src 'self'"), "the CSP must allow the self-hosted fonts via font-src 'self'");
   const referenceScript = pages["index.html"].match(/<script>([\s\S]*?)<\/script>/)?.[1] ?? "";
   for (const [name, html] of Object.entries(pages)) {
-    assertInlineScripts(name, html, cspHashes, referenceScript);
+    assertPageScripts(name, html, cspHashes[0], referenceScript);
     assertAnimGating(name, html);
   }
+
+  // Motion modules: dist/ui/*.js must be exact byte copies of the committed
+  // site/assets/ui/*.js (both directions - same file set), every vendored
+  // module must match its sha256 in VENDORED.md (vendor drift fails the
+  // build; update = re-copy from source, never edit in place), and hub-init
+  // must keep its reduced-motion / js-anim guard.
+  const uiSrcDir = join(distDir, "..", "site", "assets", "ui");
+  const uiCommitted = readdirSync(uiSrcDir).filter((n) => n.endsWith(".js")).sort();
+  const uiBuilt = readdirSync(join(distDir, "ui")).sort();
+  assertBuild(uiBuilt.join(",") === uiCommitted.join(","), `dist/ui/ (${uiBuilt.join(", ")}) must mirror site/assets/ui/*.js (${uiCommitted.join(", ")})`);
+  for (const name of uiCommitted) {
+    const built = readFileSync(join(distDir, "ui", name));
+    assertBuild(built.equals(readFileSync(join(uiSrcDir, name))), `dist/ui/${name} is not a byte copy of site/assets/ui/${name}`);
+  }
+  const manifest = readFileSync(join(uiSrcDir, "VENDORED.md"), "utf8");
+  const vendored = [...manifest.matchAll(/\|\s*([\w.]+\.js)\s*\|\s*`([0-9a-f]{64})`\s*\|/g)];
+  assertBuild(vendored.length === 5, `VENDORED.md must pin exactly the five vendored modules, found ${vendored.length}`);
+  for (const [, name, expected] of vendored) {
+    const actual = createHash("sha256").update(readFileSync(join(uiSrcDir, name))).digest("hex");
+    assertBuild(actual === expected, `vendor drift: ${name} sha256 ${actual} does not match VENDORED.md (re-copy from kya-os-site, never edit in place)`);
+  }
+  const hubInit = readFileSync(join(distDir, "ui", "hub-init.js"), "utf8");
+  assertBuild(
+    hubInit.includes("prefers-reduced-motion") && hubInit.includes("js-anim"),
+    "hub-init.js lost its reduced-motion / js-anim guard",
+  );
 
   // Fonts: dist/fonts/ must be exact byte copies of the committed binaries,
   // and each binary must really be woff2 (leading wOF2 magic). Every page
