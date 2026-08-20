@@ -167,9 +167,36 @@ export async function verifyEddsaJcs2022(document, publicKeyBytes) {
 
 // ── Bitstring Status List ───────────────────────────────────────────────────
 
-async function gunzip(bytes) {
+export const MAX_INFLATED_BYTES = 16 * 1024 * 1024; // mirror kya-os-mcp's 16 MiB inflation cap
+
+/**
+ * Streaming gunzip with a hard inflation cap: the DecompressionStream is
+ * read chunk by chunk and aborted the moment the running total exceeds
+ * maxBytes, so a gzip bomb throws without the full payload ever being
+ * materialized. Only under-cap output is assembled.
+ */
+async function gunzipCapped(bytes, maxBytes) {
   const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+  const reader = stream.getReader();
+  const chunks = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.length;
+    if (total > maxBytes) {
+      await reader.cancel();
+      throw new Error("status list exceeds inflation cap");
+    }
+    chunks.push(value);
+  }
+  const inflated = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    inflated.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return inflated;
 }
 
 export async function gzip(bytes) {
@@ -177,19 +204,17 @@ export async function gzip(bytes) {
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
-const MAX_INFLATED_BYTES = 16 * 1024 * 1024; // mirror kya-os-mcp's 16 MiB inflation cap
-
 /**
  * Decode a Bitstring Status List `encodedList` (multibase base64url "u"
- * prefix + GZIP) and read one bit, MSB-first, per W3C Bitstring Status List
- * v1.0. Throws on any malformation - callers fail closed.
+ * prefix + GZIP, inflation capped mid-stream) and read one bit, MSB-first,
+ * per W3C Bitstring Status List v1.0. Throws on any malformation - callers
+ * fail closed.
  */
 export async function bitstringStatusAt(encodedList, index) {
   if (typeof encodedList !== "string" || !encodedList.startsWith("u")) {
     throw new Error("encodedList must be multibase base64url (u-prefixed)");
   }
-  const inflated = await gunzip(base64urlDecode(encodedList.slice(1)));
-  if (inflated.length > MAX_INFLATED_BYTES) throw new Error("status list exceeds inflation cap");
+  const inflated = await gunzipCapped(base64urlDecode(encodedList.slice(1)), MAX_INFLATED_BYTES);
   const i = Number(index);
   if (!Number.isInteger(i) || i < 0 || i >= inflated.length * 8) {
     throw new Error(`statusListIndex ${index} out of range`);

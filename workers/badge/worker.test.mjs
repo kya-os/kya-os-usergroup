@@ -15,7 +15,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { verifyEddsaJcs2022, ed25519KeyFromMultibase } from "./verify.mjs";
+import {
+  base64urlEncode,
+  bitstringStatusAt,
+  ed25519KeyFromMultibase,
+  gzip,
+  MAX_INFLATED_BYTES,
+  verifyEddsaJcs2022,
+} from "./verify.mjs";
 import { createBadgeHandler } from "./worker.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -221,6 +228,22 @@ test("key separation: a status list signed by the ISSUER key renders unverified"
   await expectBadge(happyMap({ [LIST_URLS.revocation]: statusLists.issuerSigned }), "/v1/badge/fixture-impl.svg", {
     message: "unverified",
   });
+});
+
+// ── inflation cap (streaming, aborts mid-decompress) ────────────────────────
+
+test("gzip bomb: inflating past the cap throws mid-stream, normal lists still read", async () => {
+  // Highly compressible bomb: 4x the cap of zeros gzips to a few tens of KiB
+  // but would inflate to 64 MiB. The capped streaming reader must abort the
+  // moment the running total crosses MAX_INFLATED_BYTES instead of
+  // materializing the full payload and checking after the fact.
+  const bomb = `u${base64urlEncode(await gzip(new Uint8Array(MAX_INFLATED_BYTES * 4)))}`;
+  await assert.rejects(() => bitstringStatusAt(bomb, "3"), /inflation cap/);
+
+  // Normal, under-cap lists still decode and read correctly.
+  const normal = statusLists.lists.revocation;
+  assert.equal(await bitstringStatusAt(normal.allZero.credentialSubject.encodedList, "3"), false);
+  assert.equal(await bitstringStatusAt(normal.bit3Set.credentialSubject.encodedList, "3"), true);
 });
 
 // ── routing and allowlist ───────────────────────────────────────────────────
