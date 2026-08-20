@@ -60,5 +60,5 @@ export const THEME_SCRIPT =
   'a(g());' +
   'd.addEventListener("DOMContentLoaded",function(){a(g())});' +
   'd.addEventListener("click",function(e){var t=e.target&&e.target.closest?e.target.closest("#theme-toggle"):null;if(!t)return;' +
-  'var c=g(),n=c==="light"?"dark":c==="dark"?null:"light";s(n);a(n)});' +
+  'var r=d.documentElement.getAttribute("data-theme");var c=r==="light"||r==="dark"?r:null;var n=c==="light"?"dark":c==="dark"?null:"light";s(n);a(n)});' +
   "})();";
