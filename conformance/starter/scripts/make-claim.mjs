@@ -125,7 +125,8 @@ const { values: args } = parseArgs({
 
 const subject = args.subject ?? process.env.CLAIM_SUBJECT;
 const level = args.level ?? process.env.CLAIM_LEVEL;
-const scopeArg = args.scope ?? process.env.CLAIM_SCOPE;
+// GitHub Actions renders unset vars as empty strings; empty means unset here.
+const scopeArg = args.scope ?? (process.env.CLAIM_SCOPE || undefined);
 
 if (!subject) refuse('missing --subject (an https URL or DID identifying the claimant)');
 if (!subject.startsWith('https://') && !subject.startsWith('did:')) {
