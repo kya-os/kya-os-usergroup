@@ -32,10 +32,17 @@ function metaHead({ title, description, path }) {
 `;
 }
 
-// `lede` is trusted literal HTML authored below (never registry data).
-function pageHero({ title, lede }) {
+/** Live-count readout for the eyebrow rows, catalog-grammar style ("DIRECTORY / 005"). */
+export function heroReadout(label, count) {
+  return `${label} / ${String(count).padStart(3, "0")}`;
+}
+
+// `lede` is trusted literal HTML authored below (never registry data);
+// `readout` is the page's live-count readout from heroReadout().
+function pageHero({ title, lede, readout }) {
   return `    <section class="hero page-hero">
-      <div class="eyebrow">KYA-OS community</div>
+      <span class="hero-cross" aria-hidden="true">+</span>
+      <div class="eyebrow aliencn-eyebrow"><span>KYA-OS community</span><span>${esc(readout)}</span></div>
       <h1>${esc(title)}</h1>
       <p class="lede">${lede}</p>
     </section>`;
@@ -54,7 +61,7 @@ ${sections.join("\n")}
 }
 
 function navCard({ href, title, count, countLabel, desc, go }) {
-  return `        <a class="card nav-card" href="${href}">
+  return `        <a class="card aliencn-card nav-card" href="${href}">
           <div class="card-head"><h3>${esc(title)}</h3><span class="stat"><b>${count}</b> ${esc(countLabel)}</span></div>
           <p class="desc">${esc(desc)}</p>
           <span class="go">${esc(go)} -&gt;</span>
@@ -98,11 +105,12 @@ export function renderLandingHtml({ rendered, interopSorted }) {
   const body = `
   <article class="wrap">
     <section class="hero">
-      <div class="eyebrow">Decentralized Identity Foundation</div>
+      <span class="hero-cross" aria-hidden="true">+</span>
+      <div class="eyebrow aliencn-eyebrow"><span>Decentralized Identity Foundation</span><span>${esc(heroReadout("Registry", rendered.length))}</span></div>
       <h1>KYA-OS community</h1>
       <p class="lede">${esc(DESCRIPTION)}</p>
       <div class="chips-row">
-        <a class="btn" href="${esc(ADD_PROJECT_URL)}">Add your project -&gt;</a>
+        <a class="btn aliencn-button aliencn-button--primary" href="${esc(ADD_PROJECT_URL)}">Add your project -&gt;</a>
       </div>
     </section>
     <main>
@@ -128,6 +136,7 @@ export function renderBuildersHtml({ rendered }) {
     hero: pageHero({
       title: "Builders",
       lede: "Who is building on KYA-OS - and the templates and examples to start from.",
+      readout: heroReadout("Directory", rendered.length),
     }),
     sections: [sectionBuilders(rendered), sectionTemplates(rendered), sectionExamples(rendered), sectionSubmit()],
   });
@@ -142,6 +151,7 @@ export function renderConformanceHtml({ rendered }) {
     hero: pageHero({
       title: "Conformance",
       lede: "Measured, not asserted: the program attests exactly the bytes it re-runs against the published vector suite at your pinned commit.",
+      readout: heroReadout("Verified", withConformance(rendered).filter((entry) => entry.conformance.status === "verified").length),
     }),
     sections: [sectionConformance(rendered)],
   });
@@ -156,6 +166,7 @@ export function renderStandardsHtml({ interopSorted }) {
     hero: pageHero({
       title: "Standards rails",
       lede: "What KYA-OS provides, carries, and projects onto - every row grounded and dated.",
+      readout: heroReadout("Rails", interopSorted.length),
     }),
     sections: [sectionStandards(interopSorted)],
   });

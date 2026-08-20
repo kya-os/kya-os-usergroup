@@ -32,9 +32,9 @@ code,.mono{font-family:var(--aliencn-mono)}
 /* ── Header ───────────────────────────────────────────────────────────────── */
 header.bar{border-bottom:1px solid var(--aliencn-border);position:sticky;top:0;background:color-mix(in srgb,var(--aliencn-canvas) 84%,transparent);backdrop-filter:blur(18px);z-index:2}
 header.bar .wrap{display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px;min-height:64px;padding-top:10px;padding-bottom:10px}
-.brand{display:inline-flex;align-items:center;gap:12px;font:600 11px/1 var(--aliencn-mono);letter-spacing:.15em;text-transform:uppercase;color:var(--aliencn-text);white-space:nowrap}
-.brand .sub{color:var(--aliencn-text-muted);font-weight:500}
-.brand-mark{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border:1px solid var(--aliencn-border-strong)}
+.brand{display:inline-flex;align-items:center;font:600 11px/1 var(--aliencn-mono);letter-spacing:.15em;text-transform:uppercase;color:var(--aliencn-text);white-space:nowrap}
+.brand .sub{color:var(--aliencn-text-muted);font-weight:500;white-space:pre}
+.brand-mark{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border:1px solid var(--aliencn-border-strong);margin-right:10px}
 nav{margin-left:auto;display:flex;gap:8px 24px;font:500 10px/1.6 var(--aliencn-mono);letter-spacing:.12em;text-transform:uppercase;flex-wrap:wrap;align-items:center}
 nav a{color:var(--aliencn-text-muted);position:relative;padding-bottom:2px}
 nav a::after{content:"";position:absolute;left:0;bottom:0;height:1px;width:100%;background:currentColor;transform:scaleX(0);transform-origin:right center;transition:transform .45s var(--aliencn-ease)}

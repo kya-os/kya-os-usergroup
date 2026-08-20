@@ -33,19 +33,19 @@ export function esc(value) {
  */
 export function conformanceStatusChip(conformance) {
   if (conformance.status === "verified") {
-    return `<a class="chip st-verified" href="${esc(conformance.attestationUrl)}">verified</a>`;
+    return `<a class="chip st-verified aliencn-badge" href="${esc(conformance.attestationUrl)}">verified</a>`;
   }
   const label = conformance.status === "in-verification" ? "in verification" : "self-reported";
   const cls = conformance.status === "in-verification" ? "st-inverif" : "st-self";
   if (conformance.evidenceUrl) {
-    return `<a class="chip ${cls}" href="${esc(conformance.evidenceUrl)}">${label}</a>`;
+    return `<a class="chip ${cls} aliencn-badge" href="${esc(conformance.evidenceUrl)}">${label}</a>`;
   }
-  return `<span class="chip ${cls}">${label}</span>`;
+  return `<span class="chip ${cls} aliencn-badge">${label}</span>`;
 }
 
 export function interopStatusChip(status) {
   const cls = { shipping: "st-shipping", specified: "st-specified", planned: "st-planned", exploring: "st-exploring", none: "st-none" }[status];
-  return `<span class="chip ${cls}">${esc(status)}</span>`;
+  return `<span class="chip ${cls} aliencn-badge">${esc(status)}</span>`;
 }
 
 function tagRow(entry) {
@@ -64,13 +64,13 @@ export function entryCard(entry) {
     ? `\n          <div class="conf-line"><a class="chip conf" href="${esc(conformanceLevelUrl(entry.conformance))}">${esc(conformanceLabel(entry.conformance))}</a> ${conformanceStatusChip(entry.conformance)}</div>`
     : "";
   const deploys = (entry.deploy ?? [])
-    .map((target) => `<a class="deploy-btn" href="${esc(target.url)}">Deploy on ${esc(platformName(target.platform))}</a>`)
+    .map((target) => `<a class="deploy-btn aliencn-button aliencn-button--sm" href="${esc(target.url)}">Deploy on ${esc(platformName(target.platform))}</a>`)
     .join("\n            ");
   const repoLink = entry.repo && entry.repo !== entry.homepage ? `\n            <a href="${esc(entry.repo)}">repo</a>` : "";
-  return `        <article class="card" id="${esc(entry.slug)}">
+  return `        <article class="card aliencn-card" id="${esc(entry.slug)}">
           <div class="card-head">
             <h3><a href="${esc(entry.homepage)}">${esc(entry.name)}</a></h3>
-            <span class="chip kind">${esc(entry.kind)}</span>
+            <span class="chip kind aliencn-badge">${esc(entry.kind)}</span>
           </div>
           <p class="desc">${esc(entry.description)}</p>${conformance}
           <div class="links">
@@ -126,11 +126,12 @@ ${headExtra}<link rel="stylesheet" href="/aliencn.css" />
 <script type="module" src="/ui/hub-init.js"></script>
 </head>
 <body>
+  <div class="aliencn-grain" aria-hidden="true"></div>
   <header class="bar"><div class="wrap">
-    <a class="brand" href="/"><span class="brand-name">KYA-OS</span><span class="sub"> / community</span></a>
+    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">K</span><span class="brand-name">KYA-OS</span><span class="sub"> / community</span></a>
     <nav>${navLinks}
       <button id="theme-toggle" type="button" class="theme-btn" aria-label="Theme: system. Click to change.">auto</button>
-      <a class="nav-cta" href="${esc(ADD_PROJECT_URL)}">Add project -&gt;</a>
+      <a class="nav-cta aliencn-button aliencn-button--primary aliencn-button--sm" href="${esc(ADD_PROJECT_URL)}">Add project -&gt;</a>
     </nav>
   </div></header>
 ${body}
