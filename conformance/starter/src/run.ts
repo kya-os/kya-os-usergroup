@@ -1,9 +1,11 @@
 /**
  * Run the pinned conformance vectors through YOUR adapter and write report.json.
  *
- * Uses the FETCHED harness (suite/loader.ts + suite/runner.ts, pinned and
- * hash-verified by scripts/fetch-suite.mjs) so the vector validation and report
- * shape are exactly the published ones, not a local fork.
+ * Uses the FETCHED harness (suite/loader.ts + suite/runner.ts), which
+ * scripts/fetch-suite.mjs downloads at a pinned commit SHA and verifies
+ * file-by-file against pinned sha256 hashes before writing, so the vector
+ * validation and report shape are exactly the published ones, not a local
+ * fork and not whatever a moved tag now points at.
  *
  * Exit codes: 0 = every vector matched, 1 = mismatches (report still written),
  * 2 = suite not fetched.

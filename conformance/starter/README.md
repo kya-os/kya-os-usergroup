@@ -20,7 +20,7 @@ The upstream repo's [`conformance/verify.py`](https://github.com/decentralized-i
   Your `claim.json` is the input to that re-run, not a badge.
 - A subset run is always labeled a subset.
   `scripts/make-claim.mjs` refuses to stamp `scope: full` on a report that did not run every category.
-- The suite is fetched at a pinned ref and hash-verified.
+- The suite is fetched at a pinned commit SHA and hash-verified: the harness files file-by-file, the vectors via the vector-set hash.
   If the bytes drift, the fetch fails loudly instead of quietly testing against something else.
 
 ## The under-an-hour path
@@ -51,16 +51,17 @@ The copied `.github/workflows/conformance.yml` activates as soon as the copy is 
 npm run fetch-suite
 ```
 
-The `@kya-os/mcp` npm tarball does not ship `conformance/` (its files allowlist is `dist`, `schemas`, and docs), so the suite is fetched from GitHub at the pinned ref `v1.14.1` into `suite/`:
+The `@kya-os/mcp` npm tarball does not ship `conformance/` (its files allowlist is `dist`, `schemas`, and docs), so the suite is fetched from GitHub into `suite/`:
 the `ConformanceAdapter` contract (`types.ts`), the loader and runner, `verify.py`, and all nine vector files (44 vectors).
-The script computes the vector-set hash with the exact published recipe and verifies it against the pinned expectation:
+Every file is fetched at the commit SHA the release tag `v1.14.1` resolved to (tags can move, commits cannot), and each harness file is verified against its pinned sha256 before it is written.
+The script then computes the vector-set hash with the exact published recipe and verifies it against the pinned expectation:
 
 ```text
 vectorSetHash: sha256:81d537d4574d3f66d651a03ca41c0b18493b67ea6f3e61aba47d1bda4f3cf49b
 ```
 
 Compare that hash against the signed suite manifest for the release you pin.
-To pin a newer release, update `PINNED_REF` and `EXPECTED_VECTOR_SET_HASH` together in `scripts/fetch-suite.mjs`.
+To pin a newer release, update `PINNED_REF`, `PINNED_COMMIT`, `EXPECTED_VECTOR_SET_HASH`, and `EXPECTED_HARNESS_HASHES` together in `scripts/fetch-suite.mjs`.
 
 ### 0:10 - Wire your implementation (pick a door)
 
