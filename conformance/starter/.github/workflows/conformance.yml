@@ -37,9 +37,9 @@ jobs:
       - name: Detect adapter stubs
         id: adapter
         run: |
-          if grep -q "NotImplementedError" src/adapter.ts; then
+          if grep -q "throw new NotImplementedError" src/adapter.ts; then
             echo "implemented=false" >> "$GITHUB_OUTPUT"
-            echo "src/adapter.ts still contains NotImplementedError stubs."
+            echo "src/adapter.ts still throws NotImplementedError."
           else
             echo "implemented=true" >> "$GITHUB_OUTPUT"
           fi
