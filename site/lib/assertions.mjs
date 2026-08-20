@@ -11,12 +11,14 @@
  * script hash from the emitted page bytes for the same reason, and the font
  * and ui-module checks re-read the committed files rather than trusting the
  * copy step (the vendored modules additionally against the sha256 manifest
- * in site/assets/ui/VENDORED.md, so vendor drift fails the build).
+ * in site/assets/ui/VENDORED.md, so vendor drift fails the build). The suite
+ * pin check reads every committed copy of the pin as bytes and asserts
+ * agreement with SUITE in lib/constants.mjs, so no copy can drift silently.
  */
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { TEMPLATE_SLUG } from "./constants.mjs";
+import { SUITE, TEMPLATE_SLUG } from "./constants.mjs";
 import { withConformance } from "./data.mjs";
 import { esc } from "./html.mjs";
 
@@ -115,8 +117,59 @@ function assertAnimGating(name, html) {
   assertBuild(styles.includes("html.js-anim"), `${name}: the html.js-anim motion CSS is missing`);
 }
 
+/**
+ * Suite pin agreement: the suite pin (version, vector count, vector-set
+ * hash) is committed in several places that deliberately cannot import each
+ * other - the starter must stay standalone-copyable and the badge fixtures
+ * are committed artifacts. The build is the one place that sees them all, so
+ * it reads every OTHER copy as bytes and asserts agreement with SUITE in
+ * lib/constants.mjs; a drifted copy fails the build naming its file.
+ */
+function assertSuitePinAgreement(repoRoot) {
+  const read = (path) => readFileSync(join(repoRoot, path), "utf8");
+
+  const fetchSuitePath = "conformance/starter/scripts/fetch-suite.mjs";
+  const fetchSuite = read(fetchSuitePath);
+  const expectedHash = fetchSuite.match(/const EXPECTED_VECTOR_SET_HASH =\s*'([^']+)'/)?.[1];
+  assertBuild(
+    expectedHash === SUITE.vectorSetHash,
+    `${fetchSuitePath}: EXPECTED_VECTOR_SET_HASH (${expectedHash}) does not match SUITE.vectorSetHash`,
+  );
+  assertBuild(
+    /const PINNED_COMMIT = '[0-9a-f]{40}';/.test(fetchSuite),
+    `${fetchSuitePath}: PINNED_COMMIT (a 40-hex commit SHA) is missing - the harness must be fetched at a commit, not a tag`,
+  );
+
+  const programReadme = "conformance/README.md";
+  assertBuild(read(programReadme).includes(SUITE.vectorSetHash), `${programReadme}: the vector-set hash does not match SUITE.vectorSetHash`);
+  assertBuild(
+    read(programReadme).includes(`suite \`${SUITE.version}\`, ${SUITE.vectors} vectors`),
+    `${programReadme}: the suite version / vector count line does not match SUITE (${SUITE.version}, ${SUITE.vectors} vectors)`,
+  );
+
+  const starterReadme = "conformance/starter/README.md";
+  assertBuild(read(starterReadme).includes(SUITE.vectorSetHash), `${starterReadme}: the vector-set hash does not match SUITE.vectorSetHash`);
+  assertBuild(
+    read(starterReadme).includes(`(${SUITE.vectors} vectors)`),
+    `${starterReadme}: the vector count does not match SUITE.vectors (${SUITE.vectors})`,
+  );
+
+  const generatorPath = "workers/badge/fixtures/generate-fixtures.mjs";
+  const generator = read(generatorPath);
+  assertBuild(generator.includes(`suiteVersion: "${SUITE.version}"`), `${generatorPath}: suiteVersion does not match SUITE.version (${SUITE.version})`);
+  assertBuild(generator.includes(`vectorSetHash: "${SUITE.vectorSetHash}"`), `${generatorPath}: vectorSetHash does not match SUITE.vectorSetHash`);
+
+  for (const path of ["workers/badge/fixtures/dev-manifest.json", "workers/badge/fixtures/dev-credential.json"]) {
+    const parsed = JSON.parse(read(path));
+    const pin = parsed.credentialSubject?.suite ?? parsed;
+    assertBuild(pin.suiteVersion === SUITE.version, `${path}: suiteVersion (${pin.suiteVersion}) does not match SUITE.version (${SUITE.version})`);
+    assertBuild(pin.vectorSetHash === SUITE.vectorSetHash, `${path}: vectorSetHash (${pin.vectorSetHash}) does not match SUITE.vectorSetHash`);
+  }
+}
+
 /** Verify every dist/ artifact against the shaped registry data; exits non-zero on the first failure. */
 export function runRenderChecks({ distDir, rendered, interopSorted }) {
+  assertSuitePinAgreement(join(distDir, ".."));
   const conformanceEntries = withConformance(rendered);
 
   for (const name of [...PAGE_FILES, "builders.json", "interop.json", "_headers", ...FONT_FILES, ...FONT_LICENSES]) {
