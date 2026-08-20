@@ -74,7 +74,7 @@
  * Run: node site/build-pages.mjs   (or: npm run build)
  */
 import { createHash } from "node:crypto";
-import { copyFileSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runRenderChecks } from "./lib/assertions.mjs";
@@ -152,12 +152,17 @@ for (const name of readdirSync(fontsSrcDir).sort()) {
   copyFileSync(join(fontsSrcDir, name), join(distDir, "fonts", name));
 }
 
-// Stylesheets: deterministic byte copies of site/assets/css/ to the dist
-// root (/aliencn.css - the @kya-os/aliencn token layer + component subset -
-// and /hub.css - the hub page layer). Real same-origin files, which is what
-// keeps style-src at 'self'.
+// Stylesheets: site/assets/css/ emitted to the dist root (/aliencn.css -
+// the @kya-os/aliencn token layer + component subset - and /hub.css - the
+// hub page layer). Real same-origin files, which is what keeps style-src at
+// 'self'. The emitted copies are a deterministic pure function of the
+// committed sources: comments (provenance headers stay in the repo) and
+// leading indentation stripped, nothing else - assertions recompute the same
+// transform independently and verify the dist bytes against it.
+const stripCss = (css) =>
+  css.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\n[ \t]+/g, "\n").replace(/\n{2,}/g, "\n").replace(/^\n/, "");
 for (const name of readdirSync(cssSrcDir).sort()) {
-  copyFileSync(join(cssSrcDir, name), join(distDir, name));
+  writeFileSync(join(distDir, name), stripCss(readFileSync(join(cssSrcDir, name), "utf8")));
 }
 
 // Motion modules: deterministic byte copies of site/assets/ui/**/*.js - the

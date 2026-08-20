@@ -28,10 +28,9 @@ const FONT_LICENSES = ["fonts/space-grotesk-OFL.txt", "fonts/jetbrains-mono-OFL.
 const CSS_FILES = ["aliencn.css", "hub.css"];
 
 // The @kya-os/aliencn motion family under site/assets/ui/motion/, pinned by
-// sha256 so CI stays self-contained (it never runs the CLI). These are the
-// registry's verbatim vanilla templates; `aliencn diff motion` (aliencn.json
-// points the CLI at this repo's paths) is the drift gate against the registry
-// itself. Update = re-add via the CLI, never edit in place.
+// sha256 so CI stays self-contained (it never runs the CLI). `aliencn diff
+// motion` (see aliencn.json) is the drift gate against the registry itself;
+// update = re-add via the CLI, never edit in place.
 const MOTION_PINS = {
   "GlitchText.js": "7ddc58770d7677de9c38b3bd096f6d7103e366e5d1f532eba36569436248a81c",
   "PageTransition.js": "179e109bdacf6a24c52fc412b75676fbe997b635ead940de1b5a280fec992e7a",
@@ -49,14 +48,12 @@ function assertBuild(condition, message) {
 
 /**
  * Theme integrity, on the stylesheets: the @kya-os/aliencn token layer must
- * be closed and dark-first with a complete light side. aliencn.css must
- * carry the dark :root block, the OS-preference light branch (guarded as
- * :root:not([data-aliencn-theme="dark"]) so an explicit dark override wins),
- * and the :root[data-aliencn-theme="light"] hook the toggle drives - and the
- * two light blocks must stay token-for-token identical (the old build
- * emitted its twin theme blocks from one template string; this assertion is
- * the stylesheet equivalent). Every var(--x) referenced in either sheet must
- * be defined somewhere in them, every :root token must actually be used, and
+ * be closed and dark-first with a complete light side - the dark :root
+ * block, the OS-preference light branch (guarded so an explicit dark
+ * override wins), and the :root[data-aliencn-theme="light"] hook the toggle
+ * drives, with the two light blocks token-for-token identical (the
+ * stylesheet equivalent of the old single-template-string guarantee). Every
+ * var(--x) referenced must be defined, every :root token must be used, and
  * no raw hex may bypass the token layer outside the token blocks.
  */
 function assertThemeIntegrity(sheets) {
@@ -89,13 +86,11 @@ function assertThemeIntegrity(sheets) {
 /**
  * The script and style contract, per page: exactly ONE inline script (the
  * theme toggle + js-anim pre-paint gate), byte-identical across pages, whose
- * sha256 is exactly the hash the _headers CSP allows - recomputed here from
- * the page bytes, never trusted from the build's own constants - plus the
- * hub-init module tag ('self' covers same-origin modules). All script tags
- * sit in <head> (the inline script's pre-paint halves must run before first
- * render), and the inline script must keep both the reduced-motion guard
- * and the js-anim gate. Styles are the mirror image: style-src is 'self',
- * so every page must link both same-origin stylesheets and carry NO <style>
+ * sha256 is exactly the hash the _headers CSP allows - recomputed from the
+ * page bytes, never trusted from the build's own constants - plus the
+ * hub-init module tag; all script tags in <head>, reduced-motion guard and
+ * js-anim gate intact. Styles are the mirror image: style-src is 'self', so
+ * every page must link both same-origin stylesheets and carry NO <style>
  * block and NO style attribute anywhere.
  */
 function assertPageScripts(name, html, themeHash, referenceScript) {
@@ -124,11 +119,10 @@ function assertPageScripts(name, html, themeHash, referenceScript) {
 /**
  * Choreography safety, on the stylesheets: any hidden initial state
  * (opacity:0) must be gated under an html.js-anim selector - EVERY selector
- * of the rule's list, the page-transition overlay rules included - so no JS,
- * blocked JS, or reduced motion always yields a fully visible page. Keyframe
- * frames (from / to / percentages) are exempt: they apply only while an
- * animation runs on an already-gated element, never as an initial state. The
- * gated motion rules must actually be present (the check is never vacuous).
+ * of the rule's list, overlay rules included - so no JS, blocked JS, or
+ * reduced motion always yields a fully visible page. Keyframe frames are
+ * exempt (they apply only mid-animation, never as an initial state), and
+ * the gated motion rules must actually be present (never vacuous).
  */
 function assertAnimGating(sheets) {
   const styles = Object.values(sheets).join("\n").replace(/\/\*[\s\S]*?\*\//g, "");
@@ -208,13 +202,20 @@ export function runRenderChecks({ distDir, rendered, interopSorted }) {
   const pages = Object.fromEntries(PAGE_FILES.map((name) => [name, readFileSync(join(distDir, name), "utf8")]));
   const headers = readFileSync(join(distDir, "_headers"), "utf8");
 
-  // Stylesheets: dist copies must be byte copies of the committed sources;
-  // theme integrity and motion gating are asserted on the dist bytes.
+  // Stylesheets: each dist copy must be exactly the committed source with
+  // comments and leading indentation stripped (the transform recomputed
+  // here, never trusted from the build), the emitted pair must stay inside
+  // the size budget, and theme integrity plus motion gating run on the dist
+  // bytes - what actually ships.
+  const stripCss = (css) =>
+    css.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\n[ \t]+/g, "\n").replace(/\n{2,}/g, "\n").replace(/^\n/, "");
   const sheets = Object.fromEntries(CSS_FILES.map((name) => [name, readFileSync(join(distDir, name), "utf8")]));
   for (const name of CSS_FILES) {
     const committed = readFileSync(join(distDir, "..", "site", "assets", "css", name), "utf8");
-    assertBuild(sheets[name] === committed, `dist/${name} is not a byte copy of site/assets/css/${name}`);
+    assertBuild(sheets[name] === stripCss(committed), `dist/${name} is not the comment-stripped copy of site/assets/css/${name}`);
   }
+  const cssBytes = CSS_FILES.reduce((sum, name) => sum + Buffer.byteLength(sheets[name]), 0);
+  assertBuild(cssBytes <= 25 * 1024, `emitted CSS is ${cssBytes} bytes; the budget is 25KB total`);
   assertThemeIntegrity(sheets);
   assertAnimGating(sheets);
 
@@ -234,11 +235,9 @@ export function runRenderChecks({ distDir, rendered, interopSorted }) {
   }
 
   // Motion modules: dist/ui/**/*.js must be exact byte copies of the
-  // committed site/assets/ui/**/*.js (both directions - same file set), every
-  // registry-managed module under ui/motion/ must match its pinned sha256
-  // (MOTION_PINS above; drift fails the build - reconcile with
-  // `aliencn diff motion` / `aliencn add motion --overwrite`, never edit in
-  // place), and hub-init must keep its reduced-motion / js-anim guard.
+  // committed site/assets/ui/**/*.js (both directions - same file set),
+  // every module under ui/motion/ must match its MOTION_PINS sha256, and
+  // hub-init must keep its reduced-motion / js-anim guard.
   const uiSrcDir = join(distDir, "..", "site", "assets", "ui");
   const uiCommitted = readdirSync(uiSrcDir, { recursive: true }).map(String).filter((n) => n.endsWith(".js")).sort();
   const uiBuilt = readdirSync(join(distDir, "ui"), { recursive: true }).map(String).filter((n) => n.endsWith(".js")).sort();
@@ -316,11 +315,23 @@ export function runRenderChecks({ distDir, rendered, interopSorted }) {
     }
   }
 
-  // The landing stays calm: live counts, no tables.
+  // The landing stays calm: live counts, no tables. The eyebrow readouts
+  // (zero-padded for display) must carry the same live numbers - the padding
+  // is recomputed here from the registry data, never from the formatter.
   const landingHtml = pages["index.html"];
   assertBuild(landingHtml.includes(`<b>${rendered.length}</b>`), "the landing page must show the live entry count");
   assertBuild(landingHtml.includes(`<b>${interopSorted.length}</b>`), "the landing page must show the live rails count");
   assertBuild(!landingHtml.includes("<table"), "no tables on the landing page");
+  const pad = (count) => String(count).padStart(3, "0");
+  const verifiedCount = conformanceEntries.filter((entry) => entry.conformance.status === "verified").length;
+  for (const [page, readout] of [
+    ["index.html", `Registry / ${pad(rendered.length)}`],
+    ["builders/index.html", `Directory / ${pad(rendered.length)}`],
+    ["conformance/index.html", `Verified / ${pad(verifiedCount)}`],
+    ["standards/index.html", `Rails / ${pad(interopSorted.length)}`],
+  ]) {
+    assertBuild(pages[page].includes(`<span>${readout}</span>`), `${page}: the live eyebrow readout "${readout}" is missing or stale`);
+  }
 
   const published = JSON.parse(readFileSync(join(distDir, "builders.json"), "utf8"));
   assertBuild(published.count === rendered.length, "builders.json count mismatch");
