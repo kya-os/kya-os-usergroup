@@ -184,10 +184,28 @@ export function runRenderChecks({ distDir, rendered, interopSorted }) {
     // .chip-link anchor.
     for (const match of html.matchAll(/<(a|span)[^>]*class="[^"]*\bst-verified\b[^"]*"[^>]*>/g)) {
       if (match[0].includes("demo")) continue;
-      const before = html.slice(Math.max(0, match.index - 120), match.index);
+      const before = html.slice(Math.max(0, match.index - 400), match.index);
+      // Directory summaries deliberately render chips unlinked - an anchor
+      // nested in a <summary> fights the disclosure control for the click.
+      // There the credential link must appear in the expanded row instead
+      // (asserted below); everywhere else the chip itself is the link.
+      if (/<summary[^>]*>(?:(?!<\/summary>)[\s\S])*$/.test(before)) continue;
+      const near = html.slice(Math.max(0, match.index - 120), match.index);
       assertBuild(
-        /<a class="chip-link" href="[^"]+">$/.test(before),
+        /<a class="chip-link" href="[^"]+">$/.test(near),
         `a "verified" chip rendered without a credential link in ${name}`,
+      );
+    }
+  }
+
+  // A verified entry's expanded directory row must link its credential
+  // (the summary chip is unlinked by design - see above).
+  for (const entry of rendered) {
+    const c = entry.conformance;
+    if (c?.status === "verified") {
+      assertBuild(
+        pages["builders/index.html"].includes(`<a href="${c.attestationUrl}">credential -&gt;</a>`),
+        `verified entry ${entry.slug} does not link its credential in the expanded row`,
       );
     }
   }

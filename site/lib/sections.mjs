@@ -103,7 +103,7 @@ ${[
 function directoryRow(entry) {
   const c = entry.conformance;
   const chip = c
-    ? conformanceStatusChip(c)
+    ? conformanceStatusChip(c, { link: false })
     : `<span class="chip st-listed">&middot; listed</span>`;
   const liveDot =
     entry.kind === "service"

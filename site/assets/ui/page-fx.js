@@ -46,9 +46,10 @@ export class Title {
     this.init();
   }
   init() {
-    // Assistive tech reads the real text via the label; the animated letter
-    // spans (glitch glyphs included) are decorative and hidden from it.
-    this.element.setAttribute("aria-label", this.originalText);
+    // Assistive tech reads the real text via the label on the nearest
+    // heading (a bare span cannot carry an accessible name); the animated
+    // letter spans (glitch glyphs included) are decorative and hidden.
+    (this.element.closest("h1,h2,h3") || this.element).setAttribute("aria-label", this.originalText);
     this.element.textContent = "";
     this.originalText.split("").forEach((char) => {
       const span = document.createElement("span");
