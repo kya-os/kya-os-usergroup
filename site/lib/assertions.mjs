@@ -25,6 +25,7 @@ import { esc } from "./html.mjs";
 const PAGE_FILES = ["index.html", "builders/index.html", "conformance/index.html", "standards/index.html", "404.html"];
 const FONT_FILES = ["fonts/space-grotesk-latin-wght.woff2", "fonts/jetbrains-mono-latin-wght.woff2"];
 const FONT_LICENSES = ["fonts/space-grotesk-OFL.txt", "fonts/jetbrains-mono-OFL.txt"];
+const CSS_FILES = ["aliencn.css", "hub.css"];
 
 // The @kya-os/aliencn motion family under site/assets/ui/motion/, pinned by
 // sha256 so CI stays self-contained (it never runs the CLI). These are the
@@ -47,46 +48,55 @@ function assertBuild(condition, message) {
 }
 
 /**
- * Theme integrity: the token layer must be closed. Every page must carry
- * both theme branches (light default in :root, dark via prefers-color-scheme
- * plus the data-theme hooks the toggle drives), every var(--x) the CSS
- * references must be defined in a :root block, and no raw color may bypass
- * the token layer. `requireAllUsed` additionally rejects dead tokens - it is
- * asserted on the four content pages (which carry the full sheet), not on
- * 404.html, whose smaller page CSS legitimately leaves shared tokens untouched.
+ * Theme integrity, on the stylesheets: the @kya-os/aliencn token layer must
+ * be closed and dark-first with a complete light side. aliencn.css must
+ * carry the dark :root block, the OS-preference light branch (guarded as
+ * :root:not([data-aliencn-theme="dark"]) so an explicit dark override wins),
+ * and the :root[data-aliencn-theme="light"] hook the toggle drives - and the
+ * two light blocks must stay token-for-token identical (the old build
+ * emitted its twin theme blocks from one template string; this assertion is
+ * the stylesheet equivalent). Every var(--x) referenced in either sheet must
+ * be defined somewhere in them, every :root token must actually be used, and
+ * no raw hex may bypass the token layer outside the token blocks.
  */
-function assertThemeIntegrity(name, html, { requireAllUsed = false } = {}) {
-  const styles = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join("\n");
-  assertBuild(styles.length > 0, `${name}: no <style> block found`);
-  assertBuild(styles.includes("@media (prefers-color-scheme: dark)"), `${name}: the dark prefers-color-scheme branch is missing`);
-  assertBuild(styles.includes(':root:not([data-theme="light"])'), `${name}: OS-dark must yield to a data-theme="light" override`);
-  assertBuild(styles.includes(':root[data-theme="dark"]'), `${name}: the data-theme="dark" hook is missing`);
+function assertThemeIntegrity(sheets) {
+  const stripComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, "");
+  const aliencn = stripComments(sheets["aliencn.css"]);
+  const combined = Object.values(sheets).map(stripComments).join("\n");
+  assertBuild(aliencn.includes("@media (prefers-color-scheme: light)"), "aliencn.css: the light prefers-color-scheme branch is missing");
+  assertBuild(aliencn.includes(':root:not([data-aliencn-theme="dark"])'), 'aliencn.css: OS-light must yield to a data-aliencn-theme="dark" override');
+  assertBuild(aliencn.includes(':root[data-aliencn-theme="light"]'), 'aliencn.css: the data-aliencn-theme="light" hook is missing');
 
-  const rootBlocks = [...styles.matchAll(/:root[^{}]*\{([^{}]*)\}/g)].map((m) => m[1]);
-  const defined = new Set(rootBlocks.flatMap((body) => [...body.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1])));
-  const referenced = new Set([...styles.matchAll(/var\((--[a-z0-9-]+)/g)].map((m) => m[1]));
+  const rootBlocks = [...aliencn.matchAll(/:root[^{}]*\{([^{}]*)\}/g)].map((m) => m[1]);
+  assertBuild(rootBlocks.length === 3, `aliencn.css: expected exactly three token blocks (dark, OS-light, explicit light), found ${rootBlocks.length}`);
+  const declarations = (body) => [...body.matchAll(/(--[a-z0-9-]+)\s*:\s*([^;]+);/g)].map(([, key, value]) => `${key}:${value.trim()}`).join(";");
+  assertBuild(declarations(rootBlocks[1]) === declarations(rootBlocks[2]), "aliencn.css: the OS-light and explicit-light token blocks drifted apart");
+
+  const rootDefined = new Set(rootBlocks.flatMap((body) => [...body.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1])));
+  const anyDefined = new Set([...combined.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1]));
+  const referenced = new Set([...combined.matchAll(/var\((--[a-z0-9-]+)/g)].map((m) => m[1]));
   for (const token of referenced) {
-    assertBuild(defined.has(token), `${name}: var(${token}) is referenced but never defined in :root`);
+    assertBuild(anyDefined.has(token), `stylesheets: var(${token}) is referenced but never defined`);
   }
-  if (requireAllUsed) {
-    for (const token of defined) {
-      assertBuild(referenced.has(token), `${name}: token ${token} is defined but never used`);
-    }
+  for (const token of rootDefined) {
+    assertBuild(referenced.has(token), `aliencn.css: token ${token} is defined but never used`);
   }
-  const outsideTokens = styles.replace(/:root[^{}]*\{[^{}]*\}/g, "");
+  const outsideTokens = combined.replace(/:root[^{}]*\{[^{}]*\}/g, "");
   const rawHex = outsideTokens.match(/#[0-9a-fA-F]{3,8}\b/);
-  assertBuild(rawHex === null, `${name}: raw color ${rawHex?.[0]} bypasses the token layer (use var())`);
+  assertBuild(rawHex === null, `stylesheets: raw color ${rawHex?.[0]} bypasses the token layer (use var())`);
 }
 
 /**
- * The script contract, per page: exactly ONE inline script (the theme toggle
- * + js-anim pre-paint gate), byte-identical across pages, whose sha256 is
- * exactly the hash the _headers CSP allows - recomputed here from the page
- * bytes, never trusted from the build's own constants - plus the hub-init
- * module tag ('self' covers same-origin modules). All script tags sit in
- * <head> (the inline script's pre-paint halves must run before first
+ * The script and style contract, per page: exactly ONE inline script (the
+ * theme toggle + js-anim pre-paint gate), byte-identical across pages, whose
+ * sha256 is exactly the hash the _headers CSP allows - recomputed here from
+ * the page bytes, never trusted from the build's own constants - plus the
+ * hub-init module tag ('self' covers same-origin modules). All script tags
+ * sit in <head> (the inline script's pre-paint halves must run before first
  * render), and the inline script must keep both the reduced-motion guard
- * and the js-anim gate.
+ * and the js-anim gate. Styles are the mirror image: style-src is 'self',
+ * so every page must link both same-origin stylesheets and carry NO <style>
+ * block and NO style attribute anywhere.
  */
 function assertPageScripts(name, html, themeHash, referenceScript) {
   const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
@@ -98,36 +108,42 @@ function assertPageScripts(name, html, themeHash, referenceScript) {
   assertBuild(hash === themeHash, `${name}: theme script sha256 ${hash} does not match the CSP allowance ${themeHash}`);
   assertBuild(scripts[0].includes("prefers-reduced-motion"), `${name}: the theme script lost its reduced-motion guard`);
   assertBuild(scripts[0].includes('classList.add("js-anim")'), `${name}: the theme script lost the js-anim pre-paint gate`);
+  assertBuild(scripts[0].includes("data-aliencn-theme"), `${name}: the theme script no longer drives data-aliencn-theme`);
   assertBuild(html.includes('id="theme-toggle"'), `${name}: the theme toggle button is missing`);
   assertBuild(
     html.includes('<script type="module" src="/ui/hub-init.js"></script>'),
     `${name}: the hub-init module tag is missing`,
   );
+  for (const href of ["/aliencn.css", "/hub.css"]) {
+    assertBuild(html.includes(`<link rel="stylesheet" href="${href}" />`), `${name}: the ${href} stylesheet link is missing`);
+  }
+  assertBuild(!/<style[\s>]/.test(html), `${name}: inline <style> blocks are banned under style-src 'self'`);
+  assertBuild(!/\sstyle="/.test(html), `${name}: inline style attributes are banned under style-src 'self'`);
 }
 
 /**
- * Choreography safety, per page: any hidden initial state (opacity:0) must be
- * gated under an html.js-anim selector - EVERY selector of the rule's list,
- * the page-transition overlay rules included - so no JS, blocked JS, or
- * reduced motion always yields a fully visible page. Keyframe frames (from /
- * to / percentages) are exempt: they apply only while an animation runs on
- * an already-gated element, never as an initial state. Every page must
- * actually carry the gated motion rules (the check is never vacuous).
+ * Choreography safety, on the stylesheets: any hidden initial state
+ * (opacity:0) must be gated under an html.js-anim selector - EVERY selector
+ * of the rule's list, the page-transition overlay rules included - so no JS,
+ * blocked JS, or reduced motion always yields a fully visible page. Keyframe
+ * frames (from / to / percentages) are exempt: they apply only while an
+ * animation runs on an already-gated element, never as an initial state. The
+ * gated motion rules must actually be present (the check is never vacuous).
  */
-function assertAnimGating(name, html) {
-  const styles = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join("\n");
+function assertAnimGating(sheets) {
+  const styles = Object.values(sheets).join("\n").replace(/\/\*[\s\S]*?\*\//g, "");
   for (const rule of styles.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-    if (!rule[2].includes("opacity:0")) continue;
+    if (!/opacity:\s*0[;}\s]|opacity:\s*0$/.test(rule[2])) continue;
     for (const selector of rule[1].split(",")) {
       const sel = selector.trim();
-      if (/^(from|to|[\d.]+%)$/.test(sel)) continue;
+      if (/^(from|to|[\d.]+%(\s*,\s*[\d.]+%)*)$/.test(sel)) continue;
       assertBuild(
         sel.includes("html.js-anim"),
-        `${name}: hidden initial state "${selector.trim()}" is not gated under html.js-anim`,
+        `stylesheets: hidden initial state "${sel}" is not gated under html.js-anim`,
       );
     }
   }
-  assertBuild(styles.includes("html.js-anim"), `${name}: the html.js-anim motion CSS is missing`);
+  assertBuild(styles.includes("html.js-anim"), "stylesheets: the html.js-anim motion CSS is missing");
 }
 
 /**
@@ -185,25 +201,36 @@ export function runRenderChecks({ distDir, rendered, interopSorted }) {
   assertSuitePinAgreement(join(distDir, ".."));
   const conformanceEntries = withConformance(rendered);
 
-  for (const name of [...PAGE_FILES, "builders.json", "interop.json", "_headers", ...FONT_FILES, ...FONT_LICENSES]) {
+  for (const name of [...PAGE_FILES, "builders.json", "interop.json", "_headers", ...FONT_FILES, ...FONT_LICENSES, ...CSS_FILES]) {
     const path = join(distDir, name);
     assertBuild(statSync(path).size > 0, `dist/${name} is missing or empty`);
   }
   const pages = Object.fromEntries(PAGE_FILES.map((name) => [name, readFileSync(join(distDir, name), "utf8")]));
   const headers = readFileSync(join(distDir, "_headers"), "utf8");
 
+  // Stylesheets: dist copies must be byte copies of the committed sources;
+  // theme integrity and motion gating are asserted on the dist bytes.
+  const sheets = Object.fromEntries(CSS_FILES.map((name) => [name, readFileSync(join(distDir, name), "utf8")]));
+  for (const name of CSS_FILES) {
+    const committed = readFileSync(join(distDir, "..", "site", "assets", "css", name), "utf8");
+    assertBuild(sheets[name] === committed, `dist/${name} is not a byte copy of site/assets/css/${name}`);
+  }
+  assertThemeIntegrity(sheets);
+  assertAnimGating(sheets);
+
   // The CSP must be exactly 'self' (the same-origin /ui/ modules) plus ONE
-  // script hash (the theme script) - nothing else in script-src - plus
+  // script hash (the theme script) - nothing else in script-src - style-src
+  // exactly 'self' (all CSS is the two same-origin stylesheets), plus
   // self-hosted fonts; every page's inline script must hash to it.
   const scriptSrc = headers.match(/script-src ([^;]+);/)?.[1] ?? "";
   const cspHashes = [...scriptSrc.matchAll(/'sha256-([A-Za-z0-9+/=]+)'/g)].map((m) => m[1]);
   assertBuild(cspHashes.length === 1, `_headers must pin exactly one script-src hash, found ${cspHashes.length}`);
   assertBuild(scriptSrc.trim() === `'self' 'sha256-${cspHashes[0]}'`, "script-src must be exactly 'self' plus the theme script hash");
+  assertBuild((headers.match(/style-src ([^;]+);/)?.[1] ?? "").trim() === "'self'", "style-src must be exactly 'self'");
   assertBuild(headers.includes("font-src 'self'"), "the CSP must allow the self-hosted fonts via font-src 'self'");
   const referenceScript = pages["index.html"].match(/<script>([\s\S]*?)<\/script>/)?.[1] ?? "";
   for (const [name, html] of Object.entries(pages)) {
     assertPageScripts(name, html, cspHashes[0], referenceScript);
-    assertAnimGating(name, html);
   }
 
   // Motion modules: dist/ui/**/*.js must be exact byte copies of the
@@ -236,18 +263,16 @@ export function runRenderChecks({ distDir, rendered, interopSorted }) {
   );
 
   // Fonts: dist/fonts/ must be exact byte copies of the committed binaries,
-  // and each binary must really be woff2 (leading wOF2 magic). Every page
-  // must declare both brand faces.
+  // and each binary must really be woff2 (leading wOF2 magic). The hub
+  // stylesheet must declare both brand faces.
   for (const name of FONT_FILES) {
     const built = readFileSync(join(distDir, name));
     const committed = readFileSync(join(distDir, "..", "site", "assets", name));
     assertBuild(built.equals(committed), `dist/${name} is not a byte copy of site/assets/${name}`);
     assertBuild(built.subarray(0, 4).toString("latin1") === "wOF2", `dist/${name} does not carry the woff2 magic bytes`);
   }
-  for (const [name, html] of Object.entries(pages)) {
-    for (const family of ["Space Grotesk", "JetBrains Mono"]) {
-      assertBuild(html.includes(`@font-face{font-family:"${family}"`), `${name}: the @font-face for ${family} is missing`);
-    }
+  for (const family of ["Space Grotesk", "JetBrains Mono"]) {
+    assertBuild(sheets["hub.css"].includes(`@font-face{font-family:"${family}"`), `hub.css: the @font-face for ${family} is missing`);
   }
 
   // Honesty assertions, on EVERY page.
@@ -314,8 +339,4 @@ export function runRenderChecks({ distDir, rendered, interopSorted }) {
     assertBuild(notFoundHtml.includes(path), `dist/404.html must link ${path.slice(6, -1)}`);
   }
 
-  // Theme assertions: every page ships both themes and a closed token layer.
-  for (const [name, html] of Object.entries(pages)) {
-    assertThemeIntegrity(name, html, { requireAllUsed: name !== "404.html" });
-  }
 }

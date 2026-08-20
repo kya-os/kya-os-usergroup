@@ -19,6 +19,11 @@
  *   - fonts/                   byte copies of site/assets/fonts/ (the two
  *                              self-hosted variable woff2 faces + their OFL
  *                              licenses)
+ *   - aliencn.css, hub.css     byte copies of site/assets/css/: the
+ *                              @kya-os/aliencn design language (token layer
+ *                              + component subset) and the hub page layer -
+ *                              ALL page CSS, served same-origin so style-src
+ *                              stays 'self'
  *   - ui/                      byte copies of site/assets/ui/**\/*.js: the
  *                              @kya-os/aliencn motion family under ui/motion/
  *                              (CLI-installed per aliencn.json, sha256-pinned
@@ -29,7 +34,8 @@
  *                              the one inline script by sha256 (computed here
  *                              from the exact THEME_SCRIPT bytes), covers the
  *                              same-origin modules with script-src 'self',
- *                              and allows font-src 'self'
+ *                              keeps style-src at 'self' (no inline styles
+ *                              anywhere), and allows font-src 'self'
  * plus one COMMITTED artifact outside dist/: the badge worker's slug
  * allowlist (workers/badge/generated-allowlist.mjs).
  *
@@ -51,10 +57,11 @@
  *                       404 page (conformance honesty rules enforced there)
  *   lib/sections.mjs    the section renderers (the page bodies)
  *   lib/pages.mjs       page assembly: hero + sections per page, per-page meta
- *   lib/theme.mjs       the color tokens (light/dark pairs), the self-hosted
- *                       font faces, all page CSS (including MOTION_CSS, the
- *                       js-anim-gated motion rules), and THEME_SCRIPT, the
- *                       site's one inline script (theme toggle + js-anim gate)
+ *   lib/theme.mjs       the inline-only pieces: THEME_SCRIPT, the site's one
+ *                       inline script (theme toggle + js-anim gate), and the
+ *                       theme-color meta pair; all CSS lives in
+ *                       site/assets/css/ (tokens in aliencn.css, page rules
+ *                       and the js-anim-gated motion rules in hub.css)
  *   lib/assertions.mjs  post-build render checks, run per page: completeness,
  *                       honesty, theme integrity, and the CSP script hash
  *
@@ -80,6 +87,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "..");
 const distDir = join(repoRoot, "dist");
 const fontsSrcDir = join(here, "assets", "fonts");
+const cssSrcDir = join(here, "assets", "css");
 const uiSrcDir = join(here, "assets", "ui");
 
 function renderHeaders() {
@@ -88,15 +96,17 @@ function renderHeaders() {
   // (the theme toggle + js-anim gate), so script-src allows exactly its
   // sha256 hash - computed from the same constant the pages embed, so policy
   // and pages can never drift - plus 'self' for the same-origin /ui/ ES
-  // modules. font-src 'self' covers the self-hosted woff2 files; nothing
-  // else loosens.
+  // modules. style-src is 'self': all CSS ships as the two same-origin
+  // stylesheets (no <style> blocks, no style attributes - asserted).
+  // font-src 'self' covers the self-hosted woff2 files; img-src data: covers
+  // the grain overlay's inline SVG. Nothing else loosens.
   const sha256 = (script) => createHash("sha256").update(script, "utf8").digest("base64");
   return [
     "/*",
     "  X-Content-Type-Options: nosniff",
     "  X-Frame-Options: DENY",
     "  Referrer-Policy: strict-origin-when-cross-origin",
-    `  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-${sha256(THEME_SCRIPT)}'; style-src 'unsafe-inline'; img-src 'self' data:; font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
+    `  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-${sha256(THEME_SCRIPT)}'; style-src 'self'; img-src 'self' data:; font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
     "/builders.json",
     "  Content-Type: application/json; charset=utf-8",
     "  Access-Control-Allow-Origin: *",
@@ -140,6 +150,14 @@ writeFileSync(join(distDir, "_headers"), renderHeaders());
 mkdirSync(join(distDir, "fonts"), { recursive: true });
 for (const name of readdirSync(fontsSrcDir).sort()) {
   copyFileSync(join(fontsSrcDir, name), join(distDir, "fonts", name));
+}
+
+// Stylesheets: deterministic byte copies of site/assets/css/ to the dist
+// root (/aliencn.css - the @kya-os/aliencn token layer + component subset -
+// and /hub.css - the hub page layer). Real same-origin files, which is what
+// keeps style-src at 'self'.
+for (const name of readdirSync(cssSrcDir).sort()) {
+  copyFileSync(join(cssSrcDir, name), join(distDir, name));
 }
 
 // Motion modules: deterministic byte copies of site/assets/ui/**/*.js - the

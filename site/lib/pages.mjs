@@ -19,7 +19,6 @@ import {
   sectionSubmit,
   sectionTemplates,
 } from "./sections.mjs";
-import { INDEX_CSS } from "./theme.mjs";
 
 function metaHead({ title, description, path }) {
   return `<meta name="description" content="${esc(description)}" />
@@ -51,10 +50,7 @@ ${hero}
 ${sections.join("\n")}
     </main>
   </article>`;
-  return pageShell({ title, headExtra: metaHead({ title, description, path }), body, current: path }).replace(
-    "\n</style>",
-    `${INDEX_CSS}\n</style>`,
-  );
+  return pageShell({ title, headExtra: metaHead({ title, description, path }), body, current: path });
 }
 
 function navCard({ href, title, count, countLabel, desc, go }) {
@@ -120,7 +116,7 @@ ${cards}
     headExtra: metaHead({ title: TITLE, description: DESCRIPTION, path: "/" }),
     body,
     current: null,
-  }).replace("\n</style>", `${INDEX_CSS}\n</style>`);
+  });
 }
 
 /** The directory page: kind-grouped entries, templates, examples, and the three submission paths. */

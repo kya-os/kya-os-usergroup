@@ -13,7 +13,7 @@
  */
 import { ADD_PROJECT_URL, DIF_URL, MCP_REPO_URL, REPO_URL, SITE_URL, TITLE } from "./constants.mjs";
 import { conformanceLabel, conformanceLevelUrl } from "./data.mjs";
-import { MOTION_CSS, NOT_FOUND_CSS, SHARED_CSS, THEME_COLORS, THEME_SCRIPT } from "./theme.mjs";
+import { THEME_COLORS, THEME_SCRIPT } from "./theme.mjs";
 
 /** Minimal HTML entity escaping for interpolated registry data. */
 export function esc(value) {
@@ -97,8 +97,10 @@ export const NAV_PAGES = [
 ];
 
 /**
- * The shared shell: head (meta, style, the ONE inline script - the theme
- * toggle + js-anim gate, CSP-pinned by hash - and the hub-init module tag,
+ * The shared shell: head (meta, the two same-origin stylesheets - the
+ * @kya-os/aliencn design language plus the hub page layer, which is what
+ * lets the CSP keep style-src at 'self' - the ONE inline script: theme
+ * toggle + js-anim gate, CSP-pinned by hash, and the hub-init module tag,
  * covered by script-src 'self'), the top nav with the current page
  * highlighted, and the footer. `current` is the page's root-absolute path
  * ("/builders/"); null (the 404 page) highlights nothing. Both scripts sit
@@ -115,11 +117,11 @@ export function pageShell({ title, headExtra = "", body, current = null }) {
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${esc(title)}</title>
-<meta name="color-scheme" content="light dark" />
+<meta name="color-scheme" content="dark light" />
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="${THEME_COLORS.light}" />
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="${THEME_COLORS.dark}" />
-${headExtra}<style>${SHARED_CSS}${MOTION_CSS}
-</style>
+${headExtra}<link rel="stylesheet" href="/aliencn.css" />
+<link rel="stylesheet" href="/hub.css" />
 <script>${THEME_SCRIPT}</script>
 <script type="module" src="/ui/hub-init.js"></script>
 </head>
@@ -162,5 +164,5 @@ export function render404Html() {
     title: `Not found · ${TITLE}`,
     headExtra: '<meta name="robots" content="noindex" />\n',
     body,
-  }).replace("\n</style>", `${NOT_FOUND_CSS}\n</style>`);
+  });
 }
