@@ -104,15 +104,15 @@ export function sectionsConformance(rendered) {
     <div class="grid-3">
       <div class="panel-card">
         <div class="pc-title pc-lg">L1 <span class="pc-tag">core crypto</span></div>
-        <p>Ed25519 signing and verification, canonical digests, signed proofs. The entry point for any implementation.</p>
+        <p>Identity anchored - anonymous calls stop here. Ed25519 signing and verification over canonical digests, against a DID the caller can prove it owns. The entry point for any implementation.</p>
       </div>
       <div class="panel-card">
         <div class="pc-title pc-lg">L2 <span class="pc-tag">full session</span></div>
-        <p>Handshake, session management, and proof exchange over a live transport binding.</p>
+        <p>Sessions that refuse replay - handshake, nonce and skew rules, and detached proofs binding every response to its request over a live transport binding.</p>
       </div>
       <div class="panel-card">
         <div class="pc-title pc-lg">L3 <span class="pc-tag">full delegation</span></div>
-        <p>Attenuated delegation chains, revocation checks, and enforcement invariants end to end.</p>
+        <p>Authority you can revoke - attenuated delegation chains, fail-closed revocation checks, and tamper-evident audit, enforced end to end. The level that stops a rogue spend.</p>
       </div>
     </div>
   </section>

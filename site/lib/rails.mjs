@@ -131,10 +131,10 @@ export function sectionsRails(interopSorted) {
     <p class="rails-caption">one identity in &middot; one signed proof &middot; every surface out</p>
   </section>
   <section class="fx fxd-30">
-    <h2>Why rails, not another registry</h2>
+    <h2>Write once, project everywhere</h2>
     <div class="rule"></div>
-    <p class="lede-lg">KYA-OS does not ask ecosystems to migrate. The Entity Card is the single source of truth; each downstream protocol gets a projection of it, emitted by the same code path and gated by the same proof posture. Update the card once and every projection stays consistent.</p>
-    <p class="lede-muted">All four discovery projections gate proof-posture advertising identically — an unaware peer simply ignores the extension and loses nothing.</p>
+    <p class="lede-lg">KYA-OS does not ask ecosystems to migrate. Write the Entity Card once - the single source of truth - and each downstream protocol gets a projection of it, emitted by the same code path and gated by the same proof posture. Update the card and every projection stays consistent.</p>
+    <p class="lede-muted">A peer that does not speak KYA-OS ignores the extra metadata and loses nothing; a compatible peer gains cryptographic certainty about who it is talking to. All four discovery projections carry that graceful-degradation contract.</p>
   </section>
   <section class="fx fxd-40 sec-70">
     <div class="grid-3">
@@ -166,8 +166,9 @@ export function sectionsUseCases() {
     <div class="flagship">
       <div>
         <div class="flag-title">REVOKED</div>
-        <p class="flag-lede">An on-chain kill switch for AI agents with wallet access. Agents spend under scoped, verifiable delegations — and that authority is revocable on a public chain (cheqd testnet), instantly and for everyone.</p>
-        <p class="flag-sub">Built at DEF CON 34; now the flagship example of the reference implementation. Its revocation path was upstreamed into the protocol itself (cheqd DID-Linked Resources, v1.14.0).</p>
+        <p class="flag-lede">An on-chain kill switch for AI agents with wallet access. Agents spend under scoped, verifiable delegations - and that authority is revocable on a public chain (cheqd testnet), where every verifier reads the same refusal.</p>
+        <p class="flag-sub">Built solo in a weekend at DEF CON 34 - 2nd place in the Cryptocurrency Village hackathon. The agent was Claude Desktop; a local gateway wallet held the keys, so the LLM never touched key material. A hardware kill switch flipped a StatusList2021 bit in a did:cheqd DID-Linked Resource, and the agent's next transaction was refused in 828ms - measured, not asserted (the repo's own elapsedMs). Funds never moved.</p>
+        <p class="flag-sub">The revocation path was upstreamed into the protocol itself (cheqd DID-Linked Resources, v1.14.0), and the actual DEF CON stage credential ships in the repo, now expired - fail-closed has layers. Accountability is not a theory here; it is a circuit breaker.</p>
         <div class="dlinks">
           <a href="${MCP_REPO_URL}/tree/main/examples/revoked">repo -&gt;</a>
           <a href="${MCP_REPO_URL}">spec repo -&gt;</a>
@@ -175,9 +176,9 @@ export function sectionsUseCases() {
         </div>
       </div>
       <div class="flag-console">
-        <div class="fc-line"><span class="kill-dot" aria-hidden="true"></span><span>delegation <b>scoped: spend &le; 25 USDC</b></span></div>
+        <div class="fc-line"><span class="kill-dot" aria-hidden="true"></span><span>delegation <b>scoped: spend &le; 10 CHEQ</b></span></div>
         <div class="wire fc-wire"><span class="wire-dot"></span></div>
-        <div class="fc-line fc-wrap">agent spends under ${waveformLockup("revoked:delegation:spend<=25usdc", { bars: 14, trackHeight: 10, small: true })}</div>
+        <div class="fc-line fc-wrap">agent spends under ${waveformLockup("revoked:delegation:spend<=10cheq", { bars: 14, trackHeight: 10, small: true })}</div>
         <div class="fc-hr"></div>
         <div class="fc-line">principal revokes <span class="tone-alert">on-chain</span></div>
         <div class="fc-line">agent authority <span class="tone-alert">= 0, everywhere</span></div>
@@ -191,10 +192,10 @@ export function sectionsUseCases() {
     <p class="section-lede">Patterns the primitives were designed for. No listed example yet — each one is a chance to <a href="/builders/#submit">be the first</a>.</p>
     <div class="grid-3">
 ${[
-    recipe("gated MCP tools", "Every tool call carries a signed proof; the server enforces scopes before execution. Consent is signed, not assumed.", ["consent", "proof"]),
+    recipe("gated MCP tools", "Human consent-gating before the tool ever runs: an ungated call gets a signed needs_authorization challenge, approval mints a scoped credential, and the server enforces it pre-execution. Consent is signed, not assumed.", ["consent", "proof"]),
     recipe("delegated spend budgets", "Budget-bound capability tokens: a principal delegates a spend ceiling, the chain attenuates, nothing rounds up.", ["delegation", "credentials"]),
     recipe("directories that verify", "Agent registries (A2A, MCP, NANDA) that carry proof posture in their listings — discovery you can actually trust.", ["identity", "rails"]),
-    recipe("audit-ready agents", "Every action leaves a trace in an RFC 9162 Merkle ledger — inclusion and consistency proofs, not log files.", ["proof", "audit"]),
+    recipe("audit-ready agents", "Every action leaves a trace in a tamper-evident RFC 9162 Merkle ledger - inclusion and consistency proofs, not log files.", ["proof", "audit"]),
     recipe("one card, every registry", "Maintain one Entity Card; project it onto A2A, MCP, and NANDA from the same code path. Update once, consistent everywhere.", ["identity", "rails"]),
     recipe("revocable everything", "Fail-closed revocation for cards and delegations — unreachable or malformed status lists count as revoked, on-chain optional.", ["credentials", "revocation"]),
   ].join("\n")}

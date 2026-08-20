@@ -13,6 +13,8 @@ export const DIF_URL = "https://identity.foundation";
 export const TEMPLATE_SLUG = "example-builder";
 
 export const CONFORMANCE_MD_URL = `${MCP_REPO_URL}/blob/main/CONFORMANCE.md`;
+export const MIGRATE_README_URL = `${MCP_REPO_URL}#migrate-any-mcp-server-in-2-lines`;
+export const DOCS_QUICKSTART_URL = `${SITE_URL}/mcp/docs/getting-started/quickstart`;
 export const SUBMISSION_ISSUE_URL = `${MCP_REPO_URL}/issues/new?template=conformance_submission.md`;
 export const STARTER_URL = `${REPO_URL}/tree/main/conformance/starter`;
 export const SUITE = {

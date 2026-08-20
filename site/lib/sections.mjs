@@ -10,7 +10,7 @@
  * drive the filter, and native <details> rows carry the expansion - both
  * fully functional without JavaScript.
  */
-import { ADD_PROJECT_URL, REPO_URL, STARTER_URL, SUITE } from "./constants.mjs";
+import { ADD_PROJECT_URL, DOCS_QUICKSTART_URL, MIGRATE_README_URL, REPO_URL, STARTER_URL, SUITE } from "./constants.mjs";
 import { conformanceLabel, directorySorted } from "./data.mjs";
 import { conformanceStatusChip, esc, promptBlock } from "./html.mjs";
 import { KINDS } from "../../scripts/validate.mjs";
@@ -36,13 +36,43 @@ const CONF_TEXT = {
 };
 const CONF_TONE = { "in-verification": "amber", verified: "signal", "self-reported": "faint" };
 
+// The two-line migration snippet, verbatim from the reference README's
+// "Migrate any MCP server in 2 lines" quickstart (the "after" block; the two
+// "+1 line" comments mark the entire delta from a stock MCP server). Lines
+// flagged true are the additions and render highlighted.
+const MIGRATE_LINES = [
+  ["import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';", false],
+  ["import { withKyaOs, NodeCryptoProvider } from '@kya-os/mcp';  // +1 line", true],
+  ["", false],
+  ["const server = new McpServer({ name: 'my-server', version: '1.0.0' });", false],
+  ["await withKyaOs(server, { crypto: new NodeCryptoProvider() }); // +1 line", true],
+  ["", false],
+  ["server.registerTool('greet', { description: 'Say hello' }, async (args) => ({", false],
+  ["  content: [{ type: 'text', text: `Hello, ${args.name}!` }],", false],
+  ["}));", false],
+];
+
+function sectionMigrate() {
+  const code = MIGRATE_LINES.map(([text, added]) => (added ? `<span class="hl">${esc(text)}</span>` : esc(text))).join("\n");
+  return `  <section class="fx fxd-20">
+    <h2>Two lines to a verifiable server</h2>
+    <div class="rule"></div>
+    <pre class="code-block"><code>${code}</code></pre>
+    <p class="note">High-integrity identity is a wrap, not a rewrite: every tool response now carries a detached JWS proof - invisible to the LLM, verifiable by anyone.</p>
+    <div class="dlinks">
+      <a href="${MIGRATE_README_URL}">reference README -&gt;</a>
+      <a href="${DOCS_QUICKSTART_URL}">docs quickstart -&gt;</a>
+    </div>
+  </section>`;
+}
+
 /** The overview (home) page body. */
 export function sectionsHome({ rendered, interopSorted }) {
   const stat = (html) => `    <span>${html}</span>`;
   return `  <header class="hero fx">
     <div class="kicker">BUILDERS.KYA-OS.ORG</div>
     <h1 class="h1-home"><span data-title-reveal>BUILD ON KYA-OS</span><span class="cursor" aria-hidden="true">_</span></h1>
-    <p class="lede">The identity layer for agents. Get listed, prove conformance cryptographically, and ship on the rails that carry the standards you already speak.</p>
+    <p class="lede">Authority and accountability for the agentic web. Verifiable identity and scoped delegation rooted at a Responsible Party - every agent action authorized before it runs, and audit-ready after.</p>
   </header>
   <div class="stats fx fxd-15">
 ${[
@@ -53,6 +83,7 @@ ${[
     stat(`<b>${rendered.length}</b> projects listed`),
   ].join("\n")}
   </div>
+${sectionMigrate()}
   <a href="/rails/" class="rails-panel fx fxd-25">
     <div class="rails-head">
       <div class="rails-title">THE RAILS</div>
@@ -95,7 +126,7 @@ ${[
     </a>
     <a href="/use-cases/" class="panel-card">
       <div class="pc-head"><span class="pc-title">use-cases -&gt;</span></div>
-      <p>What people actually build: on-chain kill switches, gated tools, delegated spend. Read them before you build, steal from them while you build.</p>
+      <p>What people actually build: on-chain kill switches, consent-gated tools, delegated spend ceilings. Read them before you build, steal from them while you build.</p>
     </a>
   </div>`;
 }
