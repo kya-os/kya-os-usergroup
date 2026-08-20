@@ -42,6 +42,21 @@ export function byKind(entries, kind) {
   return entries.filter((entry) => entry.kind === kind);
 }
 
+/**
+ * Directory order, per the design: claims under measurement (any conformance
+ * claim) first, then hosted service endpoints, then everything listed - rank
+ * ties broken by slug so the order stays deterministic.
+ */
+export function directoryRank(entry) {
+  if (entry.conformance !== undefined) return 0;
+  if (entry.kind === "service") return 1;
+  return 2;
+}
+
+export function directorySorted(entries) {
+  return [...entries].sort((a, b) => directoryRank(a) - directoryRank(b) || a.slug.localeCompare(b.slug, "en"));
+}
+
 /** The rendered entries that carry a conformance claim. */
 export function withConformance(entries) {
   return entries.filter((entry) => entry.conformance !== undefined);

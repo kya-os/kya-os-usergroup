@@ -4,16 +4,16 @@
  * Every page-level check runs on every page.
  *
  * The honesty rules these enforce are documented in lib/html.mjs, where they
- * are applied at render time. Two of the checks deliberately do NOT reuse
- * the shared formatters: the subset check reconstructs the expected label
- * inline and the certified check scans raw bytes, so a regression in the
- * formatter cannot make its own assertion pass. The CSP check recomputes the
- * script hash from the emitted page bytes for the same reason, and the font
- * and ui-module checks re-read the committed files rather than trusting the
- * copy step (the registry-managed motion modules additionally against the
- * sha256 pins in MOTION_PINS below, so drift fails the build). The suite
- * pin check reads every committed copy of the pin as bytes and asserts
- * agreement with SUITE in lib/constants.mjs, so no copy can drift silently.
+ * are applied at render time. Several checks deliberately do NOT reuse the
+ * shared formatters: the subset check reconstructs the expected label inline
+ * and the certified check scans raw bytes, so a regression in a formatter
+ * cannot make its own assertion pass. The CSP check recomputes the script
+ * hash from the emitted page bytes for the same reason; the font, mark, and
+ * ui-module checks re-read the committed files rather than trusting the copy
+ * step; the prompt-parity check re-extracts button/fallback pairs from the
+ * page bytes and matches them against lib/constants.mjs. The theme, gating,
+ * prompt-parity, and suite-pin checks live in lib/checks.mjs (split to keep
+ * both files under the lib LOC cap) and run from here.
  */
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -21,77 +21,34 @@ import { join } from "node:path";
 import { SUITE, TEMPLATE_SLUG } from "./constants.mjs";
 import { withConformance } from "./data.mjs";
 import { esc } from "./html.mjs";
+import { assertAnimGating, assertBuild, assertPromptParity, assertSuitePinAgreement, assertThemeIntegrity } from "./checks.mjs";
+import { THEME_COLORS } from "./theme.mjs";
 
-const PAGE_FILES = ["index.html", "builders/index.html", "conformance/index.html", "standards/index.html", "404.html"];
+const PAGE_FILES = [
+  "index.html",
+  "builders/index.html",
+  "conformance/index.html",
+  "standards/index.html",
+  "rails/index.html",
+  "use-cases/index.html",
+  "404.html",
+];
 const FONT_FILES = ["fonts/space-grotesk-latin-wght.woff2", "fonts/jetbrains-mono-latin-wght.woff2"];
 const FONT_LICENSES = ["fonts/space-grotesk-OFL.txt", "fonts/jetbrains-mono-OFL.txt"];
-const CSS_FILES = ["aliencn.css", "hub.css"];
-
-// The @kya-os/aliencn motion family under site/assets/ui/motion/, pinned by
-// sha256 so CI stays self-contained (it never runs the CLI). `aliencn diff
-// motion` (see aliencn.json) is the drift gate against the registry itself;
-// update = re-add via the CLI, never edit in place.
-const MOTION_PINS = {
-  "GlitchText.js": "7ddc58770d7677de9c38b3bd096f6d7103e366e5d1f532eba36569436248a81c",
-  "PageTransition.js": "179e109bdacf6a24c52fc412b75676fbe997b635ead940de1b5a280fec992e7a",
-  "SmoothScroll.js": "27179c8ffd18a87dc9ed4781d3b858a4be8686dc3e97b23beb0e61e87fbdc93b",
-  "Title.js": "3fbfc6d1375a17f4015fc714deab9edc483f89161a6aec7ecce155f117ec1338",
-  "UIUtils.js": "eb03cfa3bd58c0f8075c7c37a7e8249676f202c1ea68defe2400a57c32380f10",
-};
-
-function assertBuild(condition, message) {
-  if (!condition) {
-    console.error(`Render check FAILED: ${message}`);
-    process.exit(1);
-  }
-}
-
-/**
- * Theme integrity, on the stylesheets: the @kya-os/aliencn token layer must
- * be closed and dark-first with a complete light side - the dark :root
- * block, the OS-preference light branch (guarded so an explicit dark
- * override wins), and the :root[data-aliencn-theme="light"] hook the toggle
- * drives, with the two light blocks token-for-token identical (the
- * stylesheet equivalent of the old single-template-string guarantee). Every
- * var(--x) referenced must be defined, every :root token must be used, and
- * no raw hex may bypass the token layer outside the token blocks.
- */
-function assertThemeIntegrity(sheets) {
-  const stripComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, "");
-  const aliencn = stripComments(sheets["aliencn.css"]);
-  const combined = Object.values(sheets).map(stripComments).join("\n");
-  assertBuild(aliencn.includes("@media (prefers-color-scheme: light)"), "aliencn.css: the light prefers-color-scheme branch is missing");
-  assertBuild(aliencn.includes(':root:not([data-aliencn-theme="dark"])'), 'aliencn.css: OS-light must yield to a data-aliencn-theme="dark" override');
-  assertBuild(aliencn.includes(':root[data-aliencn-theme="light"]'), 'aliencn.css: the data-aliencn-theme="light" hook is missing');
-
-  const rootBlocks = [...aliencn.matchAll(/:root[^{}]*\{([^{}]*)\}/g)].map((m) => m[1]);
-  assertBuild(rootBlocks.length === 3, `aliencn.css: expected exactly three token blocks (dark, OS-light, explicit light), found ${rootBlocks.length}`);
-  const declarations = (body) => [...body.matchAll(/(--[a-z0-9-]+)\s*:\s*([^;]+);/g)].map(([, key, value]) => `${key}:${value.trim()}`).join(";");
-  assertBuild(declarations(rootBlocks[1]) === declarations(rootBlocks[2]), "aliencn.css: the OS-light and explicit-light token blocks drifted apart");
-
-  const rootDefined = new Set(rootBlocks.flatMap((body) => [...body.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1])));
-  const anyDefined = new Set([...combined.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1]));
-  const referenced = new Set([...combined.matchAll(/var\((--[a-z0-9-]+)/g)].map((m) => m[1]));
-  for (const token of referenced) {
-    assertBuild(anyDefined.has(token), `stylesheets: var(${token}) is referenced but never defined`);
-  }
-  for (const token of rootDefined) {
-    assertBuild(referenced.has(token), `aliencn.css: token ${token} is defined but never used`);
-  }
-  const outsideTokens = combined.replace(/:root[^{}]*\{[^{}]*\}/g, "");
-  const rawHex = outsideTokens.match(/#[0-9a-fA-F]{3,8}\b/);
-  assertBuild(rawHex === null, `stylesheets: raw color ${rawHex?.[0]} bypasses the token layer (use var())`);
-}
+const MARK_FILES = ["img/kya-mark-white.svg", "img/kya-mark-black.svg"];
+const CSS_FILES = ["tokens.css", "hub.css"];
+const UI_FILES = ["copy-prompt.js", "page-fx.js"];
 
 /**
  * The script and style contract, per page: exactly ONE inline script (the
- * theme toggle + js-anim pre-paint gate), byte-identical across pages, whose
- * sha256 is exactly the hash the _headers CSP allows - recomputed from the
- * page bytes, never trusted from the build's own constants - plus the
- * hub-init module tag; all script tags in <head>, reduced-motion guard and
- * js-anim gate intact. Styles are the mirror image: style-src is 'self', so
- * every page must link both same-origin stylesheets and carry NO <style>
- * block and NO style attribute anywhere.
+ * theme toggle + js-anim pre-paint gate + page-fx failsafe), byte-identical
+ * across pages, whose sha256 is exactly the hash the _headers CSP allows -
+ * recomputed from the page bytes, never trusted from the build's own
+ * constants - plus the two module tags; all script tags in <head>,
+ * reduced-motion guard, js-anim gate, and failsafe intact. Styles are the
+ * mirror image: style-src is 'self', so every page must link both
+ * same-origin stylesheets and carry NO <style> block and NO style attribute
+ * anywhere (the build-time waveforms use SVG presentation attributes only).
  */
 function assertPageScripts(name, html, themeHash, referenceScript) {
   const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
@@ -103,90 +60,25 @@ function assertPageScripts(name, html, themeHash, referenceScript) {
   assertBuild(hash === themeHash, `${name}: theme script sha256 ${hash} does not match the CSP allowance ${themeHash}`);
   assertBuild(scripts[0].includes("prefers-reduced-motion"), `${name}: the theme script lost its reduced-motion guard`);
   assertBuild(scripts[0].includes('classList.add("js-anim")'), `${name}: the theme script lost the js-anim pre-paint gate`);
-  assertBuild(scripts[0].includes("data-aliencn-theme"), `${name}: the theme script no longer drives data-aliencn-theme`);
+  assertBuild(scripts[0].includes("__pageFxInit"), `${name}: the theme script lost the 2.5s page-fx failsafe`);
+  assertBuild(scripts[0].includes("data-theme"), `${name}: the theme script no longer drives data-theme`);
   assertBuild(html.includes('id="theme-toggle"'), `${name}: the theme toggle button is missing`);
-  assertBuild(
-    html.includes('<script type="module" src="/ui/hub-init.js"></script>'),
-    `${name}: the hub-init module tag is missing`,
-  );
-  for (const href of ["/aliencn.css", "/hub.css"]) {
+  for (const module of UI_FILES) {
+    assertBuild(
+      html.includes(`<script type="module" src="/ui/${module}"></script>`),
+      `${name}: the /ui/${module} module tag is missing`,
+    );
+  }
+  for (const href of ["/tokens.css", "/hub.css"]) {
     assertBuild(html.includes(`<link rel="stylesheet" href="${href}" />`), `${name}: the ${href} stylesheet link is missing`);
   }
   assertBuild(!/<style[\s>]/.test(html), `${name}: inline <style> blocks are banned under style-src 'self'`);
   assertBuild(!/\sstyle="/.test(html), `${name}: inline style attributes are banned under style-src 'self'`);
-}
-
-/**
- * Choreography safety, on the stylesheets: any hidden initial state
- * (opacity:0) must be gated under an html.js-anim selector - EVERY selector
- * of the rule's list, overlay rules included - so no JS, blocked JS, or
- * reduced motion always yields a fully visible page. Keyframe frames are
- * exempt (they apply only mid-animation, never as an initial state), and
- * the gated motion rules must actually be present (never vacuous).
- */
-function assertAnimGating(sheets) {
-  const styles = Object.values(sheets).join("\n").replace(/\/\*[\s\S]*?\*\//g, "");
-  for (const rule of styles.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-    if (!/opacity:\s*0[;}\s]|opacity:\s*0$/.test(rule[2])) continue;
-    for (const selector of rule[1].split(",")) {
-      const sel = selector.trim();
-      if (/^(from|to|[\d.]+%(\s*,\s*[\d.]+%)*)$/.test(sel)) continue;
-      assertBuild(
-        sel.includes("html.js-anim"),
-        `stylesheets: hidden initial state "${sel}" is not gated under html.js-anim`,
-      );
-    }
-  }
-  assertBuild(styles.includes("html.js-anim"), "stylesheets: the html.js-anim motion CSS is missing");
-}
-
-/**
- * Suite pin agreement: the suite pin (version, vector count, vector-set
- * hash) is committed in several places that deliberately cannot import each
- * other - the starter must stay standalone-copyable and the badge fixtures
- * are committed artifacts. The build is the one place that sees them all, so
- * it reads every OTHER copy as bytes and asserts agreement with SUITE in
- * lib/constants.mjs; a drifted copy fails the build naming its file.
- */
-function assertSuitePinAgreement(repoRoot) {
-  const read = (path) => readFileSync(join(repoRoot, path), "utf8");
-
-  const fetchSuitePath = "conformance/starter/scripts/fetch-suite.mjs";
-  const fetchSuite = read(fetchSuitePath);
-  const expectedHash = fetchSuite.match(/const EXPECTED_VECTOR_SET_HASH =\s*'([^']+)'/)?.[1];
-  assertBuild(
-    expectedHash === SUITE.vectorSetHash,
-    `${fetchSuitePath}: EXPECTED_VECTOR_SET_HASH (${expectedHash}) does not match SUITE.vectorSetHash`,
-  );
-  assertBuild(
-    /const PINNED_COMMIT = '[0-9a-f]{40}';/.test(fetchSuite),
-    `${fetchSuitePath}: PINNED_COMMIT (a 40-hex commit SHA) is missing - the harness must be fetched at a commit, not a tag`,
-  );
-
-  const programReadme = "conformance/README.md";
-  assertBuild(read(programReadme).includes(SUITE.vectorSetHash), `${programReadme}: the vector-set hash does not match SUITE.vectorSetHash`);
-  assertBuild(
-    read(programReadme).includes(`suite \`${SUITE.version}\`, ${SUITE.vectors} vectors`),
-    `${programReadme}: the suite version / vector count line does not match SUITE (${SUITE.version}, ${SUITE.vectors} vectors)`,
-  );
-
-  const starterReadme = "conformance/starter/README.md";
-  assertBuild(read(starterReadme).includes(SUITE.vectorSetHash), `${starterReadme}: the vector-set hash does not match SUITE.vectorSetHash`);
-  assertBuild(
-    read(starterReadme).includes(`(${SUITE.vectors} vectors)`),
-    `${starterReadme}: the vector count does not match SUITE.vectors (${SUITE.vectors})`,
-  );
-
-  const generatorPath = "workers/badge/fixtures/generate-fixtures.mjs";
-  const generator = read(generatorPath);
-  assertBuild(generator.includes(`suiteVersion: "${SUITE.version}"`), `${generatorPath}: suiteVersion does not match SUITE.version (${SUITE.version})`);
-  assertBuild(generator.includes(`vectorSetHash: "${SUITE.vectorSetHash}"`), `${generatorPath}: vectorSetHash does not match SUITE.vectorSetHash`);
-
-  for (const path of ["workers/badge/fixtures/dev-manifest.json", "workers/badge/fixtures/dev-credential.json"]) {
-    const parsed = JSON.parse(read(path));
-    const pin = parsed.credentialSubject?.suite ?? parsed;
-    assertBuild(pin.suiteVersion === SUITE.version, `${path}: suiteVersion (${pin.suiteVersion}) does not match SUITE.version (${SUITE.version})`);
-    assertBuild(pin.vectorSetHash === SUITE.vectorSetHash, `${path}: vectorSetHash (${pin.vectorSetHash}) does not match SUITE.vectorSetHash`);
+  for (const [scheme, color] of Object.entries(THEME_COLORS)) {
+    assertBuild(
+      html.includes(`media="(prefers-color-scheme: ${scheme})" content="${color}"`),
+      `${name}: the ${scheme} theme-color meta drifted from THEME_COLORS`,
+    );
   }
 }
 
@@ -195,7 +87,7 @@ export function runRenderChecks({ distDir, rendered, interopSorted }) {
   assertSuitePinAgreement(join(distDir, ".."));
   const conformanceEntries = withConformance(rendered);
 
-  for (const name of [...PAGE_FILES, "builders.json", "interop.json", "_headers", ...FONT_FILES, ...FONT_LICENSES, ...CSS_FILES]) {
+  for (const name of [...PAGE_FILES, "builders.json", "interop.json", "_headers", ...FONT_FILES, ...FONT_LICENSES, ...MARK_FILES, ...CSS_FILES]) {
     const path = join(distDir, name);
     assertBuild(statSync(path).size > 0, `dist/${name} is missing or empty`);
   }
@@ -214,60 +106,67 @@ export function runRenderChecks({ distDir, rendered, interopSorted }) {
     const committed = readFileSync(join(distDir, "..", "site", "assets", "css", name), "utf8");
     assertBuild(sheets[name] === stripCss(committed), `dist/${name} is not the comment-stripped copy of site/assets/css/${name}`);
   }
+  // Budget raised 25KB -> 32KB with the Builders Site design swap: six pages
+  // of layout (directory grid + CSS-only filter, rails diagrams, badge
+  // lockups) ship ~28KB; the ceiling still catches runaway growth.
   const cssBytes = CSS_FILES.reduce((sum, name) => sum + Buffer.byteLength(sheets[name]), 0);
-  assertBuild(cssBytes <= 25 * 1024, `emitted CSS is ${cssBytes} bytes; the budget is 25KB total`);
+  assertBuild(cssBytes <= 32 * 1024, `emitted CSS is ${cssBytes} bytes; the budget is 32KB total`);
   assertThemeIntegrity(sheets);
   assertAnimGating(sheets);
 
   // The CSP must be exactly 'self' (the same-origin /ui/ modules) plus ONE
   // script hash (the theme script) - nothing else in script-src - style-src
-  // exactly 'self' (all CSS is the two same-origin stylesheets), plus
+  // exactly 'self' (all CSS is the two same-origin stylesheets), img-src
+  // exactly 'self' (the logo marks; nothing external, no data:), plus
   // self-hosted fonts; every page's inline script must hash to it.
   const scriptSrc = headers.match(/script-src ([^;]+);/)?.[1] ?? "";
   const cspHashes = [...scriptSrc.matchAll(/'sha256-([A-Za-z0-9+/=]+)'/g)].map((m) => m[1]);
   assertBuild(cspHashes.length === 1, `_headers must pin exactly one script-src hash, found ${cspHashes.length}`);
   assertBuild(scriptSrc.trim() === `'self' 'sha256-${cspHashes[0]}'`, "script-src must be exactly 'self' plus the theme script hash");
   assertBuild((headers.match(/style-src ([^;]+);/)?.[1] ?? "").trim() === "'self'", "style-src must be exactly 'self'");
+  assertBuild((headers.match(/img-src ([^;]+);/)?.[1] ?? "").trim() === "'self'", "img-src must be exactly 'self'");
   assertBuild(headers.includes("font-src 'self'"), "the CSP must allow the self-hosted fonts via font-src 'self'");
   const referenceScript = pages["index.html"].match(/<script>([\s\S]*?)<\/script>/)?.[1] ?? "";
   for (const [name, html] of Object.entries(pages)) {
     assertPageScripts(name, html, cspHashes[0], referenceScript);
   }
+  assertPromptParity(pages);
 
-  // Motion modules: dist/ui/**/*.js must be exact byte copies of the
-  // committed site/assets/ui/**/*.js (both directions - same file set),
-  // every module under ui/motion/ must match its MOTION_PINS sha256, and
-  // hub-init must keep its reduced-motion / js-anim guard.
+  // Client modules: dist/ui/*.js must be exact byte copies of the committed
+  // site/assets/ui/*.js (both directions - same file set), page-fx must keep
+  // its reduced-motion / js-anim guard and the failsafe handshake, and
+  // copy-prompt must keep the hidden-button reveal (the no-JS contract).
   const uiSrcDir = join(distDir, "..", "site", "assets", "ui");
   const uiCommitted = readdirSync(uiSrcDir, { recursive: true }).map(String).filter((n) => n.endsWith(".js")).sort();
   const uiBuilt = readdirSync(join(distDir, "ui"), { recursive: true }).map(String).filter((n) => n.endsWith(".js")).sort();
-  assertBuild(uiBuilt.join(",") === uiCommitted.join(","), `dist/ui/ (${uiBuilt.join(", ")}) must mirror site/assets/ui/**/*.js (${uiCommitted.join(", ")})`);
+  assertBuild(uiBuilt.join(",") === UI_FILES.join(","), `dist/ui/ (${uiBuilt.join(", ")}) must hold exactly: ${UI_FILES.join(", ")}`);
+  assertBuild(uiCommitted.join(",") === UI_FILES.join(","), `site/assets/ui/ (${uiCommitted.join(", ")}) must hold exactly: ${UI_FILES.join(", ")}`);
   for (const name of uiCommitted) {
     const built = readFileSync(join(distDir, "ui", name));
     assertBuild(built.equals(readFileSync(join(uiSrcDir, name))), `dist/ui/${name} is not a byte copy of site/assets/ui/${name}`);
   }
-  const pinned = Object.entries(MOTION_PINS);
+  const pageFx = readFileSync(join(distDir, "ui", "page-fx.js"), "utf8");
   assertBuild(
-    uiCommitted.filter((n) => n.startsWith("motion/")).join(",") === pinned.map(([name]) => `motion/${name}`).join(","),
-    "site/assets/ui/motion/ must hold exactly the five pinned @kya-os/aliencn motion modules",
+    pageFx.includes("prefers-reduced-motion") && pageFx.includes("js-anim"),
+    "page-fx.js lost its reduced-motion / js-anim guard",
   );
-  for (const [name, expected] of pinned) {
-    const actual = createHash("sha256").update(readFileSync(join(uiSrcDir, "motion", name))).digest("hex");
-    assertBuild(actual === expected, `motion drift: ${name} sha256 ${actual} does not match the registry pin (run \`aliencn diff motion\`; update via the aliencn CLI, never edit in place)`);
-  }
-  const hubInit = readFileSync(join(distDir, "ui", "hub-init.js"), "utf8");
+  assertBuild(pageFx.includes("__pageFxInit"), "page-fx.js lost the failsafe handshake (__pageFxInit)");
+  const copyPrompt = readFileSync(join(distDir, "ui", "copy-prompt.js"), "utf8");
   assertBuild(
-    hubInit.includes("prefers-reduced-motion") && hubInit.includes("js-anim"),
-    "hub-init.js lost its reduced-motion / js-anim guard",
+    copyPrompt.includes("data-copy-target") && copyPrompt.includes("hidden = false"),
+    "copy-prompt.js lost the hidden-button reveal wiring",
   );
 
-  // Fonts: dist/fonts/ must be exact byte copies of the committed binaries,
-  // and each binary must really be woff2 (leading wOF2 magic). The hub
-  // stylesheet must declare both brand faces.
-  for (const name of FONT_FILES) {
+  // Fonts and marks: dist copies must be exact byte copies of the committed
+  // sources, each font must really be woff2 (leading wOF2 magic), and the
+  // hub stylesheet must declare both brand faces.
+  for (const name of [...FONT_FILES, ...MARK_FILES]) {
     const built = readFileSync(join(distDir, name));
     const committed = readFileSync(join(distDir, "..", "site", "assets", name));
     assertBuild(built.equals(committed), `dist/${name} is not a byte copy of site/assets/${name}`);
+  }
+  for (const name of FONT_FILES) {
+    const built = readFileSync(join(distDir, name));
     assertBuild(built.subarray(0, 4).toString("latin1") === "wOF2", `dist/${name} does not carry the woff2 magic bytes`);
   }
   for (const family of ["Space Grotesk", "JetBrains Mono"]) {
@@ -279,26 +178,39 @@ export function runRenderChecks({ distDir, rendered, interopSorted }) {
   // fine; conformance-flavored "certified"/"certification" language is not.
   for (const [name, html] of Object.entries(pages)) {
     assertBuild(!/certified|certification/i.test(html), `the word "certified"/"certification" leaked into ${name}`);
-    // A green "verified" chip exists only as a credential link: no anchor-less occurrence.
-    assertBuild(!/<span class="chip st-verified(?! demo)/.test(html), `a "verified" chip rendered without a credential link in ${name}`);
+    // A green "verified" chip exists only as a credential link (the .demo
+    // state-machine samples on the conformance page are the one labeled
+    // exception): every non-demo st-verified chip must sit inside a
+    // .chip-link anchor.
+    for (const match of html.matchAll(/<(a|span)[^>]*class="[^"]*\bst-verified\b[^"]*"[^>]*>/g)) {
+      if (match[0].includes("demo")) continue;
+      const before = html.slice(Math.max(0, match.index - 120), match.index);
+      assertBuild(
+        /<a class="chip-link" href="[^"]+">$/.test(before),
+        `a "verified" chip rendered without a credential link in ${name}`,
+      );
+    }
   }
 
-  // Completeness: the directory lists every entry, the matrix every rail.
+  // Completeness: the directory lists every entry (with its anchor id), the
+  // matrix every rail; every standards row shows its listedAt date so
+  // freshness is auditable on-page.
   const buildersHtml = pages["builders/index.html"];
   const standardsHtml = pages["standards/index.html"];
   for (const entry of rendered) {
     assertBuild(buildersHtml.includes(esc(entry.name)), `dist/builders/index.html does not list "${entry.name}"`);
+    assertBuild(buildersHtml.includes(`id="${esc(entry.slug)}"`), `dist/builders/index.html has no anchor for "${entry.slug}"`);
   }
   for (const entry of interopSorted) {
     assertBuild(standardsHtml.includes(`id="std-${entry.slug}"`), `dist/standards/index.html does not list standard "${entry.slug}"`);
+    assertBuild(
+      standardsHtml.includes(`<span class="slisted">${esc(entry.listedAt)}</span>`),
+      `dist/standards/index.html does not date standard "${entry.slug}" (${entry.listedAt})`,
+    );
   }
-  // Every standards row shows its listing date - freshness is auditable on-page.
-  assertBuild(
-    (standardsHtml.match(/class="row-listed/g) ?? []).length === interopSorted.length,
-    "every interop row must render its listedAt date",
-  );
 
-  // Claim honesty on both pages that render claims (cards and the table).
+  // Claim honesty on both pages that render claims (directory rows and the
+  // implementations table).
   for (const html of [buildersHtml, pages["conformance/index.html"]]) {
     for (const entry of conformanceEntries) {
       const c = entry.conformance;
@@ -308,30 +220,48 @@ export function runRenderChecks({ distDir, rendered, interopSorted }) {
           `subset claim for "${entry.slug}" must render with its categories, never as a bare level`,
         );
       }
-      // Non-verified claims that carry public evidence must render it (the chip is the link).
+      // Non-verified claims that carry public evidence must render it.
       if (c.status !== "verified" && c.evidenceUrl) {
         assertBuild(html.includes(`href="${esc(c.evidenceUrl)}"`), `evidenceUrl for "${entry.slug}" did not render`);
       }
     }
   }
-
-  // The landing stays calm: live counts, no tables. The eyebrow readouts
-  // (zero-padded for display) must carry the same live numbers - the padding
-  // is recomputed here from the registry data, never from the formatter.
-  const landingHtml = pages["index.html"];
-  assertBuild(landingHtml.includes(`<b>${rendered.length}</b>`), "the landing page must show the live entry count");
-  assertBuild(landingHtml.includes(`<b>${interopSorted.length}</b>`), "the landing page must show the live rails count");
-  assertBuild(!landingHtml.includes("<table"), "no tables on the landing page");
-  const pad = (count) => String(count).padStart(3, "0");
-  const verifiedCount = conformanceEntries.filter((entry) => entry.conformance.status === "verified").length;
-  for (const [page, readout] of [
-    ["index.html", `Registry / ${pad(rendered.length)}`],
-    ["builders/index.html", `Directory / ${pad(rendered.length)}`],
-    ["conformance/index.html", `Verified / ${pad(verifiedCount)}`],
-    ["standards/index.html", `Rails / ${pad(interopSorted.length)}`],
-  ]) {
-    assertBuild(pages[page].includes(`<span>${readout}</span>`), `${page}: the live eyebrow readout "${readout}" is missing or stale`);
+  // The implementations table lists every claim.
+  for (const entry of conformanceEntries) {
+    assertBuild(
+      pages["conformance/index.html"].includes(`href="/builders/#${esc(entry.slug)}"`),
+      `dist/conformance/index.html does not list the "${entry.slug}" claim`,
+    );
   }
+
+  // Readout truth: every count the pages show must be the live registry
+  // number (recomputed here from the shaped data, never from a formatter) -
+  // the home stats strip, the directory filter counts, the rails page's
+  // matrix pointer, and the suite pin strip. No tables anywhere: the design
+  // renders rows as grids.
+  const landingHtml = pages["index.html"];
+  assertBuild(landingHtml.includes(`<b>${rendered.length}</b> projects listed`), "the home stats strip must show the live entry count");
+  assertBuild(landingHtml.includes(`<b>${interopSorted.length}</b> standards mapped`), "the home stats strip must show the live rails count");
+  assertBuild(landingHtml.includes(`suite <b>${esc(SUITE.version)}</b>`), "the home stats strip must show the pinned suite version");
+  assertBuild(landingHtml.includes(`<b>${SUITE.vectors}</b> vectors`), "the home stats strip must show the pinned vector count");
+  assertBuild(
+    landingHtml.includes(`${interopSorted.length} rows, each grounded in evidence and dated`),
+    "the home standards card must carry the live rails count",
+  );
+  assertBuild(!landingHtml.includes("<table"), "no tables on the landing page");
+  assertBuild(
+    buildersHtml.includes(`>all ${rendered.length}</label>`),
+    "the directory filter strip must show the live all-count",
+  );
+  assertBuild(
+    pages["rails/index.html"].includes(`see all ${interopSorted.length} standards rows, with evidence -&gt;`),
+    "the rails page must point at the live standards-row count",
+  );
+  const pin = pages["conformance/index.html"];
+  assertBuild(
+    pin.includes(`suite <b>${esc(SUITE.version)}</b>`) && pin.includes(`<b>${SUITE.vectors}</b> vectors`) && pin.includes(esc(SUITE.vectorSetHash)),
+    "the conformance pin strip must carry the full SUITE pin",
+  );
 
   const published = JSON.parse(readFileSync(join(distDir, "builders.json"), "utf8"));
   assertBuild(published.count === rendered.length, "builders.json count mismatch");
@@ -345,9 +275,8 @@ export function runRenderChecks({ distDir, rendered, interopSorted }) {
 
   // The 404 page really is one, and it hands the reader every page.
   const notFoundHtml = pages["404.html"];
-  assertBuild(notFoundHtml.includes("404"), "dist/404.html is not a not-found page");
-  for (const path of ['href="/"', 'href="/builders/"', 'href="/conformance/"', 'href="/standards/"']) {
-    assertBuild(notFoundHtml.includes(path), `dist/404.html must link ${path.slice(6, -1)}`);
+  assertBuild(notFoundHtml.includes("NOT FOUND"), "dist/404.html is not a not-found page");
+  for (const path of ["/", "/builders/", "/conformance/", "/standards/", "/rails/", "/use-cases/"]) {
+    assertBuild(notFoundHtml.includes(`href="${path}"`), `dist/404.html must link ${path}`);
   }
-
 }

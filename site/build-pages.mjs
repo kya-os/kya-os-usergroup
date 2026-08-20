@@ -6,30 +6,31 @@
  *
  * Validates both registries first (via the shared core in scripts/validate.mjs;
  * refuses to render on any error), then emits to dist/ (gitignored):
- *   - index.html               calm landing: hero, mission line, three nav
- *                              cards with live counts, the add-project CTA
- *   - builders/index.html      the directory: kind-grouped entries, templates,
- *                              examples, and the three submission paths
- *   - conformance/index.html   the program: explainer, suite pin, 4-step
- *                              strip, and the implementations table
+ *   - index.html               the overview: hero, live stats strip, THE
+ *                              RAILS panel, four nav cards
+ *   - builders/index.html      the directory: filterable registry rows, the
+ *                              on-ramps, and the three submission paths
+ *   - conformance/index.html   the program: suite pin, pipeline, badge
+ *                              anatomy, levels, states, implementations
  *   - standards/index.html     the rails matrix grouped by category
- *   - 404.html                 real not-found page linking the four pages
+ *   - rails/index.html         the protocol rails diagram page
+ *   - use-cases/index.html     the REVOKED flagship and the recipe grid
+ *   - 404.html                 real not-found page linking every page
  *   - builders.json            machine-readable merged builder registry (open CORS)
  *   - interop.json             machine-readable standards-rail registry (open CORS)
  *   - fonts/                   byte copies of site/assets/fonts/ (the two
  *                              self-hosted variable woff2 faces + their OFL
  *                              licenses)
- *   - aliencn.css, hub.css     byte copies of site/assets/css/: the
- *                              @kya-os/aliencn design language (token layer
- *                              + component subset) and the hub page layer -
- *                              ALL page CSS, served same-origin so style-src
- *                              stays 'self'
- *   - ui/                      byte copies of site/assets/ui/**\/*.js: the
- *                              @kya-os/aliencn motion family under ui/motion/
- *                              (CLI-installed per aliencn.json, sha256-pinned
- *                              in lib/assertions.mjs, re-verifiable with
- *                              `aliencn diff motion`) plus the hub's own
- *                              hub-init.js entry module
+ *   - img/                     byte copies of site/assets/img/ (the KYA
+ *                              logo marks, white for dark / black for light)
+ *   - tokens.css, hub.css      comment-stripped copies of site/assets/css/:
+ *                              the Builders Site design-language token layer
+ *                              and the hub page layer - ALL page CSS, served
+ *                              same-origin so style-src stays 'self'
+ *   - ui/                      byte copies of site/assets/ui/*.js: the
+ *                              page-fx motion module (Title decrypt,
+ *                              GlitchText, ScrollSkew, FadeTransition) and
+ *                              the copy-prompt module
  *   - _headers                 security headers + content types; the CSP pins
  *                              the one inline script by sha256 (computed here
  *                              from the exact THEME_SCRIPT bytes), covers the
@@ -51,25 +52,28 @@
  * paths (it disables the SPA fallback). Nothing to fail open.
  *
  * Each lib/ module owns one concern:
- *   lib/constants.mjs   canonical URLs, the pinned suite, the prefilled add link
+ *   lib/constants.mjs   canonical URLs, the pinned suite, the prefilled add
+ *                       link, the copy-to-agent prompts
  *   lib/data.mjs        registry loading + shaping, machine-readable artifacts
- *   lib/html.mjs        escaping, chips, cards, the shared shell + nav, the
- *                       404 page (conformance honesty rules enforced there)
- *   lib/sections.mjs    the section renderers (the page bodies)
+ *   lib/html.mjs        escaping, chips, the prompt block, the shared shell
+ *                       + nav, the 404 page (honesty rules enforced there)
+ *   lib/waveform.mjs    build-time seeded proof waveforms as static SVG
+ *   lib/sections.mjs    the overview and directory page bodies
+ *   lib/program.mjs     the conformance page body
+ *   lib/rails.mjs       the standards, rails, and use-cases page bodies
  *   lib/pages.mjs       page assembly: hero + sections per page, per-page meta
- *   lib/theme.mjs       the inline-only pieces: THEME_SCRIPT, the site's one
- *                       inline script (theme toggle + js-anim gate), and the
- *                       theme-color meta pair; all CSS lives in
- *                       site/assets/css/ (tokens in aliencn.css, page rules
- *                       and the js-anim-gated motion rules in hub.css)
+ *   lib/theme.mjs       the inline-only pieces: THEME_SCRIPT (theme toggle +
+ *                       js-anim gate + page-fx failsafe) and the theme-color
+ *                       meta pair; all CSS lives in site/assets/css/
  *   lib/assertions.mjs  post-build render checks, run per page: completeness,
- *                       honesty, theme integrity, and the CSP script hash
+ *                       honesty, theme integrity, prompt parity, and the CSP
+ *                       script hash
  *
  * Output is deterministic: a pure function of registry/**.json, fixed
  * strings, and committed binaries/modules (entries sorted by slug, no build
- * timestamps; the script hash is sha256 of a constant; fonts and ui modules
- * are byte copies), so re-running on the same commit yields byte-identical
- * dist/.
+ * timestamps; waveforms are seeded, never random; the script hash is sha256
+ * of a constant; fonts, marks, and ui modules are byte copies), so
+ * re-running on the same commit yields byte-identical dist/.
  *
  * Run: node site/build-pages.mjs   (or: npm run build)
  */
@@ -80,13 +84,21 @@ import { fileURLToPath } from "node:url";
 import { runRenderChecks } from "./lib/assertions.mjs";
 import { loadSiteData, renderBadgeAllowlist, renderBuildersJson, renderInteropJson } from "./lib/data.mjs";
 import { render404Html } from "./lib/html.mjs";
-import { renderBuildersHtml, renderConformanceHtml, renderLandingHtml, renderStandardsHtml } from "./lib/pages.mjs";
+import {
+  renderBuildersHtml,
+  renderConformanceHtml,
+  renderLandingHtml,
+  renderRailsHtml,
+  renderStandardsHtml,
+  renderUseCasesHtml,
+} from "./lib/pages.mjs";
 import { THEME_SCRIPT } from "./lib/theme.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "..");
 const distDir = join(repoRoot, "dist");
 const fontsSrcDir = join(here, "assets", "fonts");
+const imgSrcDir = join(here, "assets", "img");
 const cssSrcDir = join(here, "assets", "css");
 const uiSrcDir = join(here, "assets", "ui");
 
@@ -98,15 +110,15 @@ function renderHeaders() {
   // and pages can never drift - plus 'self' for the same-origin /ui/ ES
   // modules. style-src is 'self': all CSS ships as the two same-origin
   // stylesheets (no <style> blocks, no style attributes - asserted).
-  // font-src 'self' covers the self-hosted woff2 files; img-src data: covers
-  // the grain overlay's inline SVG. Nothing else loosens.
+  // font-src 'self' covers the self-hosted woff2 files; img-src 'self'
+  // covers the logo marks. Nothing else loosens.
   const sha256 = (script) => createHash("sha256").update(script, "utf8").digest("base64");
   return [
     "/*",
     "  X-Content-Type-Options: nosniff",
     "  X-Frame-Options: DENY",
     "  Referrer-Policy: strict-origin-when-cross-origin",
-    `  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-${sha256(THEME_SCRIPT)}'; style-src 'self'; img-src 'self' data:; font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
+    `  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-${sha256(THEME_SCRIPT)}'; style-src 'self'; img-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
     "/builders.json",
     "  Content-Type: application/json; charset=utf-8",
     "  Access-Control-Allow-Origin: *",
@@ -132,7 +144,7 @@ if (errors.length > 0) {
 
 rmSync(distDir, { recursive: true, force: true });
 mkdirSync(distDir, { recursive: true });
-for (const page of ["builders", "conformance", "standards"]) {
+for (const page of ["builders", "conformance", "standards", "rails", "use-cases"]) {
   mkdirSync(join(distDir, page), { recursive: true });
 }
 
@@ -140,37 +152,42 @@ writeFileSync(join(distDir, "index.html"), renderLandingHtml({ rendered, interop
 writeFileSync(join(distDir, "builders", "index.html"), renderBuildersHtml({ rendered }));
 writeFileSync(join(distDir, "conformance", "index.html"), renderConformanceHtml({ rendered }));
 writeFileSync(join(distDir, "standards", "index.html"), renderStandardsHtml({ interopSorted }));
+writeFileSync(join(distDir, "rails", "index.html"), renderRailsHtml({ interopSorted }));
+writeFileSync(join(distDir, "use-cases", "index.html"), renderUseCasesHtml());
 writeFileSync(join(distDir, "404.html"), render404Html());
 writeFileSync(join(distDir, "builders.json"), renderBuildersJson(rendered));
 writeFileSync(join(distDir, "interop.json"), renderInteropJson(interopSorted));
 writeFileSync(join(distDir, "_headers"), renderHeaders());
 
-// Fonts: deterministic byte copies of the committed binaries (the two
-// variable woff2 faces + their OFL licenses), sorted for a stable order.
-mkdirSync(join(distDir, "fonts"), { recursive: true });
-for (const name of readdirSync(fontsSrcDir).sort()) {
-  copyFileSync(join(fontsSrcDir, name), join(distDir, "fonts", name));
+// Fonts and logo marks: deterministic byte copies of the committed binaries,
+// sorted for a stable order.
+for (const [srcDir, outName] of [
+  [fontsSrcDir, "fonts"],
+  [imgSrcDir, "img"],
+]) {
+  mkdirSync(join(distDir, outName), { recursive: true });
+  for (const name of readdirSync(srcDir).sort()) {
+    copyFileSync(join(srcDir, name), join(distDir, outName, name));
+  }
 }
 
-// Stylesheets: site/assets/css/ emitted to the dist root (/aliencn.css -
-// the @kya-os/aliencn token layer + component subset - and /hub.css - the
-// hub page layer). Real same-origin files, which is what keeps style-src at
-// 'self'. The emitted copies are a deterministic pure function of the
-// committed sources: comments (provenance headers stay in the repo) and
-// leading indentation stripped, nothing else - assertions recompute the same
-// transform independently and verify the dist bytes against it.
+// Stylesheets: site/assets/css/ emitted to the dist root (/tokens.css - the
+// design-language token layer - and /hub.css - the page layer). Real
+// same-origin files, which is what keeps style-src at 'self'. The emitted
+// copies are a deterministic pure function of the committed sources:
+// comments (provenance headers stay in the repo) and leading indentation
+// stripped, nothing else - assertions recompute the same transform
+// independently and verify the dist bytes against it.
 const stripCss = (css) =>
   css.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\n[ \t]+/g, "\n").replace(/\n{2,}/g, "\n").replace(/^\n/, "");
 for (const name of readdirSync(cssSrcDir).sort()) {
   writeFileSync(join(distDir, name), stripCss(readFileSync(join(cssSrcDir, name), "utf8")));
 }
 
-// Motion modules: deterministic byte copies of site/assets/ui/**/*.js - the
-// @kya-os/aliencn motion family under ui/motion/ (installed by the aliencn
-// CLI at the paths recorded in aliencn.json; `aliencn diff motion` is the
-// drift gate) plus the hub's own hub-init.js entry module. Assertions verify
-// byte equality and the pinned registry hashes so drift fails the build.
-mkdirSync(join(distDir, "ui", "motion"), { recursive: true });
+// Client modules: deterministic byte copies of site/assets/ui/*.js - the
+// page-fx motion module and the copy-prompt module, both same-origin under
+// script-src 'self'. Assertions verify byte equality and the guard lines.
+mkdirSync(join(distDir, "ui"), { recursive: true });
 for (const entry of readdirSync(uiSrcDir, { recursive: true }).map(String).sort()) {
   if (entry.endsWith(".js")) copyFileSync(join(uiSrcDir, entry), join(distDir, "ui", entry));
 }
@@ -186,5 +203,5 @@ writeFileSync(join(badgeDir, "generated-allowlist.mjs"), renderBadgeAllowlist(re
 runRenderChecks({ distDir, rendered, interopSorted });
 
 console.log(
-  `Built Pages artifact: ${rendered.length} entr${rendered.length === 1 ? "y" : "ies"}, ${interopSorted.length} standards rails -> dist/ (4 pages, static + one hashed inline script + aliencn motion modules and stylesheets, self-hosted fonts, real 404.html, no worker)`,
+  `Built Pages artifact: ${rendered.length} entr${rendered.length === 1 ? "y" : "ies"}, ${interopSorted.length} standards rails -> dist/ (6 pages, static + one hashed inline script + page-fx/copy-prompt modules and stylesheets, build-time waveforms, self-hosted fonts, real 404.html, no worker)`,
 );

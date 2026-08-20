@@ -1,7 +1,8 @@
 /**
- * Shared HTML primitives for the site build: escaping, the chip and card
- * helpers, the shared page shell, and the 404 page. All CSS (tokens and
- * rules, light and dark) lives in lib/theme.mjs.
+ * Shared HTML primitives for the site build: escaping, the honesty chips,
+ * the copy-to-agent prompt block, the shared page shell (fixed nav + footer,
+ * per the Builders Site design handoff), and the 404 page. All CSS lives in
+ * site/assets/css/ (tokens.css + hub.css).
  *
  * CONFORMANCE HONESTY RULES are enforced here at render time (and asserted
  * against the finished artifact in lib/assertions.mjs):
@@ -11,8 +12,7 @@
  *     in-verification is amber, self-reported is grey
  *   - the word "certified" appears nowhere
  */
-import { ADD_PROJECT_URL, DIF_URL, MCP_REPO_URL, REPO_URL, SITE_URL, TITLE } from "./constants.mjs";
-import { conformanceLabel, conformanceLevelUrl } from "./data.mjs";
+import { DIF_URL, MCP_REPO_URL, PROMPTS, REPO_URL, SITE_URL, TITLE } from "./constants.mjs";
 import { THEME_COLORS, THEME_SCRIPT } from "./theme.mjs";
 
 /** Minimal HTML entity escaping for interpolated registry data. */
@@ -28,89 +28,80 @@ export function esc(value) {
  *
  * Non-verified chips follow the same pattern one tier down: when the entry
  * carries evidenceUrl (the public submission issue or verification thread),
- * the chip links it, so the middle credibility tiers are auditable on-page
- * instead of dead-ending at the claim text.
+ * the chip links it, so the middle credibility tiers are auditable on-page.
+ * Wording is fixed (verified / in verification / self-reported); the design
+ * swap restyled the chips, never the words.
  */
-export function conformanceStatusChip(conformance) {
+export function conformanceStatusChip(conformance, { link = true } = {}) {
   if (conformance.status === "verified") {
-    return `<a class="chip st-verified aliencn-badge" href="${esc(conformance.attestationUrl)}">verified</a>`;
+    const inner = `<span class="chip st-verified">&check; verified</span>`;
+    return link ? `<a class="chip-link" href="${esc(conformance.attestationUrl)}">${inner}</a>` : inner;
   }
-  const label = conformance.status === "in-verification" ? "in verification" : "self-reported";
-  const cls = conformance.status === "in-verification" ? "st-inverif" : "st-self";
-  if (conformance.evidenceUrl) {
-    return `<a class="chip ${cls} aliencn-badge" href="${esc(conformance.evidenceUrl)}">${label}</a>`;
+  const [label, cls, mark] =
+    conformance.status === "in-verification" ? ["in verification", "st-inverif", "&#9676;"] : ["self-reported", "st-self", "&middot;"];
+  const inner = `<span class="chip ${cls}">${mark} ${label}</span>`;
+  if (link && conformance.evidenceUrl) {
+    return `<a class="chip-link" href="${esc(conformance.evidenceUrl)}">${inner}</a>`;
   }
-  return `<span class="chip ${cls} aliencn-badge">${label}</span>`;
+  return inner;
 }
 
 export function interopStatusChip(status) {
   const cls = { shipping: "st-shipping", specified: "st-specified", planned: "st-planned", exploring: "st-exploring", none: "st-none" }[status];
-  return `<span class="chip ${cls} aliencn-badge">${esc(status)}</span>`;
+  return `<span class="chip ${cls}">${esc(status)}</span>`;
 }
-
-function tagRow(entry) {
-  const buildsOn = (entry.buildsOn ?? []).map((repo) => `<code class="krepo">${esc(repo)}</code>`).join(" ");
-  const standards = (entry.standards ?? [])
-    .map((slug) => `<a class="stdtag" href="/standards/#std-${esc(slug)}">${esc(slug)}</a>`)
-    .join(" ");
-  const parts = [];
-  if (buildsOn) parts.push(`<span class="builds-on">builds on ${buildsOn}</span>`);
-  if (standards) parts.push(`<span class="builds-on">standards ${standards}</span>`);
-  return parts.length > 0 ? `\n            ${parts.join("\n            ")}` : "";
-}
-
-export function entryCard(entry) {
-  const conformance = entry.conformance
-    ? `\n          <div class="conf-line"><a class="chip conf" href="${esc(conformanceLevelUrl(entry.conformance))}">${esc(conformanceLabel(entry.conformance))}</a> ${conformanceStatusChip(entry.conformance)}</div>`
-    : "";
-  const deploys = (entry.deploy ?? [])
-    .map((target) => `<a class="deploy-btn aliencn-button aliencn-button--sm" href="${esc(target.url)}">Deploy on ${esc(platformName(target.platform))}</a>`)
-    .join("\n            ");
-  const repoLink = entry.repo && entry.repo !== entry.homepage ? `\n            <a href="${esc(entry.repo)}">repo</a>` : "";
-  return `        <article class="card aliencn-card" id="${esc(entry.slug)}">
-          <div class="card-head">
-            <h3><a href="${esc(entry.homepage)}">${esc(entry.name)}</a></h3>
-            <span class="chip kind aliencn-badge">${esc(entry.kind)}</span>
-          </div>
-          <p class="desc">${esc(entry.description)}</p>${conformance}
-          <div class="links">
-            <a href="${esc(entry.homepage)}">homepage</a>${repoLink}${tagRow(entry)}
-          </div>${deploys ? `\n          <div class="deploys">\n            ${deploys}\n          </div>` : ""}
-        </article>`;
-}
-
-function platformName(platform) {
-  return { vercel: "Vercel", railway: "Railway", cloudflare: "Cloudflare", docker: "Docker", other: "your platform" }[platform];
-}
-
-export function addCta(label) {
-  return `<p class="add-cta"><a href="${esc(ADD_PROJECT_URL)}">[ ${esc(label)} -&gt; ]</a></p>`;
-}
-
-// The site's page set, in nav order. Root-absolute hrefs (never relative):
-// both Cloudflare Pages and a local `python3 -m http.server` on dist/ serve
-// from the root, so the links hold from any subfolder page.
-export const NAV_PAGES = [
-  ["/builders/", "Builders"],
-  ["/conformance/", "Conformance"],
-  ["/standards/", "Standards"],
-];
 
 /**
- * The shared shell: head (meta, the two same-origin stylesheets - the
- * @kya-os/aliencn design language plus the hub page layer, which is what
- * lets the CSP keep style-src at 'self' - the ONE inline script: theme
- * toggle + js-anim gate, CSP-pinned by hash, and the hub-init module tag,
- * covered by script-src 'self'), the top nav with the current page
- * highlighted, and the footer. `current` is the page's root-absolute path
- * ("/builders/"); null (the 404 page) highlights nothing. Both scripts sit
- * in <head>: the inline script's pre-paint halves must run before first
- * render, and the module is deferred by nature.
+ * A copy-to-agent prompt block: the bordered mono button (hidden until
+ * /ui/copy-prompt.js reveals and wires it - no JS, no dead button) plus the
+ * always-reachable <details> fallback carrying the same text. The button
+ * copies FROM the fallback's <pre>, so the two can never disagree; the
+ * assertion in lib/assertions.mjs re-checks the rendered pair anyway.
+ */
+export function promptBlock(promptId) {
+  const prompt = PROMPTS.find((p) => p.id === promptId);
+  return `<div class="agent-prompt">
+        <button type="button" class="copy-btn" data-copy-target="${prompt.id}" hidden>[ copy prompt for your agent ]</button>
+        <details class="prompt-fallback"><summary>or copy manually</summary><pre id="${prompt.id}">${esc(prompt.text)}</pre></details>
+      </div>`;
+}
+
+// The site's page set, in nav order (label, root-absolute href). Both
+// Cloudflare Pages and a local `python3 -m http.server` on dist/ serve from
+// the root, so root-absolute links hold from any subfolder page.
+export const NAV_PAGES = [
+  ["/", "overview"],
+  ["/builders/", "builders"],
+  ["/conformance/", "conformance"],
+  ["/standards/", "standards"],
+  ["/rails/", "rails"],
+  ["/use-cases/", "use-cases"],
+];
+
+/** The theme-swapping logo mark pair (white mark in dark, black in light). */
+function logoMark(cls = "") {
+  return (
+    `<img class="mark mark-white${cls}" src="/img/kya-mark-white.svg" alt="" width="16" height="18" />` +
+    `<img class="mark mark-black${cls}" src="/img/kya-mark-black.svg" alt="" width="16" height="18" />`
+  );
+}
+
+/**
+ * The shared shell: head (meta, the two same-origin stylesheets, the ONE
+ * inline script - theme toggle + js-anim gate + page-fx failsafe, CSP-pinned
+ * by hash - and the two module tags, covered by script-src 'self'), the
+ * fixed top nav with the current page in white, and the footer. `current` is
+ * the page's root-absolute path ("/builders/"); null (the 404 page)
+ * highlights nothing. Scripts sit in <head>: the inline script's pre-paint
+ * halves must run before first render, and modules are deferred by nature.
  */
 export function pageShell({ title, headExtra = "", body, current = null }) {
-  const navLinks = NAV_PAGES.map(
-    ([href, label]) => `\n      <a href="${href}"${href === current ? ' class="active" aria-current="page"' : ""}>${label}</a>`,
+  const navLinks = NAV_PAGES.map(([href, label]) =>
+    href === current
+      ? `\n    <a href="${href}" data-glitch aria-current="page" class="nav-on">${label}</a>`
+      : `\n    <a href="${href}" data-glitch>${label}</a>`,
   ).join("");
+  const addHref = current === "/builders/" ? "#submit" : "/builders/#submit";
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -120,47 +111,52 @@ export function pageShell({ title, headExtra = "", body, current = null }) {
 <meta name="color-scheme" content="dark light" />
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="${THEME_COLORS.light}" />
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="${THEME_COLORS.dark}" />
-${headExtra}<link rel="stylesheet" href="/aliencn.css" />
+${headExtra}<link rel="stylesheet" href="/tokens.css" />
 <link rel="stylesheet" href="/hub.css" />
 <script>${THEME_SCRIPT}</script>
-<script type="module" src="/ui/hub-init.js"></script>
+<script type="module" src="/ui/page-fx.js"></script>
+<script type="module" src="/ui/copy-prompt.js"></script>
 </head>
 <body>
-  <div class="aliencn-grain" aria-hidden="true"></div>
-  <header class="bar"><div class="wrap">
-    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">K</span><span class="brand-name">KYA-OS</span><span class="sub"> / community</span></a>
-    <nav>${navLinks}
-      <button id="theme-toggle" type="button" class="theme-btn" aria-label="Theme: system. Click to change.">auto</button>
-      <a class="nav-cta aliencn-button aliencn-button--primary aliencn-button--sm" href="${esc(ADD_PROJECT_URL)}">Add project -&gt;</a>
-    </nav>
-  </div></header>
+<div class="page">
+<nav class="topnav">
+  <a class="brand" href="/">${logoMark()}<span class="brand-name">KYA-OS</span><span class="brand-sub"> / builders</span></a>
+  <div class="nav-links">${navLinks}
+    <button id="theme-toggle" type="button" class="theme-btn" aria-label="Theme: system. Click to change.">[ auto ]</button>
+    <a class="nav-cta" href="${addHref}">[ add project -&gt; ]</a>
+  </div>
+</nav>
+<main>
 ${body}
-  <footer><div class="wrap">
-    <span>KYA-OS Usergroup &middot; <span class="mono">builders.kya-os.org</span></span>
-    <a href="${SITE_URL}">Protocol</a>
-    <a href="${MCP_REPO_URL}">Spec repo</a>
-    <a href="${DIF_URL}">DIF</a>
-    <a href="${REPO_URL}">GitHub</a>
-    <a href="/builders.json">builders.json</a>
-    <a href="/interop.json">interop.json</a>
-    <a href="${REPO_URL}/blob/main/CONTRIBUTING.md">Get listed</a>
-  </div></footer>
+  <footer>
+    <span class="foot-brand">${logoMark(" mark-sm")}KYA-OS Usergroup &middot; builders.kya-os.org</span>
+    <div class="foot-links">
+      <a href="${SITE_URL}">protocol</a>
+      <a href="${MCP_REPO_URL}">spec repo</a>
+      <a href="${DIF_URL}">DIF</a>
+      <a href="${REPO_URL}">GitHub</a>
+      <a href="/builders.json">builders.json</a>
+      <a href="/interop.json">interop.json</a>
+      <a href="/builders/#submit">get listed</a>
+    </div>
+  </footer>
+</main>
+</div>
 </body>
 </html>
 `;
 }
 
 export function render404Html() {
-  const body = `
-  <article class="wrap">
-    <section class="nf">
-      <div class="code mono">404</div>
-      <h1>Not found</h1>
-      <p>No page or registry resource matches this path.</p>
-      <p><a class="back" href="/">&larr; The community hub</a></p>
-      <p class="nf-pages mono"><a href="/builders/">/builders/</a> &middot; <a href="/conformance/">/conformance/</a> &middot; <a href="/standards/">/standards/</a></p>
-    </section>
-  </article>`;
+  const body = `  <header class="hero fx">
+    <div class="kicker">KYA-OS COMMUNITY</div>
+    <h1 data-title-reveal>NOT FOUND</h1>
+    <p class="lede">No page or registry resource matches this path.</p>
+  </header>
+  <section class="fx fxd-15">
+    <p class="nf-back"><a href="/">&lt;- back to the overview</a></p>
+    <p class="nf-pages">${NAV_PAGES.map(([href]) => `<a href="${href}">${href}</a>`).join(" &middot; ")}</p>
+  </section>`;
   return pageShell({
     title: `Not found · ${TITLE}`,
     headExtra: '<meta name="robots" content="noindex" />\n',

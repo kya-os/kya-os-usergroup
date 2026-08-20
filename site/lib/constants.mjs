@@ -42,3 +42,27 @@ const ENTRY_TEMPLATE = {
 export const ADD_PROJECT_URL = `${REPO_URL}/new/main/registry/builders?filename=your-project.json&value=${encodeURIComponent(
   JSON.stringify(ENTRY_TEMPLATE, null, 2) + "\n",
 )}`;
+
+// The copy-to-agent prompts: curated onboarding prompts a visitor hands to
+// their coding agent. Each renders as BOTH the copy button's payload and its
+// no-JS <details> fallback (the button copies from the fallback's DOM node,
+// and lib/assertions.mjs asserts the rendered pair carries exactly these
+// bytes). The conformance prompt interpolates the pinned suite so the prompt
+// can never drift from SUITE.
+export const PROMPTS = [
+  {
+    id: "prompt-get-listed",
+    text:
+      "Add my project to the KYA-OS builders registry: read https://github.com/kya-os/kya-os-usergroup/blob/main/registry/builders/example-builder.json and CONTRIBUTING.md, create registry/builders/<my-slug>.json describing MY project (ask me for name, homepage, repo, kind, what it builds on), validate it against registry/schema/builder.schema.json, then open a PR to kya-os/kya-os-usergroup titled 'registry: add <my-slug>'.",
+  },
+  {
+    id: "prompt-prove-conformance",
+    text:
+      `Prove my KYA-OS implementation conformant: clone https://github.com/kya-os/kya-os-usergroup and follow conformance/starter/README.md - fetch the pinned vector suite, run my implementation against the ${SUITE.vectors} vectors (suite ${SUITE.version}, vectorSetHash ${SUITE.vectorSetHash}), generate the claim JSON with scripts/make-claim.mjs, and open a conformance submission issue on decentralized-identity/kya-os-mcp with the claim.`,
+  },
+  {
+    id: "prompt-run-revoked",
+    text:
+      "Show me KYA-OS in action: clone https://github.com/decentralized-identity/kya-os-mcp and run the examples/revoked demo (the on-chain revocation kill switch), then explain how the per-request proof, delegation chain, and status list interact, and scaffold a minimal verifier for my stack using @kya-os/mcp.",
+  },
+];

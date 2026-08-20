@@ -1,24 +1,18 @@
 /**
- * Page assembly for the community hub: one renderer per page, each composing
- * a page hero + section bodies from lib/sections.mjs into the shared shell
- * from lib/html.mjs. Split out of lib/sections.mjs when the site went from
- * one long page to four (landing / builders / conformance / standards) so
- * each module stays under the LOC cap and owns one concern.
+ * Page assembly for the community hub: one renderer per page, composing the
+ * page hero + section bodies into the shared shell from lib/html.mjs. Six
+ * pages, per the Builders Site design handoff: the overview (home), the
+ * builders directory, conformance, the standards matrix, the protocol rails
+ * diagram, and use-cases.
  *
  * URL model: folder-style pages (/builders/ -> builders/index.html) so
  * Cloudflare Pages serves them clean; every internal link is root-absolute.
  */
-import { ADD_PROJECT_URL, DESCRIPTION, ORIGIN, TITLE } from "./constants.mjs";
-import { withConformance } from "./data.mjs";
+import { DESCRIPTION, ORIGIN, TITLE } from "./constants.mjs";
 import { esc, pageShell } from "./html.mjs";
-import {
-  sectionBuilders,
-  sectionConformance,
-  sectionExamples,
-  sectionStandards,
-  sectionSubmit,
-  sectionTemplates,
-} from "./sections.mjs";
+import { sectionsConformance } from "./program.mjs";
+import { sectionsRails, sectionsStandards, sectionsUseCases } from "./rails.mjs";
+import { sectionDirectory, sectionsHome, sectionStartHere, sectionSubmit } from "./sections.mjs";
 
 function metaHead({ title, description, path }) {
   return `<meta name="description" content="${esc(description)}" />
@@ -32,142 +26,101 @@ function metaHead({ title, description, path }) {
 `;
 }
 
-/** Live-count readout for the eyebrow rows, catalog-grammar style ("DIRECTORY / 005"). */
-export function heroReadout(label, count) {
-  return `${label} / ${String(count).padStart(3, "0")}`;
+// Subpage hero: mono kicker, mono h1 (decrypt-revealed), wide lede. The lede
+// is trusted literal HTML authored below, never registry data.
+function pageHero({ title, lede }) {
+  return `  <header class="hero fx">
+    <div class="kicker">KYA-OS COMMUNITY</div>
+    <h1 data-title-reveal>${esc(title)}</h1>
+    <p class="lede">${lede}</p>
+  </header>`;
 }
 
-// `lede` is trusted literal HTML authored below (never registry data);
-// `readout` is the page's live-count readout from heroReadout().
-function pageHero({ title, lede, readout }) {
-  return `    <section class="hero page-hero">
-      <span class="hero-cross" aria-hidden="true">+</span>
-      <div class="eyebrow aliencn-eyebrow"><span>KYA-OS community</span><span>${esc(readout)}</span></div>
-      <h1>${esc(title)}</h1>
-      <p class="lede">${lede}</p>
-    </section>`;
-}
-
-/** A content page: hero + sections in the shared shell, with the page CSS appended. */
 function contentPage({ title, description, path, hero, sections }) {
-  const body = `
-  <article class="wrap">
-${hero}
-    <main>
-${sections.join("\n")}
-    </main>
-  </article>`;
-  return pageShell({ title, headExtra: metaHead({ title, description, path }), body, current: path });
-}
-
-function navCard({ href, title, count, countLabel, desc, go }) {
-  return `        <a class="card aliencn-card nav-card" href="${href}">
-          <div class="card-head"><h3>${esc(title)}</h3><span class="stat"><b>${count}</b> ${esc(countLabel)}</span></div>
-          <p class="desc">${esc(desc)}</p>
-          <span class="go">${esc(go)} -&gt;</span>
-        </a>`;
-}
-
-/**
- * The landing page: short hero, one-line mission, three nav cards with live
- * counts. No tables. Entry choreography and page transitions come from the
- * shared /ui/hub-init.js module, like every other page.
- */
-export function renderLandingHtml({ rendered, interopSorted }) {
-  const verified = withConformance(rendered).filter((entry) => entry.conformance.status === "verified").length;
-  const cards = [
-    navCard({
-      href: "/builders/",
-      title: "Builders",
-      count: rendered.length,
-      countLabel: "listed",
-      desc: "The directory of who ships on KYA-OS, plus templates and examples to start from.",
-      go: "Browse the directory",
-    }),
-    navCard({
-      href: "/conformance/",
-      title: "Conformance",
-      count: verified,
-      countLabel: "verified",
-      desc: "Measured, not asserted: claims are re-run against the pinned vector suite.",
-      go: "See the program",
-    }),
-    navCard({
-      href: "/standards/",
-      title: "Standards",
-      count: interopSorted.length,
-      countLabel: "rails",
-      desc: "What KYA-OS provides, carries, and projects onto, with evidence per row.",
-      go: "Read the matrix",
-    }),
-  ].join("\n");
-
-  const body = `
-  <article class="wrap">
-    <section class="hero">
-      <span class="hero-cross" aria-hidden="true">+</span>
-      <div class="eyebrow aliencn-eyebrow"><span>Decentralized Identity Foundation</span><span>${esc(heroReadout("Registry", rendered.length))}</span></div>
-      <h1>KYA-OS community</h1>
-      <p class="lede">${esc(DESCRIPTION)}</p>
-      <div class="chips-row">
-        <a class="btn aliencn-button aliencn-button--primary" href="${esc(ADD_PROJECT_URL)}">Add your project -&gt;</a>
-      </div>
-    </section>
-    <main>
-      <section class="cards">
-${cards}
-      </section>
-    </main>
-  </article>`;
   return pageShell({
-    title: TITLE,
-    headExtra: metaHead({ title: TITLE, description: DESCRIPTION, path: "/" }),
-    body,
-    current: null,
+    title,
+    headExtra: metaHead({ title, description, path }),
+    body: [hero, ...sections].join("\n"),
+    current: path,
   });
 }
 
-/** The directory page: kind-grouped entries, templates, examples, and the three submission paths. */
+/** The overview: hero, live stats strip, THE RAILS panel, four nav cards. */
+export function renderLandingHtml({ rendered, interopSorted }) {
+  return pageShell({
+    title: TITLE,
+    headExtra: metaHead({ title: TITLE, description: DESCRIPTION, path: "/" }),
+    body: sectionsHome({ rendered, interopSorted }),
+    current: "/",
+  });
+}
+
+/** The directory: filterable registry rows, the on-ramps, and the submission paths. */
 export function renderBuildersHtml({ rendered }) {
   return contentPage({
     title: `Builders · ${TITLE}`,
     description: "Who builds on KYA-OS: implementations, services, integrations, templates, and examples - one PR to get listed.",
     path: "/builders/",
     hero: pageHero({
-      title: "Builders",
-      lede: "Who is building on KYA-OS - and the templates and examples to start from.",
-      readout: heroReadout("Directory", rendered.length),
+      title: "BUILDERS",
+      lede: "Everyone building on KYA-OS, in one registry — ordered by how much has been proven. Conformance here is measured against the pinned vector suite, never self-asserted.",
     }),
-    sections: [sectionBuilders(rendered), sectionTemplates(rendered), sectionExamples(rendered), sectionSubmit()],
+    sections: [sectionDirectory(rendered), sectionStartHere(), sectionSubmit()],
   });
 }
 
-/** The program page: explainer, suite pin, 4-step strip, and the implementations table. */
+/** The program: suite pin, pipeline, badge anatomy, levels, states, implementations. */
 export function renderConformanceHtml({ rendered }) {
   return contentPage({
     title: `Conformance · ${TITLE}`,
     description: "The KYA-OS conformance program: measured claims, independent re-runs, and the pinned vector suite.",
     path: "/conformance/",
     hero: pageHero({
-      title: "Conformance",
-      lede: "Measured, not asserted: the program attests exactly the bytes it re-runs against the published vector suite at your pinned commit.",
-      readout: heroReadout("Verified", withConformance(rendered).filter((entry) => entry.conformance.status === "verified").length),
+      title: "CONFORMANCE",
+      lede: "Measured, not asserted. The program attests exactly the bytes it re-runs against the published vector suite at your pinned commit.",
     }),
-    sections: [sectionConformance(rendered)],
+    sections: [sectionsConformance(rendered)],
   });
 }
 
-/** The rails page: the standards matrix grouped by category, with the correction path. */
+/** The standards matrix, grouped by category, every row grounded and dated. */
 export function renderStandardsHtml({ interopSorted }) {
   return contentPage({
     title: `Standards · ${TITLE}`,
     description: "The KYA-OS standards rails: what the protocol provides, carries, and projects onto, with evidence per row.",
     path: "/standards/",
     hero: pageHero({
-      title: "Standards rails",
-      lede: "What KYA-OS provides, carries, and projects onto - every row grounded and dated.",
-      readout: heroReadout("Rails", interopSorted.length),
+      title: "STANDARDS RAILS",
+      lede: "What KYA-OS provides, carries, and projects onto — every row grounded and dated. A status is never listed above what its evidence shows.",
     }),
-    sections: [sectionStandards(interopSorted)],
+    sections: [sectionsStandards(interopSorted)],
+  });
+}
+
+/** The rails diagram: one identity in, one signed proof, every surface out. */
+export function renderRailsHtml({ interopSorted }) {
+  return contentPage({
+    title: `Rails · ${TITLE}`,
+    description: "How KYA-OS sits underneath the protocols agents already speak: one signed proof, projected onto every registry, transport, and credential format.",
+    path: "/rails/",
+    hero: pageHero({
+      title: "THE RAILS",
+      lede: "KYA-OS sits underneath the protocols you already speak. An agent proves who it is once — the same signed proof then projects onto every registry, transport, and credential format downstream.",
+    }),
+    sections: [sectionsRails(interopSorted)],
+  });
+}
+
+/** Use-cases: the REVOKED flagship and the recipe grid. */
+export function renderUseCasesHtml() {
+  return contentPage({
+    title: `Use-cases · ${TITLE}`,
+    description: "What the KYA-OS primitives are for: the REVOKED on-chain kill switch, and the recipes waiting for a builder.",
+    path: "/use-cases/",
+    hero: pageHero({
+      title: "USE-CASES",
+      lede: "What the primitives are for. One shipping flagship, and the recipes waiting for a builder — each maps directly onto primitives you can run today.",
+    }),
+    sections: [sectionsUseCases()],
   });
 }
