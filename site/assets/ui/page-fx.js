@@ -46,15 +46,27 @@ export class Title {
     this.init();
   }
   init() {
+    // Assistive tech reads the real text via the label; the animated letter
+    // spans (glitch glyphs included) are decorative and hidden from it.
+    this.element.setAttribute("aria-label", this.originalText);
     this.element.textContent = "";
     this.originalText.split("").forEach((char) => {
       const span = document.createElement("span");
       span.className = "title-letter";
+      span.setAttribute("aria-hidden", "true");
       span.dataset.char = char;
       span.textContent = char === " " ? "\u00A0" : char;
       span.style.opacity = "0";
       this.element.appendChild(span);
       this.letters.push(span);
+    });
+  }
+  restore() {
+    this.element.style.visibility = "visible";
+    this.letters.forEach((span) => {
+      span.textContent = span.dataset.char === " " ? "\u00A0" : span.dataset.char;
+      span.style.opacity = "1";
+      span.classList.remove("glitching");
     });
   }
   async animateIn() {
@@ -189,6 +201,7 @@ export async function initPageFx() {
   new FadeTransition();
   const titleEl = document.querySelector("[data-title-reveal]");
   const title = titleEl ? new Title(titleEl, { revealDelay: 0, letterDelay: 30, glitchIterations: 3 }) : null;
+  window.addEventListener("pageshow", (e) => { if (e.persisted && title) title.restore(); });
   await wait(50);
   document.querySelectorAll(".fx").forEach((el) => { el.style.animationPlayState = "running"; });
   await wait(200);
