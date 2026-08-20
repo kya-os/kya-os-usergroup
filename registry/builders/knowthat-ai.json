@@ -1,0 +1,8 @@
+{
+  "name": "KnowThat.ai",
+  "slug": "knowthat-ai",
+  "description": "An agent-identity registry service operating KYA-OS attestation infrastructure.",
+  "homepage": "https://knowthat.ai",
+  "kind": "service",
+  "listedAt": "2026-08-20"
+}
