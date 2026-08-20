@@ -186,5 +186,5 @@ writeFileSync(join(badgeDir, "generated-allowlist.mjs"), renderBadgeAllowlist(re
 runRenderChecks({ distDir, rendered, interopSorted });
 
 console.log(
-  `Built Pages artifact: ${rendered.length} entr${rendered.length === 1 ? "y" : "ies"}, ${interopSorted.length} standards rails -> dist/ (4 pages, static + one hashed inline script + vendored motion modules, self-hosted fonts, real 404.html, no worker)`,
+  `Built Pages artifact: ${rendered.length} entr${rendered.length === 1 ? "y" : "ies"}, ${interopSorted.length} standards rails -> dist/ (4 pages, static + one hashed inline script + aliencn motion modules and stylesheets, self-hosted fonts, real 404.html, no worker)`,
 );
