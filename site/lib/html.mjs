@@ -97,12 +97,14 @@ export const NAV_PAGES = [
 ];
 
 /**
- * The shared shell: head (meta, style, THE inline theme script - the site's
- * only JS, CSP-pinned by hash), the top nav with the current page
- * highlighted, and the footer. `current` is the page's root-absolute path
- * ("/builders/"); null (the 404 page) highlights nothing.
+ * The shared shell: head (meta, style, the inline theme script - CSP-pinned
+ * by hash), the top nav with the current page highlighted, and the footer.
+ * `current` is the page's root-absolute path ("/builders/"); null (the 404
+ * page) highlights nothing. `animScript` (landing page only) emits a second
+ * hashed inline script right after the theme script, still in <head> so its
+ * pre-paint half runs before first render.
  */
-export function pageShell({ title, headExtra = "", body, current = null }) {
+export function pageShell({ title, headExtra = "", body, current = null, animScript = null }) {
   const navLinks = NAV_PAGES.map(
     ([href, label]) => `\n      <a href="${href}"${href === current ? ' class="active" aria-current="page"' : ""}>${label}</a>`,
   ).join("");
@@ -118,7 +120,7 @@ export function pageShell({ title, headExtra = "", body, current = null }) {
 ${headExtra}<style>${SHARED_CSS}
 </style>
 <script>${THEME_SCRIPT}</script>
-</head>
+${animScript ? `<script>${animScript}</script>\n` : ""}</head>
 <body>
   <header class="bar"><div class="wrap">
     <a class="brand" href="/">KYA-OS<span class="sub"> / community</span></a>

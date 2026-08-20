@@ -13,12 +13,21 @@
  *   drift apart. color-scheme follows the active tokens so form controls and
  *   scrollbars match.
  *
- * THEME_SCRIPT below is the site's ONLY client JS: the one deliberate
- * exception to the zero-JS rule. It is a fixed string, emitted byte-identical
- * into the <head> of every page, and allowed by a sha256 CSP hash that
- * build-pages.mjs computes from these exact bytes (assertions.mjs verifies
- * the match on every page). The first statement runs before paint, so a
- * stored preference never flashes the wrong theme.
+ * CLIENT JS: the site ships exactly two fixed inline scripts, each allowed by
+ * a sha256 CSP hash that build-pages.mjs computes from these exact bytes
+ * (assertions.mjs verifies the match against the emitted pages).
+ *   - THEME_SCRIPT: the toggle, emitted byte-identical into the <head> of
+ *     every page. Its first statement runs before paint, so a stored
+ *     preference never flashes the wrong theme.
+ *   - ANIM_SCRIPT: the landing hero choreography, emitted ONLY on
+ *     dist/index.html (see the block comment above it).
+ *
+ * FONTS: the two brand faces (Space Grotesk for UI, JetBrains Mono for
+ * identifiers) are self-hosted variable woff2 files, committed under
+ * site/assets/fonts/ with their OFL licenses and byte-copied to dist/fonts/.
+ * font-display: swap keeps the system fallbacks painting first; the stacks
+ * below keep the previous fallback chains intact, so tokens and contrast are
+ * untouched in both themes.
  *
  * PALETTE: the KYA-OS house pairs (light / dark). Where a raw status hue
  * cannot hold 4.5:1 as text on the light surface, a text-safe -ink variant
@@ -41,7 +50,7 @@ const LIGHT_TOKENS = `color-scheme:light;
     --grid:#e1e0d9; --baseline:#c3c2b7; --border:rgba(11,11,11,.10);
     --accent:#2a78d6; --accent-deep:#1c5cab;
     --good:#0ca30c; --good-ink:#006300; --warning:#fab219; --warning-ink:#8a5f00;
-    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace`;
+    --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace`;
 
 const DARK_TOKENS = `color-scheme:dark;
     --page:#0d0d0d; --surface:#1a1a19; --ink:#ffffff; --ink-2:#c3c2b7; --muted:#898781;
@@ -75,16 +84,19 @@ export const THEME_SCRIPT =
 /** Strip source indentation from an emitted sheet; one rule per line stays inspectable. */
 const strip = (css) => css.replace(/\n\s+/g, "\n");
 
-// The base look every page shares: the token blocks, reset, type, header,
-// and footer. Page-specific CSS (INDEX_CSS, NOT_FOUND_CSS) is appended into
-// the same <style> block by the page renderers.
+// The base look every page shares: the self-hosted brand faces, the token
+// blocks, reset, type, header, and footer. Page-specific CSS (INDEX_CSS,
+// NOT_FOUND_CSS, ANIM_CSS) is appended into the same <style> block by the
+// page renderers.
 export const SHARED_CSS = strip(`
+  @font-face{font-family:"Space Grotesk";font-style:normal;font-weight:300 700;font-display:swap;src:url(/fonts/space-grotesk-latin-wght.woff2) format("woff2")}
+  @font-face{font-family:"JetBrains Mono";font-style:normal;font-weight:100 800;font-display:swap;src:url(/fonts/jetbrains-mono-latin-wght.woff2) format("woff2")}
   :root{ ${LIGHT_TOKENS} }
   @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ ${DARK_TOKENS} } }
   :root[data-theme="dark"]{ ${DARK_TOKENS} }
   *{margin:0;padding:0;box-sizing:border-box}
   html{scroll-behavior:smooth}
-  body{font-family:system-ui,"Segoe UI",sans-serif;font-size:15.5px;background:var(--page);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased;position:relative;overflow-x:hidden;min-height:100vh}
+  body{font-family:"Space Grotesk",system-ui,"Segoe UI",sans-serif;font-size:15.5px;background:var(--page);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased;position:relative;overflow-x:hidden;min-height:100vh}
   body::before{content:"";position:fixed;inset:0;background-image:radial-gradient(circle,var(--grid) 1px,transparent 1px);background-size:40px 40px;opacity:.5;pointer-events:none;z-index:0}
   .wrap{max-width:980px;margin:0 auto;padding:0 40px;position:relative;z-index:1}
   a{color:inherit;text-decoration:none;text-underline-offset:3px}
@@ -213,3 +225,74 @@ export const NOT_FOUND_CSS = strip(`
   .nf .nf-pages{font-size:13px;margin-top:18px}
   .nf .nf-pages a{color:var(--ink-2);text-decoration:underline}
   .nf .nf-pages a:hover{color:var(--accent)}`);
+
+/**
+ * The landing hero choreography, emitted ONLY into dist/index.html (its own
+ * CSP hash rides next to the theme script's). Progressive enhancement in
+ * both directions:
+ *   - The pre-paint half adds html.js-anim UNLESS the user prefers reduced
+ *     motion. Every hidden initial state lives in ANIM_CSS under html.js-anim
+ *     selectors ONLY, so no script / blocked script / reduced motion means
+ *     everything is fully visible with zero animation.
+ *   - The h1 is real text in the HTML (SEO, no-JS); it is spanified only at
+ *     runtime, with the original text kept as the h1 aria-label so assistive
+ *     tech never reads letter soup.
+ * Sequence (~1.4s total): letter-by-letter decrypt on the hero h1 (3 glitch
+ * frames of random glyphs per letter, settling left to right on a 30ms
+ * stagger), then the mission line + CTA fade in, then the three nav cards
+ * stagger in 175ms apart. A bfcache restore drops html.js-anim and restores
+ * the h1 text, so a mid-flight back-navigation can never strand hidden or
+ * scrambled content. Keep this string byte-stable: its sha256 is pinned in
+ * the CSP.
+ */
+export const ANIM_SCRIPT =
+  '(function(){var d=document,r=d.documentElement;' +
+  'if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;' +
+  'r.classList.add("js-anim");' +
+  'var G="!<>-_\\\\/[]{}=+*^?#";' +
+  'function gl(){return G.charAt(Math.floor(Math.random()*G.length))}' +
+  'd.addEventListener("DOMContentLoaded",function(){' +
+  'var h=d.querySelector(".hero h1"),txt=h?h.textContent:"",end=140;' +
+  'if(h){' +
+  'h.setAttribute("aria-label",txt);' +
+  'h.textContent="";' +
+  'for(var i=0;i<txt.length;i++){(function(c,j){' +
+  'if(c===" "){h.appendChild(d.createTextNode(" "));return}' +
+  'var s=d.createElement("span");' +
+  's.className="tl";' +
+  's.setAttribute("aria-hidden","true");' +
+  's.textContent=c;' +
+  'h.appendChild(s);' +
+  'var t=j*30;' +
+  'setTimeout(function(){s.classList.add("on");s.textContent=gl()},t);' +
+  'setTimeout(function(){s.textContent=gl()},t+35);' +
+  'setTimeout(function(){s.textContent=gl()},t+70);' +
+  'setTimeout(function(){s.textContent=c},t+105);' +
+  '})(txt.charAt(i),i)}' +
+  'h.classList.add("live");' +
+  'end=(txt.length-1)*30+140' +
+  '}' +
+  'setTimeout(function(){var m=d.querySelector(".hero .lede"),b=d.querySelector(".hero .chips-row");if(m)m.classList.add("in");if(b)b.classList.add("in")},end);' +
+  'var cs=d.querySelectorAll(".nav-card");' +
+  'for(var k=0;k<cs.length;k++){(function(el,j){setTimeout(function(){el.classList.add("in")},end+150+j*175)})(cs[k],k)}' +
+  '});' +
+  'addEventListener("pageshow",function(e){' +
+  'if(!e.persisted)return;' +
+  'r.classList.remove("js-anim");' +
+  'var h=d.querySelector(".hero h1"),l=h?h.getAttribute("aria-label"):null;' +
+  'if(h&&l){h.textContent=l;h.removeAttribute("aria-label")}' +
+  '});' +
+  "})();";
+
+// The choreography's initial + revealed states, landing page only. RULE: any
+// hidden initial state (opacity:0) may exist ONLY under an html.js-anim
+// selector - lib/assertions.mjs fails the build otherwise. Without the class
+// (no JS, blocked JS, reduced motion) none of this applies and the page is
+// fully visible, static.
+export const ANIM_CSS = strip(`
+  html.js-anim .hero h1{opacity:0}
+  html.js-anim .hero h1.live{opacity:1}
+  html.js-anim .hero h1 .tl{opacity:0}
+  html.js-anim .hero h1 .tl.on{opacity:1}
+  html.js-anim .hero .lede,html.js-anim .hero .chips-row,html.js-anim .nav-card{opacity:0;transform:translateY(10px)}
+  html.js-anim .hero .lede.in,html.js-anim .hero .chips-row.in,html.js-anim .nav-card.in{opacity:1;transform:none;transition:opacity .4s ease,transform .4s ease}`);

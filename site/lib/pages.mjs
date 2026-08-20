@@ -19,7 +19,7 @@ import {
   sectionSubmit,
   sectionTemplates,
 } from "./sections.mjs";
-import { INDEX_CSS } from "./theme.mjs";
+import { ANIM_CSS, ANIM_SCRIPT, INDEX_CSS } from "./theme.mjs";
 
 function metaHead({ title, description, path }) {
   return `<meta name="description" content="${esc(description)}" />
@@ -65,7 +65,11 @@ function navCard({ href, title, count, countLabel, desc, go }) {
         </a>`;
 }
 
-/** The landing page: short hero, one-line mission, three nav cards with live counts. No tables. */
+/**
+ * The landing page: short hero, one-line mission, three nav cards with live
+ * counts. No tables. The only page that ships the hero choreography: the
+ * second hashed inline script (ANIM_SCRIPT) plus its html.js-anim-gated CSS.
+ */
 export function renderLandingHtml({ rendered, interopSorted }) {
   const verified = withConformance(rendered).filter((entry) => entry.conformance.status === "verified").length;
   const cards = [
@@ -116,7 +120,8 @@ ${cards}
     headExtra: metaHead({ title: TITLE, description: DESCRIPTION, path: "/" }),
     body,
     current: null,
-  }).replace("\n</style>", `${INDEX_CSS}\n</style>`);
+    animScript: ANIM_SCRIPT,
+  }).replace("\n</style>", `${INDEX_CSS}${ANIM_CSS}\n</style>`);
 }
 
 /** The directory page: kind-grouped entries, templates, examples, and the three submission paths. */

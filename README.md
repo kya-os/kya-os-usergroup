@@ -16,7 +16,9 @@ The site renders as four pages at **builders.kya-os.org**:
 | `/conformance/` | The conformance program, the suite pin, the four verification steps, and the implementations table with honest status chips | `registry/builders/` entries with a `conformance` claim |
 | `/standards/` | The standards rails: what KYA-OS provides, carries, and projects onto, with evidence | `registry/interop/` |
 
-Every page carries a light/dark toggle (system, light, dark) backed by the one inline script the site ships; its sha256 is pinned in the CSP, and a build assertion fails if script and policy ever drift.
+Every page carries a light/dark toggle (system, light, dark) backed by an inline theme script; the landing page adds a second inline script for its hero reveal, which respects `prefers-reduced-motion` and degrades to a fully visible static page without JavaScript.
+Both scripts are sha256-pinned in the CSP, and a build assertion fails if scripts and policy ever drift.
+Typography is self-hosted: the two brand faces (Space Grotesk, JetBrains Mono) ship as committed variable woff2 files under `site/assets/fonts/` with their OFL licenses, copied to `/fonts/` at build time.
 
 Machine-readable mirrors ship next to the pages: [`/builders.json`](https://builders.kya-os.org/builders.json) and [`/interop.json`](https://builders.kya-os.org/interop.json), both with open CORS.
 

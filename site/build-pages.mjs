@@ -16,9 +16,13 @@
  *   - 404.html                 real not-found page linking the four pages
  *   - builders.json            machine-readable merged builder registry (open CORS)
  *   - interop.json             machine-readable standards-rail registry (open CORS)
+ *   - fonts/                   byte copies of site/assets/fonts/ (the two
+ *                              self-hosted variable woff2 faces + their OFL
+ *                              licenses)
  *   - _headers                 security headers + content types; the CSP pins
- *                              the theme script by sha256 (computed here from
- *                              the exact THEME_SCRIPT bytes)
+ *                              both inline scripts by sha256 (computed here
+ *                              from the exact THEME_SCRIPT / ANIM_SCRIPT
+ *                              bytes) and allows font-src 'self'
  * plus one COMMITTED artifact outside dist/: the badge worker's slug
  * allowlist (workers/badge/generated-allowlist.mjs).
  *
@@ -40,44 +44,49 @@
  *                       404 page (conformance honesty rules enforced there)
  *   lib/sections.mjs    the section renderers (the page bodies)
  *   lib/pages.mjs       page assembly: hero + sections per page, per-page meta
- *   lib/theme.mjs       the color tokens (light/dark pairs), all page CSS,
- *                       and THEME_SCRIPT - the site's only client JS
+ *   lib/theme.mjs       the color tokens (light/dark pairs), the self-hosted
+ *                       font faces, all page CSS, and the site's two inline
+ *                       scripts: THEME_SCRIPT (every page) and ANIM_SCRIPT
+ *                       (the landing hero choreography)
  *   lib/assertions.mjs  post-build render checks, run per page: completeness,
  *                       honesty, theme integrity, and the CSP script hash
  *
- * Output is deterministic: a pure function of registry/**.json and fixed
- * strings (entries sorted by slug, no build timestamps; the script hash is
- * the sha256 of a constant), so re-running on the same commit yields
- * byte-identical dist/.
+ * Output is deterministic: a pure function of registry/**.json, fixed
+ * strings, and committed font binaries (entries sorted by slug, no build
+ * timestamps; the script hashes are sha256 of constants; fonts are byte
+ * copies), so re-running on the same commit yields byte-identical dist/.
  *
  * Run: node site/build-pages.mjs   (or: npm run build)
  */
 import { createHash } from "node:crypto";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runRenderChecks } from "./lib/assertions.mjs";
 import { loadSiteData, renderBadgeAllowlist, renderBuildersJson, renderInteropJson } from "./lib/data.mjs";
 import { render404Html } from "./lib/html.mjs";
 import { renderBuildersHtml, renderConformanceHtml, renderLandingHtml, renderStandardsHtml } from "./lib/pages.mjs";
-import { THEME_SCRIPT } from "./lib/theme.mjs";
+import { ANIM_SCRIPT, THEME_SCRIPT } from "./lib/theme.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "..");
 const distDir = join(repoRoot, "dist");
+const fontsSrcDir = join(here, "assets", "fonts");
 
 function renderHeaders() {
   // Security headers for every route; content type + open CORS for the
-  // machine-readable registries. The pages ship exactly one inline script
-  // (the theme toggle), so script-src allows exactly its sha256 - computed
-  // from the same constant the pages embed, so the two can never drift.
-  const scriptHash = createHash("sha256").update(THEME_SCRIPT, "utf8").digest("base64");
+  // machine-readable registries. The pages ship exactly two inline scripts
+  // (the theme toggle everywhere, the hero choreography on the landing), so
+  // script-src allows exactly their two sha256 hashes - computed from the
+  // same constants the pages embed, so policy and pages can never drift.
+  // font-src 'self' covers the self-hosted woff2 files; nothing else loosens.
+  const sha256 = (script) => createHash("sha256").update(script, "utf8").digest("base64");
   return [
     "/*",
     "  X-Content-Type-Options: nosniff",
     "  X-Frame-Options: DENY",
     "  Referrer-Policy: strict-origin-when-cross-origin",
-    `  Content-Security-Policy: default-src 'none'; script-src 'sha256-${scriptHash}'; style-src 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
+    `  Content-Security-Policy: default-src 'none'; script-src 'sha256-${sha256(THEME_SCRIPT)}' 'sha256-${sha256(ANIM_SCRIPT)}'; style-src 'unsafe-inline'; img-src 'self' data:; font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
     "/builders.json",
     "  Content-Type: application/json; charset=utf-8",
     "  Access-Control-Allow-Origin: *",
@@ -116,6 +125,13 @@ writeFileSync(join(distDir, "builders.json"), renderBuildersJson(rendered));
 writeFileSync(join(distDir, "interop.json"), renderInteropJson(interopSorted));
 writeFileSync(join(distDir, "_headers"), renderHeaders());
 
+// Fonts: deterministic byte copies of the committed binaries (the two
+// variable woff2 faces + their OFL licenses), sorted for a stable order.
+mkdirSync(join(distDir, "fonts"), { recursive: true });
+for (const name of readdirSync(fontsSrcDir).sort()) {
+  copyFileSync(join(fontsSrcDir, name), join(distDir, "fonts", name));
+}
+
 // The badge worker's slug allowlist is committed, not a dist/ artifact: the
 // worker deploy must never depend on a site build having run.
 const badgeDir = join(repoRoot, "workers", "badge");
@@ -127,5 +143,5 @@ writeFileSync(join(badgeDir, "generated-allowlist.mjs"), renderBadgeAllowlist(re
 runRenderChecks({ distDir, rendered, interopSorted });
 
 console.log(
-  `Built Pages artifact: ${rendered.length} entr${rendered.length === 1 ? "y" : "ies"}, ${interopSorted.length} standards rails -> dist/ (4 pages, static + one hashed theme script, real 404.html, no worker)`,
+  `Built Pages artifact: ${rendered.length} entr${rendered.length === 1 ? "y" : "ies"}, ${interopSorted.length} standards rails -> dist/ (4 pages, static + two hashed inline scripts, self-hosted fonts, real 404.html, no worker)`,
 );
