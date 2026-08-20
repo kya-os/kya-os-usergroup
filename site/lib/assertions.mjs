@@ -206,7 +206,7 @@ export function runRenderChecks({ distDir, rendered, interopSorted }) {
     const c = entry.conformance;
     if (c?.status === "verified") {
       assertBuild(
-        pages["builders/index.html"].includes(`<a href="${escAttr(c.attestationUrl)}">credential -&gt;</a>`),
+        pages["builders/index.html"].includes(`<a href="${esc(c.attestationUrl)}">credential -&gt;</a>`),
         `verified entry ${entry.slug} does not link its credential in the expanded row`,
       );
     }
