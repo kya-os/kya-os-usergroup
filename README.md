@@ -7,20 +7,23 @@ Everything here is a public pull request away, and nothing here requires touchin
 
 ## The hub
 
-The site renders as four pages at **builders.kya-os.org**:
+The site renders as six pages at **builders.kya-os.org**:
 
 | Page | What it shows | Backed by |
 | --- | --- | --- |
-| `/` | A calm landing: the mission, three navigation cards with live counts, and the add-your-project CTA | build-time counts |
-| `/builders/` | The directory (implementations, services, integrations, marketplaces), templates with one-click deploy buttons, examples, and the three submission paths | `registry/builders/` (`kind`-grouped) |
-| `/conformance/` | The conformance program, the suite pin, the four verification steps, and the implementations table with honest status chips | `registry/builders/` entries with a `conformance` claim |
-| `/standards/` | The standards rails: what KYA-OS provides, carries, and projects onto, with evidence | `registry/interop/` |
+| `/` | The overview: hero, live stats strip (suite pin, vectors, rails, projects), the THE RAILS panel, four navigation cards | build-time counts |
+| `/builders/` | The directory: every registry entry as a filterable, expandable row (CSS-only filter, native `<details>`), the on-ramps, and the three submission paths | `registry/builders/` |
+| `/conformance/` | The program: the suite pin, the four-step pipeline, badge anatomy, levels, the verification state machine, and the implementations table with honest status chips | `registry/builders/` entries with a `conformance` claim |
+| `/standards/` | The standards rails matrix: what KYA-OS provides, carries, and projects onto, every row grounded, dated, and expandable to its evidence | `registry/interop/` |
+| `/rails/` | The protocol rails diagram: one identity in, one signed proof, every surface out | static + live rail count |
+| `/use-cases/` | The REVOKED flagship and the recipe grid | static |
 
-Every page ships exactly one inline script: the theme toggle (system, light, dark), which also gates the page choreography behind an `html.js-anim` class unless `prefers-reduced-motion` is set.
-The hub consumes [@kya-os/aliencn](https://github.com/H0BB5/pschroen-alienjs), the KYA-OS design system, for both its motion and its design language: `aliencn.json` records the consumer paths, the CLI installs the vanilla motion family verbatim under `site/assets/ui/motion/`, and `aliencn diff --all` re-verifies the installed files against the registry at any time.
-The motion itself - title decrypt, staggered entry, page transitions - runs from same-origin ES modules under `/ui/`, driven by the hub's own `hub-init.js`; without JavaScript (or with reduced motion) the site is fully visible with native navigation.
-CI stays self-contained: it never runs the CLI, and instead the build assertions pin each motion module by sha256 (`site/lib/assertions.mjs`), so registry drift fails the build.
-The inline script is sha256-pinned in the CSP (`script-src 'self' 'sha256-...'`), and build assertions fail if script and policy drift, if any `dist/ui/` module is not a byte copy of its committed source, or if any vendored module drifts from its manifest hash.
+The design language is the KYA-OS Builders Site handoff: `#0a0a0a` canvas with a fixed dot grid, Space Grotesk display, JetBrains Mono micro-labels, `#00ff88` signal green, and seeded "signed proof" waveforms - computed at BUILD TIME (`site/lib/waveform.mjs`, the same FNV-1a/LCG math as Checkpoint's proof-waveform, emitted as static SVG).
+It ships as two real stylesheets (`site/assets/css/tokens.css` + `hub.css`); the dark side is the design, the light side is the hub's own paper/ink/darkened-green mapping, and both hold a 4.5:1 text-contrast floor.
+Every page ships exactly one inline script: the theme toggle (system, light, dark), which also gates the page choreography behind an `html.js-anim` class unless `prefers-reduced-motion` is set, and arms a 2.5s failsafe that releases the gate if the motion module never loads.
+The motion itself - title decrypt, staggered fadeUp entries, hover glitch, scroll skew, the 400ms fade page transition - runs from the same-origin `/ui/page-fx.js` module; without JavaScript (or with reduced motion) the site is fully visible with native navigation.
+Key sections also carry `[ copy prompt for your agent ]` buttons (`/ui/copy-prompt.js`): curated onboarding prompts for coding agents, each with an always-reachable `<details>` fallback that the build asserts carries exactly the text the button copies.
+The inline script is sha256-pinned in the CSP (`script-src 'self' 'sha256-...'`), and build assertions fail if script and policy drift or if any `dist/ui/` module is not a byte copy of its committed source.
 Typography is self-hosted: the two brand faces (Space Grotesk, JetBrains Mono) ship as committed variable woff2 files under `site/assets/fonts/` with their OFL licenses, copied to `/fonts/` at build time.
 
 Machine-readable mirrors ship next to the pages: [`/builders.json`](https://builders.kya-os.org/builders.json) and [`/interop.json`](https://builders.kya-os.org/interop.json), both with open CORS.
