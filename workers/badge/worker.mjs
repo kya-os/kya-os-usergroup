@@ -17,11 +17,17 @@
  *      credential minus proof, per the W3C DI cryptosuite; Workers and Node
  *      20+ both support Ed25519 in crypto.subtle) against the PINNED issuer
  *      keys - never against keys the credential brings along
- *   4. check the revocation / suspension / withdrawal Bitstring status lists,
+ *   4. schema + temporal checks, all fail-closed: proof.proofPurpose must be
+ *      "assertionMethod"; validFrom must exist and not sit in the future
+ *      beyond a 300s clock skew; an unexpected validUntil is a schema
+ *      violation - the credential design deliberately has no expiry
+ *      (freshness lives in suite supersession, recorded in the credential's
+ *      termsOfUse), so there is no "expired" state to invent
+ *   5. check the revocation / suspension / withdrawal Bitstring status lists,
  *      each a signed credential verified against the PINNED status keys (a
  *      key set separate from the issuer keys) before any bit is read
- *   5. compare the credential's suite pin against the signed suite manifest
- *   6. render one of six states:
+ *   6. compare the credential's suite pin against the signed suite manifest
+ *   7. render one of six states:
  *        verified    green   proof valid, no status bit set, suite current
  *        superseded  blue    proof valid but the suite pin is no longer the
  *                            manifest's current suite
@@ -69,6 +75,9 @@ export const SUITE_MANIFEST_URL =
 // ────────────────────────────────────────────────────────────────────────────
 
 const LABEL = "KYA-OS conformance";
+
+/** Allowed clock skew for validFrom: 300s, mirroring the protocol's skew rules. */
+const CLOCK_SKEW_MS = 300_000;
 
 const STATE_STYLE = {
   verified: { color: "#3fb950" },
@@ -171,6 +180,22 @@ export async function resolveBadgeState(slug, entry, { fetchImpl, issuerKeys, st
     }
   }
   if (!proofOk) throw new Error("credential proof did not verify against any pinned issuer key");
+
+  // Schema + temporal checks, fail closed. The proof must be an assertion,
+  // not a proof minted for some other purpose; the credential must not claim
+  // to be from the future beyond clock skew; and validUntil must not exist -
+  // the credential design deliberately has no expiry (freshness lives in
+  // suite supersession, recorded in the credential's termsOfUse), so an
+  // unexpected validUntil is a schema violation, never an "expired" state.
+  if (credential.proof.proofPurpose !== "assertionMethod") {
+    throw new Error(`proof purpose must be assertionMethod, got ${credential.proof.proofPurpose}`);
+  }
+  const validFrom = Date.parse(credential.validFrom);
+  if (!Number.isFinite(validFrom)) throw new Error("credential validFrom is missing or malformed");
+  if (validFrom > Date.now() + CLOCK_SKEW_MS) throw new Error("credential validFrom is in the future beyond clock skew");
+  if (credential.validUntil !== undefined) {
+    throw new Error("unexpected validUntil: the credential design has no expiry");
+  }
 
   // The credential must be about this registry slug.
   const subject = credential.credentialSubject ?? {};

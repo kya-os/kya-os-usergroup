@@ -11,7 +11,7 @@
           "VerifiableCredential",
           "BitstringStatusListCredential"
         ],
-        "issuer": "did:key:z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B",
+        "issuer": "did:key:z6Mkrc6DPF7jvb4btL1U8QmdBsF64qrkMocDT3XEkPJ5sd8d",
         "validFrom": "2026-01-01T00:00:00Z",
         "credentialSubject": {
           "id": "https://fixtures.invalid/status-revocation.json#list",
@@ -23,9 +23,9 @@
           "type": "DataIntegrityProof",
           "cryptosuite": "eddsa-jcs-2022",
           "created": "2026-01-01T00:00:00Z",
-          "verificationMethod": "did:key:z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B#z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B",
+          "verificationMethod": "did:key:z6Mkrc6DPF7jvb4btL1U8QmdBsF64qrkMocDT3XEkPJ5sd8d#z6Mkrc6DPF7jvb4btL1U8QmdBsF64qrkMocDT3XEkPJ5sd8d",
           "proofPurpose": "assertionMethod",
-          "proofValue": "z2ogGAekJduFf7VvPbois9kkJDSZR5jfJDjLWnDU4PRiB5jwEQJht87pP3bLP9ZYe1L2qgkd2ox2FM6BuKwT9pYhC"
+          "proofValue": "z2wjfDztYRE1MKRSUd7hNk3X9x8EpPrknmkvGcNtjbQ6ovYuyUnLd9qoSWhEZqUhH9tFAPReSLb42qTdNffvHnCSo"
         }
       },
       "bit3Set": {
@@ -37,7 +37,7 @@
           "VerifiableCredential",
           "BitstringStatusListCredential"
         ],
-        "issuer": "did:key:z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B",
+        "issuer": "did:key:z6Mkrc6DPF7jvb4btL1U8QmdBsF64qrkMocDT3XEkPJ5sd8d",
         "validFrom": "2026-01-01T00:00:00Z",
         "credentialSubject": {
           "id": "https://fixtures.invalid/status-revocation.json#list",
@@ -49,9 +49,9 @@
           "type": "DataIntegrityProof",
           "cryptosuite": "eddsa-jcs-2022",
           "created": "2026-01-01T00:00:00Z",
-          "verificationMethod": "did:key:z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B#z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B",
+          "verificationMethod": "did:key:z6Mkrc6DPF7jvb4btL1U8QmdBsF64qrkMocDT3XEkPJ5sd8d#z6Mkrc6DPF7jvb4btL1U8QmdBsF64qrkMocDT3XEkPJ5sd8d",
           "proofPurpose": "assertionMethod",
-          "proofValue": "z3JeG1u2QCrFqYekxH7S6C3UYqjWhPwDqQzA7B5bpA8mBtnjBaaS5m1UTN2hkSVFND5vCYjVcCh8p2A2tBxYcQ4S7"
+          "proofValue": "z5ejz2ZNBWCApGwvte5SvFMuLndEU3XnrcctkgDh1Ys54rayL9NFK5WsLpU7F8KdpHWmZ1eAvSJWeYYmZQGx3ZzAt"
         }
       }
     },
@@ -65,7 +65,7 @@
           "VerifiableCredential",
           "BitstringStatusListCredential"
         ],
-        "issuer": "did:key:z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B",
+        "issuer": "did:key:z6Mkrc6DPF7jvb4btL1U8QmdBsF64qrkMocDT3XEkPJ5sd8d",
         "validFrom": "2026-01-01T00:00:00Z",
         "credentialSubject": {
           "id": "https://fixtures.invalid/status-suspension.json#list",
@@ -77,9 +77,9 @@
           "type": "DataIntegrityProof",
           "cryptosuite": "eddsa-jcs-2022",
           "created": "2026-01-01T00:00:00Z",
-          "verificationMethod": "did:key:z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B#z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B",
+          "verificationMethod": "did:key:z6Mkrc6DPF7jvb4btL1U8QmdBsF64qrkMocDT3XEkPJ5sd8d#z6Mkrc6DPF7jvb4btL1U8QmdBsF64qrkMocDT3XEkPJ5sd8d",
           "proofPurpose": "assertionMethod",
-          "proofValue": "z4UquVxwbPHB2fZWpdGZXXr52KNQZJkVEHNHQtPCgUHUC3ybXbt2eHXsL7yy7cn9wQHZ9dwb4hgmDCPojwbVu56o6"
+          "proofValue": "z5LzUe487yAEKcTjpBsNrYCumRyWXg5rivnWTEHTDXi5QSZAsXbgS7XgJHQBAZYye128nirZFDJBoK6NzoW2hwYNZ"
         }
       },
       "bit3Set": {
@@ -91,7 +91,7 @@
           "VerifiableCredential",
           "BitstringStatusListCredential"
         ],
-        "issuer": "did:key:z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B",
+        "issuer": "did:key:z6Mkrc6DPF7jvb4btL1U8QmdBsF64qrkMocDT3XEkPJ5sd8d",
         "validFrom": "2026-01-01T00:00:00Z",
         "credentialSubject": {
           "id": "https://fixtures.invalid/status-suspension.json#list",
@@ -103,9 +103,9 @@
           "type": "DataIntegrityProof",
           "cryptosuite": "eddsa-jcs-2022",
           "created": "2026-01-01T00:00:00Z",
-          "verificationMethod": "did:key:z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B#z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B",
+          "verificationMethod": "did:key:z6Mkrc6DPF7jvb4btL1U8QmdBsF64qrkMocDT3XEkPJ5sd8d#z6Mkrc6DPF7jvb4btL1U8QmdBsF64qrkMocDT3XEkPJ5sd8d",
           "proofPurpose": "assertionMethod",
-          "proofValue": "z64kjAffPKNLRrLGPxHMd6j1C5EdsHTp2sPR6vrrL86rPhkHZZnWRrojaQoZYqP86Vc4KkSfV8xDyDrvnVfs4w7DV"
+          "proofValue": "zdopLuzaLVwJsWM5nvZwzBJ2pNPGVkPJR2Qb9iDYPe2BzrkphR8Qu8GJPU3Q9CmF1p8q3LtxLhtNVRoqyqkSGuyy"
         }
       }
     },
@@ -119,7 +119,7 @@
           "VerifiableCredential",
           "BitstringStatusListCredential"
         ],
-        "issuer": "did:key:z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B",
+        "issuer": "did:key:z6Mkrc6DPF7jvb4btL1U8QmdBsF64qrkMocDT3XEkPJ5sd8d",
         "validFrom": "2026-01-01T00:00:00Z",
         "credentialSubject": {
           "id": "https://fixtures.invalid/status-withdrawal.json#list",
@@ -131,9 +131,9 @@
           "type": "DataIntegrityProof",
           "cryptosuite": "eddsa-jcs-2022",
           "created": "2026-01-01T00:00:00Z",
-          "verificationMethod": "did:key:z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B#z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B",
+          "verificationMethod": "did:key:z6Mkrc6DPF7jvb4btL1U8QmdBsF64qrkMocDT3XEkPJ5sd8d#z6Mkrc6DPF7jvb4btL1U8QmdBsF64qrkMocDT3XEkPJ5sd8d",
           "proofPurpose": "assertionMethod",
-          "proofValue": "zCk3TK6L8m6w3UwLBJFLC9r2oYXyLViA55V3EHaPxaA5px5qLztTksq31K782uBKJpZ8zSAefuCxiKt978E37EB1"
+          "proofValue": "z5ouDRTcNdqqJHviBYHko3VvYfXvg8JbXh6REsRY4T4ZHmH7BAa6Zei9mSKPtkjcNxHFQWuJGuAWTtLX9wDzzpKXd"
         }
       },
       "bit3Set": {
@@ -145,7 +145,7 @@
           "VerifiableCredential",
           "BitstringStatusListCredential"
         ],
-        "issuer": "did:key:z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B",
+        "issuer": "did:key:z6Mkrc6DPF7jvb4btL1U8QmdBsF64qrkMocDT3XEkPJ5sd8d",
         "validFrom": "2026-01-01T00:00:00Z",
         "credentialSubject": {
           "id": "https://fixtures.invalid/status-withdrawal.json#list",
@@ -157,9 +157,9 @@
           "type": "DataIntegrityProof",
           "cryptosuite": "eddsa-jcs-2022",
           "created": "2026-01-01T00:00:00Z",
-          "verificationMethod": "did:key:z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B#z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B",
+          "verificationMethod": "did:key:z6Mkrc6DPF7jvb4btL1U8QmdBsF64qrkMocDT3XEkPJ5sd8d#z6Mkrc6DPF7jvb4btL1U8QmdBsF64qrkMocDT3XEkPJ5sd8d",
           "proofPurpose": "assertionMethod",
-          "proofValue": "z5ZseFNseTwwTxjG5LNeSBHZuPqDbWT4omMq4gCpoHyMPW5q1P7krdEJ1EkSz5u77FHdekYY8ixWX2A9YZAFiVhBz"
+          "proofValue": "zWXNWrgNKiYvxQEs4CAUvnBxKucWGX3oyAeUBLpXmcaYeemje4jpi7GRfmc8MQbTavdRXphFu2qZX9SM4bchxmq8"
         }
       }
     }
@@ -173,7 +173,7 @@
       "VerifiableCredential",
       "BitstringStatusListCredential"
     ],
-    "issuer": "did:key:z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B",
+    "issuer": "did:key:z6Mkrc6DPF7jvb4btL1U8QmdBsF64qrkMocDT3XEkPJ5sd8d",
     "validFrom": "2026-01-01T00:00:00Z",
     "credentialSubject": {
       "id": "https://fixtures.invalid/status-revocation.json#list",
@@ -185,9 +185,9 @@
       "type": "DataIntegrityProof",
       "cryptosuite": "eddsa-jcs-2022",
       "created": "2026-01-01T00:00:00Z",
-      "verificationMethod": "did:key:z6MksFW7xNWETcEhi244USbUoJnK5vcSDNHi1Dq5pCZPS4Fa#z6MksFW7xNWETcEhi244USbUoJnK5vcSDNHi1Dq5pCZPS4Fa",
+      "verificationMethod": "did:key:z6MkjWR2zTbJP4MyHKjcRX3hTk8FpwYgGVGHL6j6527nnEAx#z6MkjWR2zTbJP4MyHKjcRX3hTk8FpwYgGVGHL6j6527nnEAx",
       "proofPurpose": "assertionMethod",
-      "proofValue": "z2nYMh7Whde9nC1S5PXk4LivtcsKd7ZE3XR4nEHvsMsG99cAMjUJeB4ZPoPgzBKvejxuVBRdp6xEuNa6rL9nKh3fg"
+      "proofValue": "z2uazcM26rr8FDeFmKwwRycYQdG665q6wLLPUjr9vSDToGks9ZQceqUACF8KJDKU3n4sJLffTxiUUJZ36QvnGaqs2"
     }
   }
 }

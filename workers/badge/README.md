@@ -28,8 +28,9 @@ Fail-closed at every step - any failure renders the grey "unverified" badge, nev
 1. The slug must be in `generated-allowlist.mjs`, which `site/build-pages.mjs` generates from the rendered registry entries (commit it with registry changes). Unlisted slug = 404.
 2. Fetch the claim credential from its canonical URL (the registry entry's `attestationUrl`).
 3. Verify the credential's Ed25519 `DataIntegrityProof` / `eddsa-jcs-2022` proof with `crypto.subtle` (JCS-canonicalize the credential minus proof per the W3C DI cryptosuite) against the PINNED issuer keys only - keys the credential carries are never trusted. Workers and Node 20+ both support Ed25519 in WebCrypto.
-4. Check the revocation, suspension, and withdrawal Bitstring Status List entries (gzip + multibase, MSB-first bits, purpose asserted). Each status list is a signed credential whose proof is verified against the PINNED status keys - a key set separate from the issuer keys - before any bit is read.
-5. Compare the credential's suite pin (`suiteVersion` + `vectorSetHash`) against the signed suite manifest.
+4. Schema + temporal checks: `proof.proofPurpose` must be `assertionMethod`; `validFrom` must exist and not sit in the future beyond a 300s clock skew; an unexpected `validUntil` is a schema violation - the credential design deliberately has no expiry (freshness lives in suite supersession, recorded in the credential's `termsOfUse`), so no "expired" state exists.
+5. Check the revocation, suspension, and withdrawal Bitstring Status List entries (gzip + multibase, MSB-first bits, purpose asserted). Each status list is a signed credential whose proof is verified against the PINNED status keys - a key set separate from the issuer keys - before any bit is read.
+6. Compare the credential's suite pin (`suiteVersion` + `vectorSetHash`) against the signed suite manifest.
 
 Six states, precedence top to bottom:
 
@@ -41,6 +42,8 @@ Six states, precedence top to bottom:
 | `superseded` | blue | proof valid, but the suite pin is no longer the manifest's current suite |
 | `verified` | green | proof valid, no status bit, suite current |
 | `unknown` | grey | no credential yet, or any failure anywhere (badge text: "unverified") |
+
+Working-group semantics note: whether a future charter wants an explicit expired display state is an open question for the working group; today the credential design deliberately has no expiry (an unexpected `validUntil` fails closed to `unverified`).
 
 Honesty rules: the label is always `KYA-OS conformance`; a subset claim renders its categories ("L1 subset (signed-proof)") and never a bare level - the allowlist ships the precomputed honest label so the worker cannot get this wrong.
 

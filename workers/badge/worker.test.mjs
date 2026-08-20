@@ -31,6 +31,7 @@ const fixture = (name) => JSON.parse(readFileSync(join(here, "fixtures", name), 
 const issuer = fixture("dev-issuer.json");
 const statusIssuer = fixture("dev-status-issuer.json");
 const credential = fixture("dev-credential.json");
+const invalidCredentials = fixture("dev-credentials-invalid.json");
 const statusLists = fixture("dev-status-lists.json");
 const manifest = fixture("dev-manifest.json");
 const issuerKeyBytes = ed25519KeyFromMultibase(issuer.publicKeyMultibase);
@@ -228,6 +229,31 @@ test("key separation: a status list signed by the ISSUER key renders unverified"
   await expectBadge(happyMap({ [LIST_URLS.revocation]: statusLists.issuerSigned }), "/v1/badge/fixture-impl.svg", {
     message: "unverified",
   });
+});
+
+// ── schema + temporal checks (correctly signed, policy-rejected) ────────────
+// Every fixture here carries a VALID signature, so the unverified badge can
+// only come from the check under test, never from a broken proof.
+
+test("proofPurpose other than assertionMethod renders unverified", async () => {
+  const result = await verifyEddsaJcs2022(invalidCredentials.wrongPurpose, issuerKeyBytes);
+  assert.equal(result.ok, true, "fixture must be validly signed so the purpose check is what rejects");
+  await expectBadge(happyMap({ [CREDENTIAL_URL]: invalidCredentials.wrongPurpose }), "/v1/badge/fixture-impl.svg", {
+    message: "unverified",
+  });
+});
+
+test("validFrom in the future beyond the 300s skew renders unverified", async () => {
+  await expectBadge(happyMap({ [CREDENTIAL_URL]: invalidCredentials.futureValidFrom }), "/v1/badge/fixture-impl.svg", {
+    message: "unverified",
+  });
+});
+
+test("an unexpected validUntil is a schema violation rendering unverified, never an expired state", async () => {
+  const body = await expectBadge(happyMap({ [CREDENTIAL_URL]: invalidCredentials.withValidUntil }), "/v1/badge/fixture-impl.svg", {
+    message: "unverified",
+  });
+  assert.ok(!body.includes("expired"), "no expired state exists - the credential design has no expiry");
 });
 
 // ── inflation cap (streaming, aborts mid-decompress) ────────────────────────

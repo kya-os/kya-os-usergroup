@@ -19,6 +19,11 @@
  *                           credential for the fictional slug "fixture-impl"
  *                           (L1 subset (signed-proof) - subset on purpose so
  *                           tests can assert the no-bare-level rule)
+ *   dev-credentials-invalid.json
+ *                           correctly signed credentials that must fail the
+ *                           worker's schema/temporal checks: wrong
+ *                           proofPurpose, future validFrom, unexpected
+ *                           validUntil
  *   dev-status-lists.json   signed Bitstring status list credentials, per
  *                           purpose (revocation/suspension/withdrawal), each
  *                           in two variants: allZero (no bit set) and bit3Set
@@ -61,13 +66,13 @@ const issuer = throwawayKey();
 const statusIssuer = throwawayKey();
 
 /** Attach an eddsa-jcs-2022 DataIntegrityProof signed by `key` to `document`. */
-async function signDocument(document, key) {
+async function signDocument(document, key, proofPurpose = "assertionMethod") {
   const proofOptions = {
     type: "DataIntegrityProof",
     cryptosuite: "eddsa-jcs-2022",
     created: "2026-01-01T00:00:00Z",
     verificationMethod: `${key.did}#${key.multibase}`,
-    proofPurpose: "assertionMethod",
+    proofPurpose,
   };
   const hashData = await eddsaJcs2022HashData(document, proofOptions);
   const signature = edSign(null, hashData, key.privateKey);
@@ -110,6 +115,19 @@ const credential = {
 };
 
 const signed = await signDocument(credential, issuer);
+
+// Correctly SIGNED credentials that must still fail the worker's schema and
+// temporal checks - signatures verify, policy rejects, so the tests prove
+// the checks themselves rather than a broken signature:
+//   wrongPurpose    proof.proofPurpose is not assertionMethod
+//   futureValidFrom validFrom a century in the future (beyond any skew)
+//   withValidUntil  carries validUntil, which the credential design forbids
+//                   (no expiry; freshness lives in suite supersession)
+const invalidCredentials = {
+  wrongPurpose: await signDocument(credential, issuer, "authentication"),
+  futureValidFrom: await signDocument({ ...credential, validFrom: "2126-01-01T00:00:00Z" }, issuer),
+  withValidUntil: await signDocument({ ...credential, validUntil: "2126-01-01T00:00:00Z" }, issuer),
+};
 
 // Status list bitstrings: 16 KiB of zeros (the spec's minimum size), and the
 // same with bit 3 set MSB-first (byte 0 = 0b00010000).
@@ -156,6 +174,10 @@ writeFileSync(
   JSON.stringify({ ...banner, id: statusIssuer.did, publicKeyMultibase: statusIssuer.multibase }, null, 2) + "\n",
 );
 writeFileSync(join(here, "dev-credential.json"), JSON.stringify(signed, null, 2) + "\n");
+writeFileSync(
+  join(here, "dev-credentials-invalid.json"),
+  JSON.stringify({ ...banner, ...invalidCredentials }, null, 2) + "\n",
+);
 writeFileSync(join(here, "dev-status-lists.json"), JSON.stringify({ ...banner, lists, issuerSigned }, null, 2) + "\n");
 writeFileSync(join(here, "dev-manifest.json"), JSON.stringify({ ...banner, ...SUITE }, null, 2) + "\n");
 
