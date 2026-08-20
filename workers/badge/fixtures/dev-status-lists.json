@@ -1,0 +1,193 @@
+{
+  "WARNING": "DEV FIXTURE - throwaway key, NON-PRODUCTION. Regenerate with generate-fixtures.mjs.",
+  "lists": {
+    "revocation": {
+      "allZero": {
+        "@context": [
+          "https://www.w3.org/ns/credentials/v2"
+        ],
+        "id": "https://fixtures.invalid/status-revocation.json",
+        "type": [
+          "VerifiableCredential",
+          "BitstringStatusListCredential"
+        ],
+        "issuer": "did:key:z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B",
+        "validFrom": "2026-01-01T00:00:00Z",
+        "credentialSubject": {
+          "id": "https://fixtures.invalid/status-revocation.json#list",
+          "type": "BitstringStatusList",
+          "statusPurpose": "revocation",
+          "encodedList": "uH4sIAAAAAAAAE-3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAAAAAIC3AYbSVKsAQAAA"
+        },
+        "proof": {
+          "type": "DataIntegrityProof",
+          "cryptosuite": "eddsa-jcs-2022",
+          "created": "2026-01-01T00:00:00Z",
+          "verificationMethod": "did:key:z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B#z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B",
+          "proofPurpose": "assertionMethod",
+          "proofValue": "z2ogGAekJduFf7VvPbois9kkJDSZR5jfJDjLWnDU4PRiB5jwEQJht87pP3bLP9ZYe1L2qgkd2ox2FM6BuKwT9pYhC"
+        }
+      },
+      "bit3Set": {
+        "@context": [
+          "https://www.w3.org/ns/credentials/v2"
+        ],
+        "id": "https://fixtures.invalid/status-revocation.json",
+        "type": [
+          "VerifiableCredential",
+          "BitstringStatusListCredential"
+        ],
+        "issuer": "did:key:z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B",
+        "validFrom": "2026-01-01T00:00:00Z",
+        "credentialSubject": {
+          "id": "https://fixtures.invalid/status-revocation.json#list",
+          "type": "BitstringStatusList",
+          "statusPurpose": "revocation",
+          "encodedList": "uH4sIAAAAAAAAE-3BIQEAAAACICf4f60zLEADAAAAAAAAAAAAAAAAAAAAvA16YgrEAEAAAA"
+        },
+        "proof": {
+          "type": "DataIntegrityProof",
+          "cryptosuite": "eddsa-jcs-2022",
+          "created": "2026-01-01T00:00:00Z",
+          "verificationMethod": "did:key:z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B#z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B",
+          "proofPurpose": "assertionMethod",
+          "proofValue": "z3JeG1u2QCrFqYekxH7S6C3UYqjWhPwDqQzA7B5bpA8mBtnjBaaS5m1UTN2hkSVFND5vCYjVcCh8p2A2tBxYcQ4S7"
+        }
+      }
+    },
+    "suspension": {
+      "allZero": {
+        "@context": [
+          "https://www.w3.org/ns/credentials/v2"
+        ],
+        "id": "https://fixtures.invalid/status-suspension.json",
+        "type": [
+          "VerifiableCredential",
+          "BitstringStatusListCredential"
+        ],
+        "issuer": "did:key:z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B",
+        "validFrom": "2026-01-01T00:00:00Z",
+        "credentialSubject": {
+          "id": "https://fixtures.invalid/status-suspension.json#list",
+          "type": "BitstringStatusList",
+          "statusPurpose": "suspension",
+          "encodedList": "uH4sIAAAAAAAAE-3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAAAAAIC3AYbSVKsAQAAA"
+        },
+        "proof": {
+          "type": "DataIntegrityProof",
+          "cryptosuite": "eddsa-jcs-2022",
+          "created": "2026-01-01T00:00:00Z",
+          "verificationMethod": "did:key:z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B#z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B",
+          "proofPurpose": "assertionMethod",
+          "proofValue": "z4UquVxwbPHB2fZWpdGZXXr52KNQZJkVEHNHQtPCgUHUC3ybXbt2eHXsL7yy7cn9wQHZ9dwb4hgmDCPojwbVu56o6"
+        }
+      },
+      "bit3Set": {
+        "@context": [
+          "https://www.w3.org/ns/credentials/v2"
+        ],
+        "id": "https://fixtures.invalid/status-suspension.json",
+        "type": [
+          "VerifiableCredential",
+          "BitstringStatusListCredential"
+        ],
+        "issuer": "did:key:z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B",
+        "validFrom": "2026-01-01T00:00:00Z",
+        "credentialSubject": {
+          "id": "https://fixtures.invalid/status-suspension.json#list",
+          "type": "BitstringStatusList",
+          "statusPurpose": "suspension",
+          "encodedList": "uH4sIAAAAAAAAE-3BIQEAAAACICf4f60zLEADAAAAAAAAAAAAAAAAAAAAvA16YgrEAEAAAA"
+        },
+        "proof": {
+          "type": "DataIntegrityProof",
+          "cryptosuite": "eddsa-jcs-2022",
+          "created": "2026-01-01T00:00:00Z",
+          "verificationMethod": "did:key:z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B#z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B",
+          "proofPurpose": "assertionMethod",
+          "proofValue": "z64kjAffPKNLRrLGPxHMd6j1C5EdsHTp2sPR6vrrL86rPhkHZZnWRrojaQoZYqP86Vc4KkSfV8xDyDrvnVfs4w7DV"
+        }
+      }
+    },
+    "withdrawal": {
+      "allZero": {
+        "@context": [
+          "https://www.w3.org/ns/credentials/v2"
+        ],
+        "id": "https://fixtures.invalid/status-withdrawal.json",
+        "type": [
+          "VerifiableCredential",
+          "BitstringStatusListCredential"
+        ],
+        "issuer": "did:key:z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B",
+        "validFrom": "2026-01-01T00:00:00Z",
+        "credentialSubject": {
+          "id": "https://fixtures.invalid/status-withdrawal.json#list",
+          "type": "BitstringStatusList",
+          "statusPurpose": "withdrawal",
+          "encodedList": "uH4sIAAAAAAAAE-3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAAAAAIC3AYbSVKsAQAAA"
+        },
+        "proof": {
+          "type": "DataIntegrityProof",
+          "cryptosuite": "eddsa-jcs-2022",
+          "created": "2026-01-01T00:00:00Z",
+          "verificationMethod": "did:key:z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B#z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B",
+          "proofPurpose": "assertionMethod",
+          "proofValue": "zCk3TK6L8m6w3UwLBJFLC9r2oYXyLViA55V3EHaPxaA5px5qLztTksq31K782uBKJpZ8zSAefuCxiKt978E37EB1"
+        }
+      },
+      "bit3Set": {
+        "@context": [
+          "https://www.w3.org/ns/credentials/v2"
+        ],
+        "id": "https://fixtures.invalid/status-withdrawal.json",
+        "type": [
+          "VerifiableCredential",
+          "BitstringStatusListCredential"
+        ],
+        "issuer": "did:key:z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B",
+        "validFrom": "2026-01-01T00:00:00Z",
+        "credentialSubject": {
+          "id": "https://fixtures.invalid/status-withdrawal.json#list",
+          "type": "BitstringStatusList",
+          "statusPurpose": "withdrawal",
+          "encodedList": "uH4sIAAAAAAAAE-3BIQEAAAACICf4f60zLEADAAAAAAAAAAAAAAAAAAAAvA16YgrEAEAAAA"
+        },
+        "proof": {
+          "type": "DataIntegrityProof",
+          "cryptosuite": "eddsa-jcs-2022",
+          "created": "2026-01-01T00:00:00Z",
+          "verificationMethod": "did:key:z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B#z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B",
+          "proofPurpose": "assertionMethod",
+          "proofValue": "z5ZseFNseTwwTxjG5LNeSBHZuPqDbWT4omMq4gCpoHyMPW5q1P7krdEJ1EkSz5u77FHdekYY8ixWX2A9YZAFiVhBz"
+        }
+      }
+    }
+  },
+  "issuerSigned": {
+    "@context": [
+      "https://www.w3.org/ns/credentials/v2"
+    ],
+    "id": "https://fixtures.invalid/status-revocation.json",
+    "type": [
+      "VerifiableCredential",
+      "BitstringStatusListCredential"
+    ],
+    "issuer": "did:key:z6MktQAw4rYu8zs1edzenvuNt9pyT1mJKPwkw1dD4UcoR44B",
+    "validFrom": "2026-01-01T00:00:00Z",
+    "credentialSubject": {
+      "id": "https://fixtures.invalid/status-revocation.json#list",
+      "type": "BitstringStatusList",
+      "statusPurpose": "revocation",
+      "encodedList": "uH4sIAAAAAAAAE-3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAAAAAIC3AYbSVKsAQAAA"
+    },
+    "proof": {
+      "type": "DataIntegrityProof",
+      "cryptosuite": "eddsa-jcs-2022",
+      "created": "2026-01-01T00:00:00Z",
+      "verificationMethod": "did:key:z6MksFW7xNWETcEhi244USbUoJnK5vcSDNHi1Dq5pCZPS4Fa#z6MksFW7xNWETcEhi244USbUoJnK5vcSDNHi1Dq5pCZPS4Fa",
+      "proofPurpose": "assertionMethod",
+      "proofValue": "z2nYMh7Whde9nC1S5PXk4LivtcsKd7ZE3XR4nEHvsMsG99cAMjUJeB4ZPoPgzBKvejxuVBRdp6xEuNa6rL9nKh3fg"
+    }
+  }
+}

@@ -1,12 +1,14 @@
 /**
  * Badge worker tests: node --test workers/badge/
  *
- * Runs entirely offline against the committed dev fixtures (throwaway key,
+ * Runs entirely offline against the committed dev fixtures (throwaway keys,
  * NON-PRODUCTION): fetch is injected as a URL->payload map, the cache is
- * omitted, and the fixture issuer key stands in for the (placeholder) pinned
- * production keys. Covers: proof verify accept, reject-on-tamper, all six
- * render states through the HTTP handler, allowlist rejection, and the
- * honesty rules (label constant, subset never bare).
+ * omitted, and the fixture issuer/status keys stand in for the (placeholder)
+ * pinned production key sets. Covers: proof verify accept, reject-on-tamper,
+ * status list proof enforcement (unsigned/tampered/wrong-key lists rejected,
+ * key separation between issuer and status keys), all six render states
+ * through the HTTP handler, allowlist rejection, and the honesty rules
+ * (label constant, subset never bare).
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -20,8 +22,9 @@ const here = dirname(fileURLToPath(import.meta.url));
 const fixture = (name) => JSON.parse(readFileSync(join(here, "fixtures", name), "utf8"));
 
 const issuer = fixture("dev-issuer.json");
+const statusIssuer = fixture("dev-status-issuer.json");
 const credential = fixture("dev-credential.json");
-const lists = fixture("encoded-lists.json");
+const statusLists = fixture("dev-status-lists.json");
 const manifest = fixture("dev-manifest.json");
 const issuerKeyBytes = ed25519KeyFromMultibase(issuer.publicKeyMultibase);
 
@@ -38,10 +41,6 @@ const ALLOWLIST = {
   "no-claim-yet": { name: "No Claim Yet", claim: null, credentialUrl: null },
 };
 
-function statusList(purpose, encodedList) {
-  return { credentialSubject: { statusPurpose: purpose, encodedList } };
-}
-
 /** Injected fetch: a plain URL->JSON-value map; anything else 404s. */
 function fakeFetch(map) {
   return async (url) => {
@@ -52,13 +51,13 @@ function fakeFetch(map) {
   };
 }
 
-/** The happy-path fetch map: valid credential, all-zero lists, matching manifest. */
+/** The happy-path fetch map: valid credential, signed all-zero lists, matching manifest. */
 function happyMap(overrides = {}) {
   return {
     [CREDENTIAL_URL]: credential,
-    [LIST_URLS.revocation]: statusList("revocation", lists.allZero),
-    [LIST_URLS.suspension]: statusList("suspension", lists.allZero),
-    [LIST_URLS.withdrawal]: statusList("withdrawal", lists.allZero),
+    [LIST_URLS.revocation]: statusLists.lists.revocation.allZero,
+    [LIST_URLS.suspension]: statusLists.lists.suspension.allZero,
+    [LIST_URLS.withdrawal]: statusLists.lists.withdrawal.allZero,
     [MANIFEST_URL]: { suiteVersion: manifest.suiteVersion, vectorSetHash: manifest.vectorSetHash },
     ...overrides,
   };
@@ -68,6 +67,7 @@ function handlerWith(map, allowlist = ALLOWLIST) {
   return createBadgeHandler({
     allowlist,
     issuerKeys: [issuer.publicKeyMultibase],
+    statusKeys: [statusIssuer.publicKeyMultibase],
     manifestUrl: MANIFEST_URL,
     fetchImpl: fakeFetch(map),
   });
@@ -136,21 +136,21 @@ test("state: verified (subset claim renders categories, never a bare level)", as
 });
 
 test("state: revoked", async () => {
-  await expectBadge(happyMap({ [LIST_URLS.revocation]: statusList("revocation", lists.bit3Set) }), "/v1/badge/fixture-impl.svg", {
+  await expectBadge(happyMap({ [LIST_URLS.revocation]: statusLists.lists.revocation.bit3Set }), "/v1/badge/fixture-impl.svg", {
     message: "revoked",
     color: "#f85149",
   });
 });
 
 test("state: contested (suspension bit)", async () => {
-  await expectBadge(happyMap({ [LIST_URLS.suspension]: statusList("suspension", lists.bit3Set) }), "/v1/badge/fixture-impl.svg", {
+  await expectBadge(happyMap({ [LIST_URLS.suspension]: statusLists.lists.suspension.bit3Set }), "/v1/badge/fixture-impl.svg", {
     message: "contested",
     color: "#d29922",
   });
 });
 
 test("state: withdrawn", async () => {
-  await expectBadge(happyMap({ [LIST_URLS.withdrawal]: statusList("withdrawal", lists.bit3Set) }), "/v1/badge/fixture-impl.svg", {
+  await expectBadge(happyMap({ [LIST_URLS.withdrawal]: statusLists.lists.withdrawal.bit3Set }), "/v1/badge/fixture-impl.svg", {
     message: "withdrawn",
     color: "#6e7681",
   });
@@ -186,12 +186,41 @@ test("fail-closed: fetch failures and bad proofs render unverified, never verifi
 test("revocation precedence beats a stale manifest (revoked, not superseded)", async () => {
   await expectBadge(
     happyMap({
-      [LIST_URLS.revocation]: statusList("revocation", lists.bit3Set),
+      [LIST_URLS.revocation]: statusLists.lists.revocation.bit3Set,
       [MANIFEST_URL]: { suiteVersion: "9.9.9", vectorSetHash: "sha256:moved" },
     }),
     "/v1/badge/fixture-impl.svg",
     { message: "revoked", color: "#f85149" },
   );
+});
+
+// ── status list proof enforcement (three-key design) ────────────────────────
+
+test("status list without a proof renders unverified, never verified", async () => {
+  const unsigned = structuredClone(statusLists.lists.revocation.allZero);
+  delete unsigned.proof;
+  await expectBadge(happyMap({ [LIST_URLS.revocation]: unsigned }), "/v1/badge/fixture-impl.svg", {
+    message: "unverified",
+  });
+});
+
+test("tampered signed status list renders unverified (bits cannot be cleared without re-signing)", async () => {
+  // Take the signed revoked list and swap in the all-zero bitstring: the
+  // attack that clears a revocation. The stale proof must not carry it.
+  const tampered = structuredClone(statusLists.lists.revocation.bit3Set);
+  tampered.credentialSubject.encodedList = statusLists.lists.revocation.allZero.credentialSubject.encodedList;
+  await expectBadge(happyMap({ [LIST_URLS.revocation]: tampered }), "/v1/badge/fixture-impl.svg", {
+    message: "unverified",
+  });
+});
+
+test("key separation: a status list signed by the ISSUER key renders unverified", async () => {
+  // statusLists.issuerSigned is a validly signed all-zero revocation list,
+  // but signed with the issuer key. A stolen issuer key must not be able to
+  // clear its own revocation bits, so only the status keys may vouch for it.
+  await expectBadge(happyMap({ [LIST_URLS.revocation]: statusLists.issuerSigned }), "/v1/badge/fixture-impl.svg", {
+    message: "unverified",
+  });
 });
 
 // ── routing and allowlist ───────────────────────────────────────────────────

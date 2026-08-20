@@ -13,13 +13,13 @@ This is a scaffold, committed so the pipeline, semantics, and tests exist before
 It must not be deployed until all three are true:
 
 1. **Phase A issues real credentials.**
-   The pinned issuer keys in `worker.mjs` are placeholders (an all-zero Ed25519 key that verifies nothing by construction), and the signed suite manifest URL points at a file that does not exist yet.
+   The pinned issuer and status keys in `worker.mjs` are placeholders (degenerate Ed25519 keys that verify nothing by construction), and the signed suite manifest URL points at a file that does not exist yet.
 2. **The Cloudflare project exists.**
    There is no `kya-os-badge` worker or `badge.kya-os.org` custom domain today; the route in `wrangler.jsonc` is commented out.
 3. **The working group has signed off on the badge semantics.**
    Per GOVERNANCE.md, anything that changes what a listing means belongs to the working group; the state machine below is scaffold semantics, proposed not decided.
 
-One-time setup, in order, when Phase B starts: run the Phase A key ceremony and replace `PINNED_ISSUER_KEYS`; publish the signed suite manifest and fix `SUITE_MANIFEST_URL`; create the Cloudflare Worker and the custom domain; uncomment the route in `wrangler.jsonc`; `wrangler deploy` from this directory.
+One-time setup, in order, when Phase B starts: run the Phase A key ceremony and replace `PINNED_ISSUER_KEYS` and `PINNED_STATUS_KEYS` (two SEPARATE key sets - the issuer key signs credentials, the status key signs status lists, so a stolen issuer key can never clear its own revocation bits); publish the signed suite manifest and fix `SUITE_MANIFEST_URL`; create the Cloudflare Worker and the custom domain; uncomment the route in `wrangler.jsonc`; `wrangler deploy` from this directory.
 
 ## How a badge is computed
 
@@ -28,7 +28,7 @@ Fail-closed at every step - any failure renders the grey "unverified" badge, nev
 1. The slug must be in `generated-allowlist.mjs`, which `site/build-pages.mjs` generates from the rendered registry entries (commit it with registry changes). Unlisted slug = 404.
 2. Fetch the claim credential from its canonical URL (the registry entry's `attestationUrl`).
 3. Verify the credential's Ed25519 `DataIntegrityProof` / `eddsa-jcs-2022` proof with `crypto.subtle` (JCS-canonicalize the credential minus proof per the W3C DI cryptosuite) against the PINNED issuer keys only - keys the credential carries are never trusted. Workers and Node 20+ both support Ed25519 in WebCrypto.
-4. Check the revocation, suspension, and withdrawal Bitstring Status List entries (gzip + multibase, MSB-first bits, purpose asserted).
+4. Check the revocation, suspension, and withdrawal Bitstring Status List entries (gzip + multibase, MSB-first bits, purpose asserted). Each status list is a signed credential whose proof is verified against the PINNED status keys - a key set separate from the issuer keys - before any bit is read.
 5. Compare the credential's suite pin (`suiteVersion` + `vectorSetHash`) against the signed suite manifest.
 
 Six states, precedence top to bottom:

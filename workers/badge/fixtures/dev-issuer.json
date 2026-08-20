@@ -1,5 +1,5 @@
 {
   "WARNING": "DEV FIXTURE - throwaway key, NON-PRODUCTION. Regenerate with generate-fixtures.mjs.",
-  "id": "did:key:z6MkuGSFxVXEL1PP4th4ikzLpF5SuqrTZg2TktTMtAL5pp1j",
-  "publicKeyMultibase": "z6MkuGSFxVXEL1PP4th4ikzLpF5SuqrTZg2TktTMtAL5pp1j"
+  "id": "did:key:z6MksFW7xNWETcEhi244USbUoJnK5vcSDNHi1Dq5pCZPS4Fa",
+  "publicKeyMultibase": "z6MksFW7xNWETcEhi244USbUoJnK5vcSDNHi1Dq5pCZPS4Fa"
 }

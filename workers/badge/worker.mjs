@@ -17,7 +17,9 @@
  *      credential minus proof, per the W3C DI cryptosuite; Workers and Node
  *      20+ both support Ed25519 in crypto.subtle) against the PINNED issuer
  *      keys - never against keys the credential brings along
- *   4. check the revocation / suspension / withdrawal Bitstring status lists
+ *   4. check the revocation / suspension / withdrawal Bitstring status lists,
+ *      each a signed credential verified against the PINNED status keys (a
+ *      key set separate from the issuer keys) before any bit is read
  *   5. compare the credential's suite pin against the signed suite manifest
  *   6. render one of six states:
  *        verified    green   proof valid, no status bit set, suite current
@@ -51,6 +53,14 @@ import { BADGE_ALLOWLIST } from "./generated-allowlist.mjs";
 export const PINNED_ISSUER_KEYS = [
   // PLACEHOLDER: all-zero Ed25519 key. Verifies nothing by construction.
   "z6MkeTG3bFFSLYVU7VqhgZxqr6YzpaGrQtFMh1uvqGy1vDnP",
+];
+// The conformance program's status-list keys. THREE-KEY DESIGN, ON PURPOSE:
+// K-issuer signs credentials, K-status signs status lists, so a stolen
+// issuer key can never clear (or set) its own revocation bits. These MUST
+// stay a separate key set from PINNED_ISSUER_KEYS at the Phase A ceremony.
+export const PINNED_STATUS_KEYS = [
+  // PLACEHOLDER: Ed25519 key 0x01 then 31 zero bytes. Verifies nothing by construction.
+  "z6MkeXATEjyXENzBXBxgC5EHk2JE5aqd7qMGGtDpLUH1e2Sj",
 ];
 // The signed suite manifest published per Phase A release. DOES NOT EXIST
 // YET; the URL is the planned canonical location.
@@ -115,13 +125,26 @@ function renderShieldsJson(state, claim) {
 
 // ── state resolution ────────────────────────────────────────────────────────
 
-async function statusBitSet(credential, purpose, fetchImpl) {
+async function statusBitSet(credential, purpose, fetchImpl, statusKeys) {
   const statuses = [credential.credentialStatus ?? []].flat();
   const entry = statuses.find((status) => status?.statusPurpose === purpose);
   if (!entry) return false; // no list for this purpose = nothing asserted
   const response = await fetchImpl(entry.statusListCredential);
   if (!response.ok) throw new Error(`status list fetch ${response.status}`);
   const list = await response.json();
+  // The status list is a signed credential in its own right. Verify its
+  // proof against the PINNED status keys - a key set deliberately separate
+  // from the issuer keys - BEFORE reading any bit, so neither the list host
+  // nor a stolen issuer key can clear (or set) revocation bits.
+  let listProofOk = false;
+  for (const multibase of statusKeys) {
+    const { ok } = await verifyEddsaJcs2022(list, ed25519KeyFromMultibase(multibase));
+    if (ok) {
+      listProofOk = true;
+      break;
+    }
+  }
+  if (!listProofOk) throw new Error("status list proof did not verify against any pinned status key");
   const subject = list.credentialSubject ?? {};
   if (subject.statusPurpose !== purpose) throw new Error("status list purpose mismatch");
   return bitstringStatusAt(subject.encodedList, entry.statusListIndex);
@@ -131,7 +154,7 @@ async function statusBitSet(credential, purpose, fetchImpl) {
  * Resolve the badge state for one allowlist entry. Throws on anything
  * unexpected; the caller maps every throw to "unknown" (fail-closed).
  */
-export async function resolveBadgeState(slug, entry, { fetchImpl, issuerKeys, manifestUrl }) {
+export async function resolveBadgeState(slug, entry, { fetchImpl, issuerKeys, statusKeys, manifestUrl }) {
   if (!entry.credentialUrl) return "unknown"; // no credential issued yet
 
   const credentialResponse = await fetchImpl(entry.credentialUrl);
@@ -153,9 +176,9 @@ export async function resolveBadgeState(slug, entry, { fetchImpl, issuerKeys, ma
   const subject = credential.credentialSubject ?? {};
   if (subject.registrySlug !== slug) throw new Error("credential subject slug mismatch");
 
-  if (await statusBitSet(credential, "revocation", fetchImpl)) return "revoked";
-  if (await statusBitSet(credential, "withdrawal", fetchImpl)) return "withdrawn";
-  if (await statusBitSet(credential, "suspension", fetchImpl)) return "contested";
+  if (await statusBitSet(credential, "revocation", fetchImpl, statusKeys)) return "revoked";
+  if (await statusBitSet(credential, "withdrawal", fetchImpl, statusKeys)) return "withdrawn";
+  if (await statusBitSet(credential, "suspension", fetchImpl, statusKeys)) return "contested";
 
   // Suite currency: compare the credential's suite pin to the signed manifest.
   const manifestResponse = await fetchImpl(manifestUrl);
@@ -191,6 +214,7 @@ function badgeResponse(state, claim, format, maxAge = 300) {
 export function createBadgeHandler({
   allowlist = BADGE_ALLOWLIST,
   issuerKeys = PINNED_ISSUER_KEYS,
+  statusKeys = PINNED_STATUS_KEYS,
   manifestUrl = SUITE_MANIFEST_URL,
   fetchImpl = fetch,
   cache = null,
@@ -215,7 +239,7 @@ export function createBadgeHandler({
 
     let response;
     try {
-      const state = await resolveBadgeState(slug, entry, { fetchImpl, issuerKeys, manifestUrl });
+      const state = await resolveBadgeState(slug, entry, { fetchImpl, issuerKeys, statusKeys, manifestUrl });
       response = badgeResponse(state, entry.claim, format);
     } catch {
       // Fail closed: any failure anywhere renders the unverified badge,
