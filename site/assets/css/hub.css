@@ -41,7 +41,8 @@ b{font-weight:400;color:var(--ink)}
 /* Underline sweep: the design's link grammar. Chrome links opt out. */
 a{color:var(--ink);text-decoration:none;background-image:linear-gradient(currentColor,currentColor);background-size:0% 1px;background-repeat:no-repeat;background-position:left bottom;transition:background-size .25s ease-out,color .15s ease-out;padding-bottom:3px}
 a:hover{color:var(--ink-bright);background-size:100% 1px}
-.topnav a,a.panel-card,a.rails-panel,a.chip-link,a.btn-solid{background-image:none;padding-bottom:0}
+.topnav a,a.panel-card,a.rails-panel,a.chip-link,a.btn-solid{background-image:none}
+.topnav a:not(.nav-cta),a.panel-card,a.rails-panel,a.chip-link{padding-bottom:0}
 .quiet{color:var(--ink-muted)}
 
 /* Tones (color utilities; waveforms inherit via currentColor). */
