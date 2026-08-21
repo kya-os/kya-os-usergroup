@@ -210,8 +210,13 @@ export async function initPageFx() {
   await wait(50);
   const fx = [...document.querySelectorAll(".fx")];
   fx.filter((el) => titleEl && el.contains(titleEl)).forEach((el) => { el.style.animationPlayState = "running"; });
-  if (title) await title.animateIn();
-  fx.forEach((el) => { el.style.animationPlayState = "running"; });
+  try {
+    if (title) await title.animateIn();
+  } finally {
+    // __pageFxInit is already set, so the 2.5s failsafe cannot recover a
+    // decrypt failure - the release below must run no matter what.
+    fx.forEach((el) => { el.style.animationPlayState = "running"; });
+  }
   document.querySelectorAll("[data-glitch]").forEach((el) => {
     if (el.children.length === 0) new GlitchText(el);
   });
