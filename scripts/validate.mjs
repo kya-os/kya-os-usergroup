@@ -289,7 +289,12 @@ export function validateRegistry() {
     if (!isBoundedString(entry.description, 1, 280)) fail('"description" is required: a string of 1-280 characters');
     if (!isHttpsUrl(entry.homepage)) fail('"homepage" is required: a valid https:// URL');
     if (entry.repo !== undefined && !isHttpsUrl(entry.repo)) fail('"repo" must be a valid https:// URL');
-    if (!KINDS.includes(entry.kind)) fail(`"kind" is required: one of ${KINDS.join(", ")}`);
+    if (!KINDS.includes(entry.kind))
+      fail(
+        entry.kind === undefined
+          ? `"kind" is required: one of ${KINDS.join(", ")}`
+          : `"kind" must be one of ${KINDS.join(", ")}, got: ${JSON.stringify(entry.kind)}`,
+      );
 
     if (entry.buildsOn !== undefined) {
       if (!Array.isArray(entry.buildsOn) || entry.buildsOn.length === 0) {
