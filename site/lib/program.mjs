@@ -68,6 +68,7 @@ export function sectionsConformance(rendered) {
     </div>
     <div class="pipeline"><span class="pipe-dot"></span></div>
     <p class="note">Fastest on-ramp: the <a href="${STARTER_URL}">conformance starter</a> — clone to a submission-ready claim in under an hour.</p>
+    <p class="note">These are rungs of one ladder, not a separate act: listed in five minutes, self-reported the same hour, verified when the program re-runs your bytes — <a href="/builders/#submit">join on the builders page -&gt;</a></p>
     ${promptBlock("prompt-prove-conformance")}
   </section>
   <section class="fx fxd-25">
