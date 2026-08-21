@@ -42,15 +42,12 @@ function standardsRow(entry) {
     : "";
   const evidence = entry.evidence ? `<a href="${esc(entry.evidence)}">evidence -&gt;</a>\n            ` : "";
   const notes = entry.notes ? `\n            <p class="srow-notes">${esc(entry.notes)}</p>` : "";
-  // The standard's name links its evidence when the row carries any; a row
-  // without evidence gets the de-afforded header style instead (no link
-  // promise a click cannot keep).
-  const name = entry.evidence
+  const name =
     // Never an anchor: the name sits inside the row's <summary>, and a link
     // nested in a disclosure trigger fights it for the click (same rule as
-    // the directory chips). The expanded row carries the evidence link.
-    ? `<span class="sname">${esc(entry.standard)}</span>`
-    : `<span class="sname t-static">${esc(entry.standard)}</span>`;
+    // the directory chips). Like .dtitle, the name is a disclosure-row label
+    // - one style for every row; the expanded row carries the evidence link.
+    `<span class="sname">${esc(entry.standard)}</span>`;
   return `        <details class="srow" id="std-${esc(entry.slug)}">
           <summary class="sgrid">
             ${name}

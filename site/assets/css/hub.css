@@ -255,10 +255,11 @@ summary.sgrid:hover{background:var(--panel-2)}
 /* A bright mono card/row title is clickable ONLY when it is a real <a> (the
    underline sweep + hover confirm it). Any title-styled element without a
    destination carries .t-static: same size and mono face, dimmer ink, no
+   (exempt: .dtitle and .sname - disclosure-row LABELS inside interactive
+   summaries; the row's caret is the affordance, the label is never a link)
    hover shift - a header, not a link promise. Keep this block after the
    .pc-title and .sname rules so .t-static wins the cascade tie. */
 a.pc-title{display:inline-block}
-a.sname{justify-self:start}
 .t-static{color:var(--ink)}
 
 /* ── Rails diagram page ───────────────────────────────────────────────────── */
@@ -312,8 +313,8 @@ a.btn-solid:hover{background:var(--accent-hover);color:var(--on-accent)}
 
 /* ── Waveform lockup (build-time SVG) ─────────────────────────────────────── */
 /* Borderless by design: the wave + label float on their panel. The old
-   border and 5%-tint pill went together - without the border the tint read
-   as a rendering artifact, so both are gone. */
+   border is gone by owner direction; the 5%-tint pill and padding stay -
+   the wash is the lockup's ground, the stroke was the only removal. */
 .wf{display:block}
 .wf-lockup{display:inline-flex;align-items:center;gap:8px;padding:5px 10px;background:color-mix(in srgb,var(--signal) 5%,transparent);color:var(--signal)}
 .wf-label{font-family:var(--font-mono);font-size:9px;letter-spacing:.12em;white-space:nowrap;line-height:1}
