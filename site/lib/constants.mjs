@@ -13,10 +13,18 @@ export const DIF_URL = "https://identity.foundation";
 export const TEMPLATE_SLUG = "example-builder";
 
 export const CONFORMANCE_MD_URL = `${MCP_REPO_URL}/blob/main/CONFORMANCE.md`;
+export const ENTITY_CARD_URL = `${MCP_REPO_URL}/blob/main/SPEC-ENTITY-CARD.md`;
 export const MIGRATE_README_URL = `${MCP_REPO_URL}#migrate-any-mcp-server-in-2-lines`;
 export const DOCS_QUICKSTART_URL = `${SITE_URL}/mcp/docs/getting-started/quickstart`;
 export const SUBMISSION_ISSUE_URL = `${MCP_REPO_URL}/issues/new?template=conformance_submission.md`;
-export const STARTER_URL = `${REPO_URL}/tree/main/conformance/starter`;
+export const REVOKED_TREE_URL = `${MCP_REPO_URL}/tree/main/examples/revoked`;
+export const PLAYGROUND_URL = `${SITE_URL}/mcp/playground`;
+export const DEMO_MCP_URL = "https://demo-mcp.kya-os.ai/mcp";
+// 2026-08-20: the live standalone starter repo. Repoint to
+// `${REPO_URL}/tree/main/conformance/starter` after PR #1 merges and the
+// standalone repo is archived with a pointer (the /tree/main/ URL 404s until
+// then - conformance/starter exists only on the feature branch).
+export const STARTER_URL = "https://github.com/kya-os/conformance-starter";
 export const SUITE = {
   version: "1.0.0",
   vectors: 44,
