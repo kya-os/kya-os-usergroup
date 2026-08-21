@@ -9,6 +9,7 @@ export const BADGE_ALLOWLIST = {
   "knowthat-ai": { name: "KnowThat.ai", claim: null, credentialUrl: null },
   "kya-os-demo-server": { name: "KYA-OS Demo Server", claim: null, credentialUrl: null },
   "kya-os-mcp": { name: "@kya-os/mcp (reference implementation)", claim: "L3 full", credentialUrl: null },
+  "kya-os-schema": { name: "KYA-OS Schema Registry", claim: null, credentialUrl: null },
   "mycelium-trails": { name: "Mycelium Trails", claim: "L1 subset (signed-proof)", credentialUrl: null },
   "revoked-demo": { name: "REVOKED", claim: null, credentialUrl: null },
 };
