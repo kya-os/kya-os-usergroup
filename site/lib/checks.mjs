@@ -8,7 +8,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { MIGRATE_LINES, PROMPTS, SUITE } from "./constants.mjs";
+import { FOUNDING_CUTOFF, MIGRATE_LINES, PROMPTS, SUITE } from "./constants.mjs";
 import { esc } from "./html.mjs";
 
 export function assertBuild(condition, message) {
@@ -142,6 +142,95 @@ export function assertPromptParity(pages) {
   for (const prompt of PROMPTS) {
     assertBuild(seen.has(prompt.id), `prompt "${prompt.id}" is defined but rendered on no page`);
   }
+}
+
+/**
+ * The ladder readout on the home stats strip: the per-rung counts must be
+ * the live registry numbers, recomputed here from the shaped entries - never
+ * through the renderer's own math.
+ */
+export function assertLadderReadout(landingHtml, rendered) {
+  const inVerification = rendered.filter((entry) => entry.conformance?.status === "in-verification").length;
+  const verified = rendered.filter((entry) => entry.conformance?.status === "verified").length;
+  assertBuild(
+    landingHtml.includes(`<b>${inVerification}</b> in verification &middot; <b>${verified}</b> verified`),
+    `the home stats strip must show the live per-rung counts (${inVerification} in verification, ${verified} verified)`,
+  );
+}
+
+/**
+ * Probe honesty, on the finished page bytes: "enforcement verified" appears
+ * EXACTLY once per enforcing probe result, only on the builders page, and
+ * nowhere else on the site - enforcement language never renders without
+ * probe data behind it. Every probed service row must carry its classified
+ * line dated with the committed probedAt (expected strings reconstructed
+ * inline, never through the renderer), and the "deployed <version>"
+ * provenance display renders exactly when the probe reported a version AND
+ * the entry carries a claim.
+ */
+export function assertProbeHonesty(pages, rendered, probes) {
+  const results = probes?.results ?? {};
+  const probed = rendered.filter((entry) => entry.kind === "service" && entry.probeUrl !== undefined && results[entry.slug] !== undefined);
+  const enforcing = probed.filter((entry) => results[entry.slug].status === "enforcing").length;
+  for (const [name, html] of Object.entries(pages)) {
+    const count = (html.match(/enforcement verified/g) ?? []).length;
+    const allowed = name === "builders/index.html" ? enforcing : 0;
+    assertBuild(
+      count === allowed,
+      `${name}: "enforcement verified" appears ${count} times, expected ${allowed} - the phrase renders only with an enforcing probe result behind it`,
+    );
+  }
+  const buildersHtml = pages["builders/index.html"];
+  const expectedLines = {
+    enforcing: `&#9679; live &middot; enforcement verified &middot; checked ${probes?.probedAt}`,
+    open: `&#9679; live &middot; open (no proof required) &middot; checked ${probes?.probedAt}`,
+    unreachable: `&#9675; unreachable &middot; checked ${probes?.probedAt}`,
+  };
+  for (const entry of probed) {
+    const probe = results[entry.slug];
+    assertBuild(
+      buildersHtml.includes(expectedLines[probe.status]),
+      `the probe line for "${entry.slug}" must render its classified status ("${probe.status}") dated ${probes.probedAt}`,
+    );
+    if (probe.provenanceVersion !== undefined && entry.conformance !== undefined) {
+      assertBuild(
+        buildersHtml.includes(`deployed ${esc(probe.provenanceVersion)}`),
+        `"${entry.slug}" must render its probed deployment version (${probe.provenanceVersion}) beside its claim`,
+      );
+    }
+  }
+  const deployedCount = (buildersHtml.match(/&middot; deployed /g) ?? []).length;
+  const expectedDeployed = probed.filter(
+    (entry) => results[entry.slug].provenanceVersion !== undefined && entry.conformance !== undefined,
+  ).length;
+  assertBuild(
+    deployedCount === expectedDeployed,
+    `"deployed" renders ${deployedCount} times on the builders page, expected ${expectedDeployed} - the provenance display never renders without probe data`,
+  );
+}
+
+/**
+ * The founding cohort and the profile rows, per directory row (blocks
+ * re-extracted from the page bytes, the cutoff compared here - never through
+ * the renderer's own predicate): every rendered entry listed on or before
+ * the cutoff, and no other, carries the founding-builder tag; every expanded
+ * row carries its copy-ready badge embed.
+ */
+export function assertFoundingCohort(buildersHtml, rendered) {
+  for (const entry of rendered) {
+    const start = buildersHtml.indexOf(`id="${entry.slug}"`);
+    assertBuild(start !== -1, `no directory row found for "${entry.slug}"`);
+    const row = buildersHtml.slice(start, buildersHtml.indexOf("</details>", start));
+    const expected = entry.listedAt <= FOUNDING_CUTOFF;
+    assertBuild(
+      row.includes("founding builder") === expected,
+      `"${entry.slug}" (listed ${entry.listedAt}) must ${expected ? "" : "not "}carry the founding-builder tag (cutoff ${FOUNDING_CUTOFF})`,
+    );
+    assertBuild(row.includes(`/badge/${entry.slug}.svg`), `the expanded row for "${entry.slug}" must carry its badge embed snippet`);
+  }
+  const count = (buildersHtml.match(/founding builder/g) ?? []).length;
+  const expectedCount = rendered.filter((entry) => entry.listedAt <= FOUNDING_CUTOFF).length;
+  assertBuild(count === expectedCount, `${count} founding-builder tags rendered, expected ${expectedCount}`);
 }
 
 /**

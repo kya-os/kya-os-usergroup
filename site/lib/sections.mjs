@@ -10,7 +10,7 @@
  * drive the filter, and native <details> rows carry the expansion - both
  * fully functional without JavaScript.
  */
-import { ADD_PROJECT_URL, DEMO_MCP_URL, DOCS_QUICKSTART_URL, MIGRATE_README_URL, PLAYGROUND_URL, REPO_URL, REVOKED_TREE_URL, STARTER_URL, SUITE, MIGRATE_LINES } from "./constants.mjs";
+import { ADD_PROJECT_URL, DEMO_MCP_URL, DOCS_QUICKSTART_URL, FOUNDING_CUTOFF, MIGRATE_README_URL, ORIGIN, PLAYGROUND_URL, REPO_URL, REVOKED_TREE_URL, STARTER_URL, SUITE, MIGRATE_LINES } from "./constants.mjs";
 import { conformanceLabel, conformanceLevelUrl, directorySorted } from "./data.mjs";
 import { conformanceStatusChip, esc, promptBlock } from "./html.mjs";
 import { highlightTs } from "./highlight.mjs";
@@ -83,6 +83,10 @@ ${[
     stat("/conformance/#levels", `levels <b>L1–L3</b>`),
     stat("/standards/", `<b>${interopSorted.length}</b> standards mapped`),
     stat("/builders/", `<b>${rendered.length}</b> projects listed`),
+    stat(
+      "/builders/",
+      `<b>${rendered.filter((entry) => entry.conformance?.status === "in-verification").length}</b> in verification &middot; <b>${rendered.filter((entry) => entry.conformance?.status === "verified").length}</b> verified`,
+    ),
   ].join("\n")}
   </div>
 ${sectionMigrate()}
@@ -129,26 +133,71 @@ ${sectionMigrate()}
   </div>`;
 }
 
-function directoryRow(entry) {
+/**
+ * The live signal for a service row. Without probe data: the neutral static
+ * dot. With probe data: the summary dot takes the classified tone, and the
+ * expanded row carries the dated, classified line - enforcement language is
+ * NEVER rendered without a probe result behind it, and an open endpoint is
+ * stated honestly, not shamed.
+ */
+function probeSignal(entry, probes) {
+  if (entry.kind !== "service") return { dot: "", line: "" };
+  const probe = probes?.results?.[entry.slug];
+  if (!probe) return { dot: `<span class="live-dot" title="hosted service: an endpoint you can point at today"></span>`, line: "" };
+  const checked = `checked ${esc(probes.probedAt)}`;
+  if (probe.status === "enforcing") {
+    return {
+      dot: `<span class="live-dot"></span>`,
+      line: `<div class="dprobe tone-signal">&#9679; live &middot; enforcement verified &middot; ${checked}</div>`,
+    };
+  }
+  if (probe.status === "open") {
+    return {
+      dot: `<span class="live-dot dot-open"></span>`,
+      line: `<div class="dprobe quiet">&#9679; live &middot; open (no proof required) &middot; ${checked}</div>`,
+    };
+  }
+  return {
+    dot: `<span class="live-dot dot-off"></span>`,
+    line: `<div class="dprobe tone-faint">&#9675; unreachable &middot; ${checked}</div>`,
+  };
+}
+
+function directoryRow(entry, probes) {
   const c = entry.conformance;
   const chip = c
     ? conformanceStatusChip(c, { link: false })
     : `<span class="chip st-listed">&middot; listed</span>`;
-  const liveDot =
-    entry.kind === "service"
-      ? `<span class="live-dot" title="hosted service: an endpoint you can point at today"></span>`
-      : "";
+  const { dot: liveDot, line: probeLine } = probeSignal(entry, probes);
+  // The provenance tie: the probe's reported deployment version beside the
+  // claim - two facts displayed side by side, equality never asserted here
+  // (the claim's verification thread documents the tie).
+  const provenanceVersion = probes?.results?.[entry.slug]?.provenanceVersion;
+  const deployed = c && provenanceVersion ? ` <span class="dprov">&middot; deployed ${esc(provenanceVersion)}</span>` : "";
   const confLine = c
-    ? `<div class="dconf-line tone-${CONF_TONE[c.status]}">${waveformSvg(`${entry.slug}#${conformanceLabel(c)}`, { bars: 16, trackHeight: 11, barWidth: 2, gap: 1.5 })}<p>conformance: <a href="${esc(conformanceLevelUrl(c))}">${esc(conformanceLabel(c))}</a> — ${esc(CONF_TEXT[c.status])}</p></div>`
+    ? `<div class="dconf-line tone-${CONF_TONE[c.status]}">${waveformSvg(`${entry.slug}#${conformanceLabel(c)}`, { bars: 16, trackHeight: 11, barWidth: 2, gap: 1.5 })}<p>conformance: <a href="${esc(conformanceLevelUrl(c))}">${esc(conformanceLabel(c))}</a>${deployed} — ${esc(CONF_TEXT[c.status])}</p></div>`
     : `<div class="dconf-line tone-faint"><p>Listed in the registry — no conformance claim yet.</p></div>`;
+  const founding =
+    entry.listedAt <= FOUNDING_CUTOFF
+      ? `<span class="tag-founding" title="listed during the founding window (through ${esc(FOUNDING_CUTOFF)})">founding builder</span>`
+      : "";
+  const capabilities = [];
+  if (entry.buildsOn?.length) capabilities.push(`builds on: ${entry.buildsOn.map((repo) => esc(repo)).join(", ")}`);
+  if (entry.standards?.length) capabilities.push(`speaks: ${entry.standards.map((slug) => esc(slug)).join(", ")}`);
+  const capLine = capabilities.length ? `<div class="dcap">${capabilities.join(" &middot; ")}</div>` : "";
   const links = [`<a href="${esc(entry.homepage)}">homepage -&gt;</a>`];
   if (entry.repo && entry.repo !== entry.homepage) links.push(`<a href="${esc(entry.repo)}">repo -&gt;</a>`);
   if (c?.attestationUrl) links.push(`<a href="${esc(c.attestationUrl)}">credential -&gt;</a>`);
   if (c?.evidenceUrl) links.push(`<a href="${esc(c.evidenceUrl)}">evidence -&gt;</a>`);
-  const buildsOn = (entry.buildsOn ?? []).map((repo) => esc(repo)).join(", ");
+  if (entry.contact?.github) links.push(`<a href="https://github.com/${esc(entry.contact.github)}">@${esc(entry.contact.github)} -&gt;</a>`);
+  // The copy-ready badge embed, in every expanded row: a plain selectable
+  // line (user-select: all), deliberately not a copy button - per-row buttons
+  // would dilute the prompt-parity contract the copy module asserts.
+  const embed = `<p class="micro">your badge, copy-ready (click selects):</p>
+          <div class="dembed">[![KYA-OS conformance](${esc(ORIGIN)}/badge/${esc(entry.slug)}.svg)](${esc(ORIGIN)}/builders/#${esc(entry.slug)})</div>`;
   return `      <details class="drow k-${esc(entry.kind)}" id="${esc(entry.slug)}">
         <summary class="dgrid">
-          <span class="dname"><span class="dmark" aria-hidden="true">${esc(entry.name.charAt(0))}</span><span class="dtitle">${esc(entry.name)}</span>${liveDot}</span>
+          <span class="dname"><span class="dmark" aria-hidden="true">${esc(entry.name.charAt(0))}</span><span class="dtitle">${esc(entry.name)}</span>${liveDot}${founding}</span>
           <span class="dtype">${esc(entry.kind)}</span>
           <span class="dwhat">${esc(entry.description)}</span>
           <span class="dconf">${chip}</span>
@@ -156,14 +205,15 @@ function directoryRow(entry) {
           <span class="caret" aria-hidden="true"></span>
         </summary>
         <div class="dexpand">
-          ${confLine}
-          <div class="dlinks">${links.join("\n            ")}${buildsOn ? `<span class="dbuilds">builds on ${buildsOn}</span>` : ""}</div>
+          ${probeLine ? `${probeLine}\n          ` : ""}${confLine}
+          ${capLine ? `${capLine}\n          ` : ""}<div class="dlinks">${links.join("\n            ")}</div>
+          ${embed}
         </div>
       </details>`;
 }
 
 /** The directory: CSS-only type filter + expandable registry rows. */
-export function sectionDirectory(rendered) {
+export function sectionDirectory(rendered, probes) {
   const types = ["all", ...KINDS];
   const counts = { all: rendered.length };
   for (const entry of rendered) counts[entry.kind] = (counts[entry.kind] ?? 0) + 1;
@@ -181,7 +231,9 @@ export function sectionDirectory(rendered) {
     .filter((t) => TYPE_DEFS[t] !== "")
     .map((t) => `<span class="fh fh-${t}">${esc(TYPE_DEFS[t])}</span>`)
     .join("");
-  const rows = directorySorted(rendered).map(directoryRow).join("\n");
+  const rows = directorySorted(rendered)
+    .map((entry) => directoryRow(entry, probes))
+    .join("\n");
   return `  <section class="dir fx fxd-15">
 ${inputs}
     <div class="filter-row">
@@ -193,7 +245,7 @@ ${chips}
 ${rows}
       <div class="dfoot">your project here — <a href="${esc(ADD_PROJECT_URL)}">one JSON file and one pull request -&gt;</a></div>
     </div>
-    <p class="dnote">Ordered by verification: claims under measurement first, then hosted service endpoints, then everything listed. A <span class="tone-signal">&#9679;</span> next to the name marks a hosted service endpoint you can point at today.</p>
+    <p class="dnote">Ordered by the ladder: verified first, then in verification, then self-reported, then everything listed. A <span class="tone-signal">&#9679;</span> next to the name marks a hosted service endpoint you can point at today; where the entry names a probe endpoint, the daily probe classifies it in the expanded row - dated, from the wire, independent of any claim.</p>
   </section>`;
 }
 
@@ -238,7 +290,7 @@ ${[
     rung(`<span class="chip st-verified demo">&check; verified</span>`, "the program re-runs your bytes"),
   ].join(`\n      <span class="ladder-arrow" aria-hidden="true">-&gt;</span>\n`)}
     </div>
-    <p class="ladder-copy">Listed in five minutes. Self-reported the same hour. Verified when the <a href="/conformance/">program</a> re-runs your bytes.</p>
+    <p class="ladder-copy">Listed in five minutes. Self-reported the same hour. Verified when the <a href="/conformance/">program</a> re-runs your bytes. Services can additionally prove live enforcement via the daily probe - the wire is the witness: a bare request must be refused.</p>
     <div class="panel-card path-primary">
       <div class="pc-title t-static">one action, every rung</div>
       <p>Hand the prompt to your coding agent and it walks the ladder with you: your entry, an optional self-reported conformance run against the pinned suite, one pull request, and the submission issue if you want verification. Or take the one-click path — the button opens the GitHub editor on <code>registry/builders/</code> with the entry template prefilled: rename to <code>&lt;your-slug&gt;.json</code>, edit the fields, propose the change.</p>

@@ -56,7 +56,7 @@ export function renderLandingHtml({ rendered, interopSorted }) {
 }
 
 /** The directory: filterable registry rows, the on-ramps, and the submission paths. */
-export function renderBuildersHtml({ rendered }) {
+export function renderBuildersHtml({ rendered, probes }) {
   return contentPage({
     title: `Builders · ${TITLE}`,
     description: "Who builds on KYA-OS: implementations, services, integrations, templates, and examples - one PR to get listed.",
@@ -65,7 +65,7 @@ export function renderBuildersHtml({ rendered }) {
       title: "BUILDERS",
       lede: "Everyone building on KYA-OS, in one registry — ordered by how much has been proven. Conformance here is measured against the pinned vector suite, never self-asserted.",
     }),
-    sections: [sectionDirectory(rendered), sectionStartHere(), sectionSubmit()],
+    sections: [sectionDirectory(rendered, probes), sectionStartHere(), sectionSubmit()],
   });
 }
 
