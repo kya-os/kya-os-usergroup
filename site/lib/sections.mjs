@@ -143,7 +143,13 @@ ${sectionMigrate()}
 function probeSignal(entry, probes) {
   if (entry.kind !== "service" && entry.kind !== "implementation") return { dot: "", line: "" };
   const probe = probes?.results?.[entry.slug];
-  if (!probe) return { dot: `<span class="live-dot" title="hosted service: an endpoint you can point at today"></span>`, line: "" };
+  // The unproved fallback dot is a service affordance (a hosted endpoint you
+  // can point at); a library/implementation earns a signal only from a real
+  // probe result on a declared probeUrl.
+  if (!probe) {
+    if (entry.kind !== "service") return { dot: "", line: "" };
+    return { dot: `<span class="live-dot" title="hosted service: an endpoint you can point at today"></span>`, line: "" };
+  }
   const checked = `checked ${esc(probes.probedAt)}`;
   if (probe.status === "enforcing") {
     return {

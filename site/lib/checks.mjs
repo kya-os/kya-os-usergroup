@@ -170,7 +170,7 @@ export function assertLadderReadout(landingHtml, rendered) {
  */
 export function assertProbeHonesty(pages, rendered, probes) {
   const results = probes?.results ?? {};
-  const probed = rendered.filter((entry) => entry.kind === "service" && entry.probeUrl !== undefined && results[entry.slug] !== undefined);
+  const probed = rendered.filter((entry) => (entry.kind === "service" || entry.kind === "implementation") && entry.probeUrl !== undefined && results[entry.slug] !== undefined);
   const enforcing = probed.filter((entry) => results[entry.slug].status === "enforcing").length;
   for (const [name, html] of Object.entries(pages)) {
     const count = (html.match(/enforcement verified/g) ?? []).length;
