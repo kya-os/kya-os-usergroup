@@ -140,7 +140,7 @@ function renderHeaders() {
 
 // ── gate: never render an invalid registry ──────────────────────────────────
 
-const { errors, rendered, interopSorted } = loadSiteData();
+const { errors, rendered, interopSorted, probes } = loadSiteData();
 if (errors.length > 0) {
   console.error(`Refusing to build: registry validation failed (${errors.length} error${errors.length === 1 ? "" : "s"}):`);
   for (const error of errors) console.error(`  - ${error}`);
@@ -156,7 +156,7 @@ for (const page of ["builders", "conformance", "standards", "rails", "use-cases"
 }
 
 writeFileSync(join(distDir, "index.html"), renderLandingHtml({ rendered, interopSorted }));
-writeFileSync(join(distDir, "builders", "index.html"), renderBuildersHtml({ rendered }));
+writeFileSync(join(distDir, "builders", "index.html"), renderBuildersHtml({ rendered, probes }));
 writeFileSync(join(distDir, "conformance", "index.html"), renderConformanceHtml({ rendered }));
 writeFileSync(join(distDir, "standards", "index.html"), renderStandardsHtml({ interopSorted }));
 writeFileSync(join(distDir, "rails", "index.html"), renderRailsHtml({ interopSorted }));
@@ -215,7 +215,7 @@ writeFileSync(join(badgeDir, "generated-allowlist.mjs"), renderBadgeAllowlist(re
 
 // ── render check: assert the artifact is complete and honest ────────────────
 
-runRenderChecks({ distDir, rendered, interopSorted });
+runRenderChecks({ distDir, rendered, interopSorted, probes });
 
 console.log(
   `Built Pages artifact: ${rendered.length} entr${rendered.length === 1 ? "y" : "ies"}, ${interopSorted.length} standards rails -> dist/ (6 pages, static + one hashed inline script + page-fx/copy-prompt modules and stylesheets, build-time waveforms, self-hosted fonts, real 404.html, no worker)`,

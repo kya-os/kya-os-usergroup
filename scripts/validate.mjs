@@ -23,6 +23,8 @@
  *   - conformance: optional object; scope=subset requires categories;
  *     status=verified requires attestationUrl; optional evidenceUrl is the
  *     public claim/verification thread; suiteVersion is semver
+ *   - probeUrl: optional https URL of a live MCP endpoint for the daily
+ *     enforcement probe; kinds service|implementation only
  *   - deploy: optional non-empty array of {platform, url(https)}
  *   - contact: optional object with at least one of email / github
  *   - listedAt: real calendar date, YYYY-MM-DD
@@ -38,6 +40,9 @@
  *   - notes: optional string, 1-600 chars
  *   - listedAt: real calendar date, YYYY-MM-DD
  *
+ * registry/probes.json (the committed daily probe output) is validated by
+ * scripts/validate-probes.mjs, called from validateRegistry() below.
+ *
  * Run directly (node scripts/validate.mjs) for CI / local use: prints every
  * error per file and exits non-zero on any failure. The site build imports
  * validateRegistry() (via site/lib/data.mjs) and refuses to render when it
@@ -46,6 +51,7 @@
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { validateProbes } from "./validate-probes.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "..");
@@ -70,7 +76,7 @@ export const INTEROP_CATEGORIES = [
 ];
 export const INTEROP_STATUSES = ["shipping", "specified", "planned", "exploring", "none"];
 
-const BUILDER_KEYS = ["name", "slug", "description", "homepage", "repo", "kind", "buildsOn", "standards", "conformance", "deploy", "contact", "listedAt"];
+const BUILDER_KEYS = ["name", "slug", "description", "homepage", "repo", "kind", "buildsOn", "standards", "conformance", "probeUrl", "deploy", "contact", "listedAt"];
 const CONFORMANCE_KEYS = ["level", "scope", "categories", "suiteVersion", "status", "attestationUrl", "evidenceUrl"];
 const DEPLOY_KEYS = ["platform", "url"];
 const CONTACT_KEYS = ["email", "github"];
@@ -236,11 +242,13 @@ function checkDeploy(deploy, fail) {
 }
 
 /**
- * Validate every registry entry in both directories.
- * @returns {{ entries: object[], interop: object[], errors: string[] }}
- * parsed builder entries (as `entries`), parsed interop entries, and the full
- * list of validation errors. Entries are returned valid or not, for callers
- * that want them; callers must treat a non-empty `errors` as fatal.
+ * Validate every registry entry in both directories, plus the committed
+ * probe results.
+ * @returns {{ entries: object[], interop: object[], probes: object|null, errors: string[] }}
+ * parsed builder entries (as `entries`), parsed interop entries, the parsed
+ * registry/probes.json (null when absent), and the full list of validation
+ * errors. Entries are returned valid or not, for callers that want them;
+ * callers must treat a non-empty `errors` as fatal.
  */
 export function validateRegistry() {
   const errors = [];
@@ -316,6 +324,12 @@ export function validateRegistry() {
     }
 
     if (entry.conformance !== undefined) checkConformance(entry.conformance, fail);
+    if (entry.probeUrl !== undefined) {
+      if (!isHttpsUrl(entry.probeUrl)) fail('"probeUrl" must be a valid https:// URL');
+      if (entry.kind !== "service" && entry.kind !== "implementation") {
+        fail(`"probeUrl" is only allowed on kind service or implementation (got kind ${JSON.stringify(entry.kind)}) - the live probe targets deployed endpoints`);
+      }
+    }
     if (entry.deploy !== undefined) checkDeploy(entry.deploy, fail);
     if (entry.contact !== undefined) checkContact(entry.contact, fail);
     if (!isCalendarDate(entry.listedAt)) fail('"listedAt" is required: a real calendar date in YYYY-MM-DD form');
@@ -323,7 +337,11 @@ export function validateRegistry() {
     entries.push(entry);
   }
 
-  return { entries, interop, errors };
+  // ── probe results: committed data, cross-checked against the entries ─────
+  const { probes, errors: probeErrors } = validateProbes(entries);
+  errors.push(...probeErrors);
+
+  return { entries, interop, probes, errors };
 }
 
 // CLI entry point: report and gate.

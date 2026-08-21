@@ -1,0 +1,56 @@
+name: Probe
+
+# The daily live-enforcement probe: sends one bare JSON-RPC request to every
+# probeUrl-carrying service entry and commits what the wire answered to
+# registry/probes.json (see scripts/probe-live.mjs for the classification
+# rules). The commit path-matches the Deploy workflow's registry/** filter,
+# so a changed probe result redeploys the site with the fresh, dated signal.
+#
+# Fail-closed by construction: if this workflow never runs, probes.json goes
+# stale visibly (the rendered "checked <date>" ages) - the site never invents
+# enforcement language without committed probe data behind it.
+on:
+  schedule:
+    - cron: "23 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write # gh workflow run deploy.yml after the bot push
+
+concurrency:
+  group: probe-live
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+      - name: Probe live service endpoints
+        run: node scripts/probe-live.mjs
+      # Guard: commit only when a tracked change exists (the probe rewrites
+      # the file every run, but byte-identical output diffs empty only when
+      # nothing - date included - changed).
+      - name: Commit probe results if changed
+        run: |
+          if git diff --quiet -- registry/probes.json; then
+            echo "registry/probes.json unchanged; nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add registry/probes.json
+          git commit -m "chore(probe): daily live-enforcement probe results"
+          git push origin HEAD:main
+          # A push made with the default GITHUB_TOKEN deliberately triggers
+          # no other workflows (GitHub's recursion guard), so Deploy's
+          # registry/** path filter never fires for this commit. Dispatch it
+          # explicitly; same run block, so it only happens when a commit
+          # actually pushed (the unchanged case exits above).
+          gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref main
+        env:
+          GH_TOKEN: ${{ github.token }}

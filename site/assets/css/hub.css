@@ -178,6 +178,12 @@ summary.dgrid:hover{background:var(--panel-2)}
 .dmark{width:16px;height:16px;border:1px solid var(--line-mid);color:var(--ink-muted);font-family:var(--font-mono);font-size:9px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
 .dtitle{font-family:var(--font-mono);font-size:13px;color:var(--ink-bright);white-space:nowrap}
 .live-dot{width:6px;height:6px;border-radius:50%;background:var(--signal);animation:liveDot 2.4s ease-in-out infinite;flex-shrink:0}
+/* Probe-classified live signals: open is muted (honest, not shamed),
+   unreachable is a faint hollow ring; the dated line lives in .dprobe. */
+.dot-open{background:var(--ink-muted);animation:none;box-shadow:none}
+.dot-off{background:transparent;border:1px solid var(--ink-faint);animation:none}
+.dprobe{font-family:var(--font-mono);font-size:11px;line-height:1.7;margin:0 0 12px}
+.tag-founding{font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;color:var(--ink-muted);border:1px dashed var(--line-quiet);padding:1px 7px;white-space:nowrap}
 .dtype{font-family:var(--font-mono);font-size:10px;color:var(--ink-dim)}
 .dwhat{font-size:13px;line-height:1.6;color:var(--ink-dim);min-width:0}
 .dconf .chip{font-size:10px}
@@ -190,7 +196,10 @@ details[open]>summary .caret::before{content:"\2212"}
 .dconf-line p{font-family:var(--font-mono);font-size:11px;line-height:1.7;margin:0}
 .dconf-line .wf{flex-shrink:0}
 .dlinks{display:flex;flex-wrap:wrap;gap:20px;font-family:var(--font-mono);font-size:12px;align-items:baseline}
-.dbuilds{color:var(--ink-muted)}
+.dcap{font-family:var(--font-mono);font-size:11px;color:var(--ink-muted);margin:0 0 12px}
+.dprov{color:var(--ink-muted)}
+/* The copy-ready badge embed: a plain selectable line (click selects all). */
+.dembed{font-family:var(--font-mono);font-size:11px;color:var(--ink-muted);border:1px solid var(--line);background:var(--canvas);padding:9px 12px;margin-top:8px;user-select:all;overflow-wrap:anywhere;max-width:760px}
 .dfoot{padding:15px 22px;font-family:var(--font-mono);font-size:12px;color:var(--ink-muted)}
 .dnote{font-size:13px;color:var(--ink-muted);margin:18px 0 0;line-height:1.7}
 

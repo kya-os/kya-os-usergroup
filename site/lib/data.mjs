@@ -19,14 +19,16 @@ import { validateRegistry, INTEROP_CATEGORIES } from "../../scripts/validate.mjs
 import { CONFORMANCE_MD_URL, REPO_URL, TEMPLATE_SLUG } from "./constants.mjs";
 
 /**
- * Validate both registries and shape them for rendering.
- * Callers must treat a non-empty `errors` as fatal; shaping is skipped on
- * errors because invalid entries need not carry sortable fields.
- * @returns {{ errors: string[], rendered: object[], interopSorted: object[] }}
+ * Validate both registries (plus the committed probe results) and shape them
+ * for rendering. Callers must treat a non-empty `errors` as fatal; shaping
+ * is skipped on errors because invalid entries need not carry sortable
+ * fields. `probes` is the parsed registry/probes.json (null when absent) -
+ * committed data, so the build stays deterministic.
+ * @returns {{ errors: string[], rendered: object[], interopSorted: object[], probes: object|null }}
  */
 export function loadSiteData() {
-  const { entries, interop, errors } = validateRegistry();
-  if (errors.length > 0) return { errors, rendered: [], interopSorted: [] };
+  const { entries, interop, probes, errors } = validateRegistry();
+  if (errors.length > 0) return { errors, rendered: [], interopSorted: [], probes: null };
 
   const rendered = entries
     .filter((entry) => entry.slug !== TEMPLATE_SLUG)
@@ -34,7 +36,7 @@ export function loadSiteData() {
   const interopSorted = [...interop].sort(
     (a, b) => INTEROP_CATEGORIES.indexOf(a.category) - INTEROP_CATEGORIES.indexOf(b.category) || a.slug.localeCompare(b.slug, "en"),
   );
-  return { errors, rendered, interopSorted };
+  return { errors, rendered, interopSorted, probes };
 }
 
 /** The rendered entries of one kind, in registry order. */
@@ -43,14 +45,14 @@ export function byKind(entries, kind) {
 }
 
 /**
- * Directory order, per the design: claims under measurement (any conformance
- * claim) first, then hosted service endpoints, then everything listed - rank
- * ties broken by slug so the order stays deterministic.
+ * Directory order: the trust ladder itself - verified, then in verification,
+ * then self-reported, then everything listed - rank ties broken by slug so
+ * the order stays deterministic. The kind filter is orthogonal (CSS-only),
+ * so within any kind group the same ladder order holds.
  */
+const LADDER_RANK = { verified: 0, "in-verification": 1, "self-reported": 2 };
 export function directoryRank(entry) {
-  if (entry.conformance !== undefined) return 0;
-  if (entry.kind === "service") return 1;
-  return 2;
+  return entry.conformance !== undefined ? LADDER_RANK[entry.conformance.status] : 3;
 }
 
 export function directorySorted(entries) {

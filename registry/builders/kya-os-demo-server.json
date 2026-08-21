@@ -7,6 +7,7 @@
   "buildsOn": [
     "kya-os-mcp"
   ],
+  "probeUrl": "https://demo-mcp.kya-os.ai/mcp",
   "listedAt": "2026-08-19",
   "conformance": {
     "level": "L3",

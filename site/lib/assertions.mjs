@@ -22,7 +22,16 @@ import { SUITE, TEMPLATE_SLUG } from "./constants.mjs";
 import { assertBadges } from "./badge.mjs";
 import { withConformance } from "./data.mjs";
 import { esc } from "./html.mjs";
-import { assertAnimGating, assertBuild, assertPromptParity, assertSuitePinAgreement, assertThemeIntegrity } from "./checks.mjs";
+import {
+  assertAnimGating,
+  assertBuild,
+  assertFoundingCohort,
+  assertLadderReadout,
+  assertProbeHonesty,
+  assertPromptParity,
+  assertSuitePinAgreement,
+  assertThemeIntegrity,
+} from "./checks.mjs";
 import { THEME_COLORS } from "./theme.mjs";
 
 const PAGE_FILES = [
@@ -84,7 +93,7 @@ function assertPageScripts(name, html, themeHash, referenceScript) {
 }
 
 /** Verify every dist/ artifact against the shaped registry data; exits non-zero on the first failure. */
-export function runRenderChecks({ distDir, rendered, interopSorted }) {
+export function runRenderChecks({ distDir, rendered, interopSorted, probes }) {
   assertSuitePinAgreement(join(distDir, ".."));
   const conformanceEntries = withConformance(rendered);
 
@@ -176,9 +185,10 @@ export function runRenderChecks({ distDir, rendered, interopSorted }) {
 
   // Honesty assertions, on EVERY page.
   // "Certificate Transparency" (RFC 9162) is a standard's proper name and is
-  // fine; conformance-flavored "certified"/"certification" language is not.
+  // fine; conformance-flavored "certified"/"certification" language is not,
+  // and neither is "tamper-proof" ("tamper-evident" is the honest phrase).
   for (const [name, html] of Object.entries(pages)) {
-    assertBuild(!/certified|certification/i.test(html), `the word "certified"/"certification" leaked into ${name}`);
+    assertBuild(!/certified|certification|tamper-proof/i.test(html), `a banned term (certified/certification/tamper-proof) leaked into ${name}`);
     // A green "verified" chip exists only as a credential link (the .demo
     // state-machine samples on the conformance page are the one labeled
     // exception): every non-demo st-verified chip must sit inside a
@@ -283,6 +293,14 @@ export function runRenderChecks({ distDir, rendered, interopSorted }) {
     pin.includes(`suite <b>${esc(SUITE.version)}</b>`) && pin.includes(`<b>${SUITE.vectors}</b> vectors`) && pin.includes(esc(SUITE.vectorSetHash)),
     "the conformance pin strip must carry the full SUITE pin",
   );
+
+  // The incentive machine: per-rung readout truth on the home strip, probe
+  // honesty (enforcement language only ever with probe data, every probe
+  // line dated and classified), and the founding cohort + badge embed per
+  // directory row (all in lib/checks.mjs, on the dist bytes).
+  assertLadderReadout(landingHtml, rendered);
+  assertProbeHonesty(pages, rendered, probes);
+  assertFoundingCohort(buildersHtml, rendered);
 
   const published = JSON.parse(readFileSync(join(distDir, "builders.json"), "utf8"));
   assertBuild(published.count === rendered.length, "builders.json count mismatch");

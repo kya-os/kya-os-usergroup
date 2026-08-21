@@ -33,6 +33,7 @@ Every entry must conform to [`registry/schema/builder.schema.json`](registry/sch
 | `buildsOn` | no | which KYA-OS repos you build on: `kya-os-mcp` (the reference implementation - also the right slug if you consume the `@kya-os/mcp` npm package), `kya-os-schema` (the published schemas at schema.kya-os.org), `kya-os` (the spec text), `spec` (protocol-level work). List what you build ON, not yourself - a project that is one of these repos lists only its upstreams |
 | `standards` | no | interop-registry slugs you exercise; each must exist as `registry/interop/<slug>.json` |
 | `conformance` | no | a conformance claim (see below) |
+| `probeUrl` | no | `https://` URL of your live MCP endpoint; `service` and `implementation` kinds only (see below) |
 | `deploy` | no | one-click deploy targets: `{platform, url}` with platform one of `vercel`, `railway`, `cloudflare`, `docker`, `other` |
 | `contact` | no | object with `email` and/or `github` |
 | `listedAt` | yes | date added, `YYYY-MM-DD` |
@@ -73,6 +74,11 @@ A `conformance` block states what you proved against the [pinned vector suite](c
 - `evidenceUrl` (optional, strongly recommended) is the public record grounding a non-verified claim - your submission issue or verification thread.
   The site renders `self-reported` and `in-verification` chips as links to it, so put it on the entry as soon as the issue exists.
 - Run the suite first: the [conformance starter](conformance/starter/) takes you from an existing implementation to a submission-ready `claim.json` in under an hour.
+
+### Proving live enforcement (`probeUrl`)
+
+Add `probeUrl` to a `service` entry and once a day the probe sends one bare JSON-RPC request - no proof, no capability declaration - to that endpoint, committing what the wire answered to [`registry/probes.json`](registry/probes.json) and rendering it dated on the directory: the protocol's own refusal renders as enforcement verified, and unreachable means the probe could not classify the answer.
+An endpoint that serves the bare request renders as `open (no proof required)` - stated honestly, never punitively.
 
 ### 3. Validate locally
 

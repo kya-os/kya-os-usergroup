@@ -123,6 +123,12 @@
       ],
       "description": "Conformance claim for this entry. Honesty rules: subset claims always name their categories; verified requires the credential link."
     },
+    "probeUrl": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://",
+      "description": "The live MCP endpoint the daily enforcement probe hits (service and implementation kinds only - enforced by scripts/validate.mjs). The probe sends one bare JSON-RPC request and records whether the deployment refuses it (enforcing), answers it (open), or cannot be classified (unreachable); results are committed to registry/probes.json and rendered dated on the directory."
+    },
     "deploy": {
       "type": "array",
       "minItems": 1,
