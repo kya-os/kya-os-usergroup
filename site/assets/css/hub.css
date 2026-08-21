@@ -206,7 +206,21 @@ details[open]>summary .caret::before{content:"\2212"}
 .pipe-dot{position:absolute;top:-2px;width:6px;height:5px;background:var(--signal);box-shadow:0 0 10px color-mix(in srgb,var(--signal) 80%,transparent);animation:pipeDot 5s linear infinite}
 .badge-copy{max-width:720px}
 .embed-snippet{font-family:var(--font-mono);font-size:12px;background:var(--panel);border:1px solid var(--line);padding:14px 18px;line-height:1.8;color:var(--ink-muted);overflow-wrap:anywhere;margin-top:20px}
-.hl{color:var(--ink)}
+/* Build-time syntax tokens (theme-token colors; AA in both themes) and the
+   diff grammar: every code line carries a 2ch gutter, added lines get the
+   plus and a signal wash. Gutters are pseudo-content, so copied text and the
+   hidden raw source stay plain code. */
+.code-wrap{position:relative;max-width:760px}
+.cl{display:block}
+.cl::before{content:"  ";color:var(--ink-faint)}
+.cl.hl::before{content:"+ ";color:var(--signal)}
+.cl.hl{background:color-mix(in srgb,var(--signal) 7%,transparent);color:var(--ink)}
+.tok-kw{color:var(--info)}
+.tok-str{color:var(--signal)}
+.tok-com{color:var(--ink-faint)}
+.copy-code{position:absolute;top:10px;right:10px;font-family:var(--font-mono);font-size:11px;letter-spacing:.04em;color:var(--ink-muted);background:var(--panel);border:1px solid var(--line);padding:5px 10px;cursor:pointer;white-space:nowrap}
+.copy-code:hover{color:var(--ink-bright);border-color:var(--line-strong)}
+.copy-code.copied{color:var(--signal);border-color:var(--signal)}
 .code-block{font-family:var(--font-mono);font-size:12.5px;line-height:1.75;color:var(--ink-muted);background:var(--panel);border:1px solid var(--line);padding:16px 20px;margin:0;max-width:760px;overflow-x:auto}
 .code-block code{font-size:inherit;color:inherit}
 .badge-row{display:flex;flex-wrap:wrap;gap:14px 18px;align-items:center;margin-top:18px}

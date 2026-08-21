@@ -31,7 +31,7 @@ export const SUITE = {
   vectorSetHash: "sha256:81d537d4574d3f66d651a03ca41c0b18493b67ea6f3e61aba47d1bda4f3cf49b",
 };
 
-export const TITLE = "KYA-OS Community";
+export const TITLE = "KYA-OS Builders";
 export const DESCRIPTION =
   "The KYA-OS community registry: who builds on it, what conforms to it, and the standards it carries.";
 
@@ -76,3 +76,20 @@ export const PROMPTS = [
       "Show me KYA-OS in action: clone https://github.com/decentralized-identity/kya-os-mcp and run the examples/revoked demo (the on-chain revocation kill switch), then explain how the per-request proof, delegation chain, and status list interact, and scaffold a minimal verifier for my stack using @kya-os/mcp.",
   },
 ];
+
+// The two-line migration snippet, verbatim from the reference README's
+// "Migrate any MCP server in 2 lines" quickstart (the "after" block; the two
+// "+1 line" comments mark the entire delta from a stock MCP server). Lines
+// flagged true are the additions and render highlighted.
+export const MIGRATE_LINES = [
+  ["import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';", false],
+  ["import { withKyaOs, NodeCryptoProvider } from '@kya-os/mcp';  // +1 line", true],
+  ["", false],
+  ["const server = new McpServer({ name: 'my-server', version: '1.0.0' });", false],
+  ["await withKyaOs(server, { crypto: new NodeCryptoProvider() }); // +1 line", true],
+  ["", false],
+  ["server.registerTool('greet', { description: 'Say hello' }, async (args) => ({", false],
+  ["  content: [{ type: 'text', text: `Hello, ${args.name}!` }],", false],
+  ["}));", false],
+];
+

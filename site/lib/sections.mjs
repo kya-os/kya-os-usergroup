@@ -10,9 +10,10 @@
  * drive the filter, and native <details> rows carry the expansion - both
  * fully functional without JavaScript.
  */
-import { ADD_PROJECT_URL, DEMO_MCP_URL, DOCS_QUICKSTART_URL, MIGRATE_README_URL, PLAYGROUND_URL, REPO_URL, REVOKED_TREE_URL, STARTER_URL, SUITE } from "./constants.mjs";
+import { ADD_PROJECT_URL, DEMO_MCP_URL, DOCS_QUICKSTART_URL, MIGRATE_README_URL, PLAYGROUND_URL, REPO_URL, REVOKED_TREE_URL, STARTER_URL, SUITE, MIGRATE_LINES } from "./constants.mjs";
 import { conformanceLabel, conformanceLevelUrl, directorySorted } from "./data.mjs";
 import { conformanceStatusChip, esc, promptBlock } from "./html.mjs";
+import { highlightTs } from "./highlight.mjs";
 import { KINDS } from "../../scripts/validate.mjs";
 import { waveformLockup, waveformSvg } from "./waveform.mjs";
 
@@ -36,28 +37,23 @@ const CONF_TEXT = {
 };
 const CONF_TONE = { "in-verification": "amber", verified: "signal", "self-reported": "faint" };
 
-// The two-line migration snippet, verbatim from the reference README's
-// "Migrate any MCP server in 2 lines" quickstart (the "after" block; the two
-// "+1 line" comments mark the entire delta from a stock MCP server). Lines
-// flagged true are the additions and render highlighted.
-const MIGRATE_LINES = [
-  ["import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';", false],
-  ["import { withKyaOs, NodeCryptoProvider } from '@kya-os/mcp';  // +1 line", true],
-  ["", false],
-  ["const server = new McpServer({ name: 'my-server', version: '1.0.0' });", false],
-  ["await withKyaOs(server, { crypto: new NodeCryptoProvider() }); // +1 line", true],
-  ["", false],
-  ["server.registerTool('greet', { description: 'Say hello' }, async (args) => ({", false],
-  ["  content: [{ type: 'text', text: `Hello, ${args.name}!` }],", false],
-  ["}));", false],
-];
 
 function sectionMigrate() {
-  const code = MIGRATE_LINES.map(([text, added]) => (added ? `<span class="hl">${esc(text)}</span>` : esc(text))).join("\n");
+  // One source (MIGRATE_LINES), two renders: the visible block carries
+  // build-time token highlighting and diff gutters; the hidden raw <pre> is
+  // what the copy button reads, so clipboard text is always the plain code.
+  const code = MIGRATE_LINES.map(
+    ([text, added]) => `<span class="cl${added ? " hl" : ""}">${highlightTs(text)}</span>`,
+  ).join("");
+  const raw = esc(MIGRATE_LINES.map(([text]) => text).join("\n"));
   return `  <section class="fx fxd-20">
     <h2>Two lines to a verifiable server</h2>
     <div class="rule"></div>
-    <pre class="code-block"><code>${code}</code></pre>
+    <div class="code-wrap">
+      <pre class="code-block"><code>${code}</code></pre>
+      <pre id="migrate-code" hidden aria-hidden="true">${raw}</pre>
+      <button type="button" class="copy-code" data-copy-target="migrate-code" hidden>[ copy ]</button>
+    </div>
     <div class="dlinks next-strip">
       <span class="next-label">what next:</span>
       <a href="${STARTER_URL}">run the suite against it -&gt;</a>
@@ -78,7 +74,7 @@ export function sectionsHome({ rendered, interopSorted }) {
   return `  <header class="hero fx">
     <div class="kicker">BUILDERS.KYA-OS.ORG</div>
     <h1 class="h1-home"><span data-title-reveal>BUILD ON KYA-OS</span><span class="cursor" aria-hidden="true">_</span></h1>
-    <p class="lede">Authority and accountability for the agentic web. Verifiable identity and scoped delegation rooted at a Responsible Party - every agent action authorized before it runs, and audit-ready after.</p>
+    <p class="lede">Authority and accountability for the agentic web. Verifiable identity and scoped delegation rooted at a <a href="https://kya-os.org/mcp/docs/concepts/delegation-layer">Responsible Party</a> - every agent action authorized before it runs, and audit-ready after.</p>
   </header>
   <div class="stats fx fxd-15">
 ${[
@@ -90,12 +86,12 @@ ${[
   ].join("\n")}
   </div>
 ${sectionMigrate()}
-  <a href="/rails/" class="rails-panel fx fxd-25">
+  <a href="/rails/" class="rails-panel fx fxd-25" aria-label="The rails: AI agents send signed requests through KYA-OS to MCP servers, A2A peers, and any API - verified before they run. Read how one proof reaches every protocol.">
     <div class="rails-head">
       <div class="rails-title">THE RAILS</div>
       <div class="rails-sub">how one proof reaches every protocol -&gt;</div>
     </div>
-    <div class="rails-mini">
+    <div class="rails-mini" aria-hidden="true">
       <div class="rm-box rm-c1">AI</div>
       <div class="wire rm-w2"><span class="wire-dot"></span></div>
       <div class="rm-box rm-core rm-c3">KYA-OS</div>

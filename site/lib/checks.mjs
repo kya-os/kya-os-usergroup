@@ -8,7 +8,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { PROMPTS, SUITE } from "./constants.mjs";
+import { MIGRATE_LINES, PROMPTS, SUITE } from "./constants.mjs";
 import { esc } from "./html.mjs";
 
 export function assertBuild(condition, message) {
@@ -91,6 +91,38 @@ export function assertPromptParity(pages) {
   const seen = new Set();
   for (const [name, html] of Object.entries(pages)) {
     for (const [, target] of html.matchAll(/<button[^>]*data-copy-target="([^"]+)"[^>]*>/g)) {
+      if (target === "migrate-code") {
+        // The code-copy triangle: the hidden raw <pre> the button reads, the
+        // visible highlighted block, and the MIGRATE_LINES constant must all
+        // carry the same code - highlighting can restyle it, never change it.
+        const rawText = MIGRATE_LINES.map(([text]) => text).join("\n");
+        const rawPre = html.match(/<pre id="migrate-code"[^>]*>([\s\S]*?)<\/pre>/)?.[1];
+        assertBuild(rawPre === esc(rawText), `${name}: the migrate-code raw source drifted from MIGRATE_LINES`);
+        const visible = html.match(/<pre class="code-block"><code>([\s\S]*?)<\/code><\/pre>/)?.[1];
+        assertBuild(visible !== undefined, `${name}: the highlighted migrate block is missing`);
+        // Split on line spans first (token spans nest inside them), then strip
+        // every remaining tag per line - reconstruction beats fragile pairing.
+        const lines = visible
+          .split(/<span class="cl(?: hl)?">/)
+          .slice(1)
+          .map((chunk) => chunk.replace(/<[^>]+>/g, ""));
+        const unescaped = lines
+          .join("\n")
+          .replace(/&amp;/g, "&")
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">")
+          .replace(/&#39;/g, "'")
+          .replace(/&quot;/g, '"');
+        assertBuild(
+          unescaped === rawText,
+          `${name}: the highlighted migrate block drifted from MIGRATE_LINES`,
+        );
+        assertBuild(
+          /<button[^>]*data-copy-target="migrate-code"[^>]*\bhidden\b|<button[^>]*\bhidden\b[^>]*data-copy-target="migrate-code"/.test(html),
+          `${name}: the migrate-code copy button must ship hidden`,
+        );
+        continue;
+      }
       const prompt = PROMPTS.find((p) => p.id === target);
       assertBuild(prompt !== undefined, `${name}: copy button targets unknown prompt "${target}"`);
       const fallback = html.match(new RegExp(`<pre id="${target}">([\\s\\S]*?)</pre>`))?.[1];
