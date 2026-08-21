@@ -108,7 +108,7 @@ a.rails-panel:hover{border-color:var(--line-strong);background:var(--panel-3);co
 .rails-mini{display:grid;grid-template-columns:auto 1fr auto 1fr auto;align-items:center;gap:16px;margin-top:30px;min-width:620px}
 .rm-node{text-align:center}
 .rm-box{display:inline-block;border:1px solid var(--line-mid);padding:12px 22px;font-family:var(--font-mono);font-size:13px;color:var(--ink-bright)}
-.rm-core{border-color:var(--line-strong);background:var(--panel-2)}
+.rm-core{border:none;background:var(--panel-2)}
 .rm-signs{color:var(--signal)}
 .rm-wf{display:flex;justify-content:center;margin-top:10px}
 .rm-cap{font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;color:var(--ink-faint);margin-top:8px}
@@ -276,10 +276,10 @@ a.sname{justify-self:start}
 .wd-d04{animation-delay:.4s}
 .wd-d14{animation-delay:1.4s}
 .wd-d24{animation-delay:2.4s}
-.rd-core{border:1px solid var(--line-mid);background:var(--panel-2);padding:20px;animation:corePulse 4s ease-in-out infinite}
+.rd-core{background:var(--panel-2);padding:20px}
 .rd-core-title{font-family:var(--font-mono);font-size:12px;color:var(--ink-bright);letter-spacing:.08em;margin-bottom:14px;text-align:center}
 .rd-core-cells{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-family:var(--font-mono);font-size:11px;color:var(--ink-muted);text-align:center}
-.rd-core-cells span{border:1px solid var(--line);padding:7px 4px}
+.rd-core-cells span{padding:7px 4px}
 .rd-core-wf{display:flex;justify-content:center;margin-top:14px}
 .rd-projections{gap:18px}
 .rd-cap{font-family:var(--font-mono);font-size:9px;letter-spacing:.14em;color:var(--ink-faint);margin-bottom:6px}
@@ -311,8 +311,11 @@ a.sname{justify-self:start}
 a.btn-solid:hover{background:var(--accent-hover);color:var(--on-accent)}
 
 /* ── Waveform lockup (build-time SVG) ─────────────────────────────────────── */
+/* Borderless by design: the wave + label float on their panel. The old
+   border and 5%-tint pill went together - without the border the tint read
+   as a rendering artifact, so both are gone. */
 .wf{display:block}
-.wf-lockup{display:inline-flex;align-items:center;gap:8px;padding:5px 10px;border:1px solid color-mix(in srgb,currentColor 27%,transparent);background:color-mix(in srgb,currentColor 5%,transparent);color:var(--signal)}
+.wf-lockup{display:inline-flex;align-items:center;gap:8px;color:var(--signal)}
 .wf-label{font-family:var(--font-mono);font-size:9px;letter-spacing:.12em;white-space:nowrap;line-height:1}
 .wf-sm .wf-label{font-size:8px}
 
@@ -363,7 +366,6 @@ footer a:hover{color:var(--ink-bright)}
 @keyframes pulseRing{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--amber) 35%,transparent)}70%{box-shadow:0 0 0 9px transparent}100%{box-shadow:0 0 0 0 transparent}}
 @keyframes pipeDot{0%{left:0;opacity:0}8%{opacity:1}92%{opacity:1}100%{left:calc(100% - 6px);opacity:0}}
 @keyframes scan{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
-@keyframes corePulse{0%,100%{border-color:var(--line-mid)}50%{border-color:var(--signal)}}
 @keyframes killFlash{0%,80%,100%{background:var(--signal);box-shadow:0 0 8px color-mix(in srgb,var(--signal) 80%,transparent)}85%,95%{background:var(--alert);box-shadow:0 0 8px color-mix(in srgb,var(--alert) 80%,transparent)}}
 @keyframes letterReveal{0%{opacity:.7;transform:translateY(-5px);text-shadow:0 0 20px var(--ink-bright)}100%{opacity:1;transform:translateY(0);text-shadow:none}}
 

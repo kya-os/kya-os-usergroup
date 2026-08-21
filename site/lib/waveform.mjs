@@ -71,9 +71,9 @@ export function waveformSvg(seed, { bars = 24, opacity = true, trackHeight = 14,
 }
 
 /**
- * The canonical "signed proof" lockup: waveform + mono label in a bordered,
- * tinted span - the artifact KYA-OS generates, used everywhere a proof is
- * represented. `tone` picks the color class (signal by default); `small`
+ * The canonical "signed proof" lockup: waveform + mono label in a plain
+ * (borderless) span - the artifact KYA-OS generates, used everywhere a proof
+ * is represented. `tone` picks the color class (signal by default); `small`
  * drops the label to the 8px variant.
  */
 export function waveformLockup(seed, { label = "signed proof", bars = 16, trackHeight = 11, barWidth = 2, gap = 1.5, tone = "signal", small = false } = {}) {
