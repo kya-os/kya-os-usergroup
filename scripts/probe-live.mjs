@@ -123,7 +123,7 @@ if (errors.length > 0) {
 }
 
 const targets = entries
-  .filter((entry) => entry.kind === "service" && entry.probeUrl !== undefined)
+  .filter((entry) => (entry.kind === "service" || entry.kind === "implementation") && entry.probeUrl !== undefined)
   .sort((a, b) => a.slug.localeCompare(b.slug, "en"));
 
 const results = {};

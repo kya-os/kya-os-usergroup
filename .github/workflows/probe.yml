@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: write
+  actions: write # gh workflow run deploy.yml after the bot push
 
 concurrency:
   group: probe-live
@@ -45,3 +46,11 @@ jobs:
           git add registry/probes.json
           git commit -m "chore(probe): daily live-enforcement probe results"
           git push origin HEAD:main
+          # A push made with the default GITHUB_TOKEN deliberately triggers
+          # no other workflows (GitHub's recursion guard), so Deploy's
+          # registry/** path filter never fires for this commit. Dispatch it
+          # explicitly; same run block, so it only happens when a commit
+          # actually pushed (the unchanged case exits above).
+          gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref main
+        env:
+          GH_TOKEN: ${{ github.token }}

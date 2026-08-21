@@ -141,7 +141,7 @@ ${sectionMigrate()}
  * stated honestly, not shamed.
  */
 function probeSignal(entry, probes) {
-  if (entry.kind !== "service") return { dot: "", line: "" };
+  if (entry.kind !== "service" && entry.kind !== "implementation") return { dot: "", line: "" };
   const probe = probes?.results?.[entry.slug];
   if (!probe) return { dot: `<span class="live-dot" title="hosted service: an endpoint you can point at today"></span>`, line: "" };
   const checked = `checked ${esc(probes.probedAt)}`;

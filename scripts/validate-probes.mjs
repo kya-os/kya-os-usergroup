@@ -10,7 +10,7 @@
  * Enforced:
  *   - valid JSON, top-level object with exactly {probedAt, results}
  *   - probedAt: real calendar date, YYYY-MM-DD (day precision by design)
- *   - every results key resolves to a builder entry of kind "service" that
+ *   - every results key resolves to a builder entry of a probeable kind (service or implementation) that
  *     still carries probeUrl - a stale result names the fix in its error
  *   - status: one of enforcing|open|unreachable; provenanceVersion optional
  *
@@ -76,7 +76,7 @@ export function validateProbes(entries) {
     const entry = entries.find((candidate) => candidate.slug === slug);
     if (entry === undefined) {
       fail(`result "${slug}" does not resolve to a registry/builders/ entry - remove the stale result in the same PR`);
-    } else if (entry.kind !== "service" || entry.probeUrl === undefined) {
+    } else if ((entry.kind !== "service" && entry.kind !== "implementation") || entry.probeUrl === undefined) {
       fail(`result "${slug}" names an entry that is not a probeUrl-carrying service - remove the stale result in the same PR`);
     }
     if (typeof result !== "object" || result === null || Array.isArray(result)) {
