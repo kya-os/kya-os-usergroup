@@ -7,6 +7,8 @@ GET /v1/badge/<slug>.svg     flat SVG badge
 GET /v1/badge/<slug>.json    shields.io endpoint JSON
 ```
 
+Until this worker deploys, the site build emits the static badge tiers on the same `/badge/<slug>.{svg,json}` path space (`site/lib/badge.mjs`): listed, self-reported, and in-verification only - the `verified` tier exists solely as this worker's live credential verification, and the static build refuses to render it.
+
 ## NOT DEPLOYABLE YET - read this first
 
 This is a scaffold, committed so the pipeline, semantics, and tests exist before the program does.

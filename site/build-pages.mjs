@@ -18,6 +18,12 @@
  *   - 404.html                 real not-found page linking every page
  *   - builders.json            machine-readable merged builder registry (open CORS)
  *   - interop.json             machine-readable standards-rail registry (open CORS)
+ *   - badge/                   static badge tiers per rendered entry
+ *                              (<slug>.svg + <slug>.json, shields endpoint
+ *                              schema) from lib/badge.mjs - listed /
+ *                              self-reported / in-verification only; a
+ *                              verified entry fails the build (that tier is
+ *                              the Phase B worker's alone)
  *   - fonts/                   byte copies of site/assets/fonts/ (the two
  *                              self-hosted variable woff2 faces + their OFL
  *                              licenses)
@@ -82,6 +88,7 @@ import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSy
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runRenderChecks } from "./lib/assertions.mjs";
+import { renderBadgeFiles } from "./lib/badge.mjs";
 import { loadSiteData, renderBadgeAllowlist, renderBuildersJson, renderInteropJson } from "./lib/data.mjs";
 import { render404Html } from "./lib/html.mjs";
 import {
@@ -158,6 +165,14 @@ writeFileSync(join(distDir, "404.html"), render404Html());
 writeFileSync(join(distDir, "builders.json"), renderBuildersJson(rendered));
 writeFileSync(join(distDir, "interop.json"), renderInteropJson(interopSorted));
 writeFileSync(join(distDir, "_headers"), renderHeaders());
+
+// Static badge tiers: one .svg + shields .json pair per rendered entry, from
+// the same chip semantics as the pages. A "verified" entry refuses here -
+// that tier is minted only by the Phase B worker's live verification.
+mkdirSync(join(distDir, "badge"), { recursive: true });
+for (const [name, contents] of renderBadgeFiles(rendered)) {
+  writeFileSync(join(distDir, "badge", name), contents);
+}
 
 // Fonts and logo marks: deterministic byte copies of the committed binaries,
 // sorted for a stable order.

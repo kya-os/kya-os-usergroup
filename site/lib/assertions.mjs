@@ -19,6 +19,7 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { SUITE, TEMPLATE_SLUG } from "./constants.mjs";
+import { assertBadges } from "./badge.mjs";
 import { withConformance } from "./data.mjs";
 import { esc } from "./html.mjs";
 import { assertAnimGating, assertBuild, assertPromptParity, assertSuitePinAgreement, assertThemeIntegrity } from "./checks.mjs";
@@ -292,6 +293,11 @@ export function runRenderChecks({ distDir, rendered, interopSorted }) {
   assertBuild(!buildersHtml.includes(`id="${TEMPLATE_SLUG}"`), `template entry "${TEMPLATE_SLUG}" leaked into builders/index.html`);
   const publishedInterop = JSON.parse(readFileSync(join(distDir, "interop.json"), "utf8"));
   assertBuild(publishedInterop.count === interopSorted.length, "interop.json count mismatch");
+
+  // Static badge tiers: every rendered entry has its .svg + shields .json
+  // pair, states match the entries, and no static file ever says verified
+  // (checks live in lib/badge.mjs, on the dist bytes).
+  assertBadges(distDir, rendered);
 
   // The 404 page really is one, and it hands the reader every page.
   const notFoundHtml = pages["404.html"];
