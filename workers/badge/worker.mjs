@@ -6,8 +6,8 @@
  * issuer keys and manifest URL below are clearly marked placeholders.
  *
  * Routes (GET only):
- *   /v1/badge/<slug>.svg    flat SVG badge
- *   /v1/badge/<slug>.json   shields.io endpoint JSON
+ *   /badge/<slug>.svg    flat SVG badge
+ *   /badge/<slug>.json   shields.io endpoint JSON
  *
  * Pipeline, fail-closed at every step (any failure renders "unverified"):
  *   1. slug must be in the generated allowlist (emitted by
@@ -219,7 +219,7 @@ export async function resolveBadgeState(slug, entry, { fetchImpl, issuerKeys, st
 
 // ── HTTP handler ────────────────────────────────────────────────────────────
 
-const ROUTE_RE = /^\/v1\/badge\/([a-z0-9-]{2,40})\.(svg|json)$/;
+const ROUTE_RE = /^\/badge\/([a-z0-9-]{2,40})\.(svg|json)$/;
 
 function badgeResponse(state, claim, format, maxAge = 300) {
   const body = format === "svg" ? renderSvg(state, claim) : renderShieldsJson(state, claim);

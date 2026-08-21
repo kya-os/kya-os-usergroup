@@ -223,28 +223,29 @@ export function sectionStartHere() {
   </section>`;
 }
 
-/** The three submission paths plus the copy-to-agent prompt. */
+/** The trust ladder plus the one primary action (prompt + prefilled link). */
 export function sectionSubmit() {
+  const rung = (chip, note) => `      <span class="rung">${chip}<span class="rung-note">${note}</span></span>`;
   return `  <section id="submit" class="fx fxd-40">
-    <h2>Submit</h2>
+    <h2>Join the registry</h2>
     <div class="rule"></div>
-    <p class="section-lede">Three paths, all public, none gatekept. Corrections count too: every standards-matrix row is one file in <code>registry/interop/</code> — use the row's edit link on <a href="/standards/">the standards page</a>, or PR the file directly.</p>
-    <div class="grid-3">
-      <div class="panel-card path-primary">
-        <div class="pc-title t-static">1 &middot; add your project</div>
-        <p>One click opens the GitHub editor on <code>registry/builders/</code> with the entry template prefilled. Rename to <code>&lt;your-slug&gt;.json</code>, edit the fields, propose the change — GitHub forks and opens the PR for you.</p>
-        <p class="pc-sub">Two fields CI will not forgive: set <code>listedAt</code> to today's real date, and keep <code>slug</code> equal to your filename.</p>
-        <a class="btn-solid" href="${esc(ADD_PROJECT_URL)}">add your project -&gt;</a>
-      </div>
-      <div class="panel-card">
-        <div class="pc-title t-static">2 &middot; copy the template file</div>
-        <p>Prefer a local workflow? Copy <a href="${REPO_URL}/blob/main/registry/builders/example-builder.json"><code>example-builder.json</code></a> to <code>registry/builders/&lt;your-slug&gt;.json</code>, run <code>npm test</code> (no dependencies to install), and open a PR. Full field reference in <a href="${REPO_URL}/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>.</p>
-      </div>
-      <div class="panel-card">
-        <div class="pc-title t-static">3 &middot; claim conformance</div>
-        <p>Run the pinned vector suite (the <a href="${STARTER_URL}">starter</a> automates it), then open a conformance submission issue with your <code>claim.json</code>. The program re-runs your suite independently and attests what it observes; your registry entry then carries the claim.</p>
-      </div>
+    <p class="section-lede">Getting listed and claiming conformance are not separate acts — they are rungs of one ladder, and the same registry entry climbs it in public. Corrections count too: every standards-matrix row is one file in <code>registry/interop/</code> — use the row's edit link on <a href="/standards/">the standards page</a>, or PR the file directly.</p>
+    <div class="ladder">
+${[
+    rung(`<span class="chip st-listed">&middot; listed</span>`, "5 minutes"),
+    rung(`<span class="chip st-self">&middot; self-reported</span>`, "same hour"),
+    rung(`<span class="chip st-inverif">&#9676; in verification</span>`, "issue open"),
+    rung(`<span class="chip st-verified demo">&check; verified</span>`, "the program re-runs your bytes"),
+  ].join(`\n      <span class="ladder-arrow" aria-hidden="true">-&gt;</span>\n`)}
     </div>
-    ${promptBlock("prompt-get-listed")}
+    <p class="ladder-copy">Listed in five minutes. Self-reported the same hour. Verified when the <a href="/conformance/">program</a> re-runs your bytes.</p>
+    <div class="panel-card path-primary">
+      <div class="pc-title t-static">one action, every rung</div>
+      <p>Hand the prompt to your coding agent and it walks the ladder with you: your entry, an optional self-reported conformance run against the pinned suite, one pull request, and the submission issue if you want verification. Or take the one-click path — the button opens the GitHub editor on <code>registry/builders/</code> with the entry template prefilled: rename to <code>&lt;your-slug&gt;.json</code>, edit the fields, propose the change.</p>
+      ${promptBlock("prompt-join-registry")}
+      <p class="pc-sub">Two fields CI will not forgive: set <code>listedAt</code> to today's real date, and keep <code>slug</code> equal to your filename.</p>
+      <a class="btn-solid" href="${esc(ADD_PROJECT_URL)}">add your project -&gt;</a>
+    </div>
+    <p class="note">Prefer a local workflow? Copy <a href="${REPO_URL}/blob/main/registry/builders/example-builder.json"><code>example-builder.json</code></a> to <code>registry/builders/&lt;your-slug&gt;.json</code>, run <code>npm test</code> (no dependencies to install), and open a PR — the field reference is in <a href="${REPO_URL}/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>.</p>
   </section>`;
 }

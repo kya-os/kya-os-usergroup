@@ -29,12 +29,13 @@ The signed per-release suite manifest (the durable home for that pin) is publish
    The [starter](./starter/) automates fetch, hash-verify, run, and report through either door: the TypeScript adapter, or bring-your-own-harness in any language.
 2. **Submit the claim.**
    `npm run claim` merges your report, package metadata, git commit, and the verified suite pin into a `claim.json`.
-   Open a [conformance submission issue](https://github.com/decentralized-identity/kya-os-mcp/issues/new?template=conformance_submission.md) on kya-os-mcp and attach it.
+   Open a [conformance submission issue](https://github.com/kya-os/kya-os-usergroup/issues/new?template=conformance_submission.yml) on this repository - the registry your claim ends up in - and attach it.
+   Claims already in flight on the spec repo (such as [kya-os-mcp#149](https://github.com/decentralized-identity/kya-os-mcp/issues/149)) remain valid: the program reads both, new submissions come here.
 3. **Independent re-run.**
    The program re-runs your suite at the pinned commit and attests what it observes - not what the claim says.
 4. **Credential + badge.**
    A verified claim gets a credential at a canonical URL; your registry entry's `conformance.attestationUrl` points at it and the site renders the claim green.
-   Live badges at `badge.kya-os.org` ship at Phase B of the program (see [`workers/badge/`](../workers/badge/) once it lands).
+   Live verified badges take over `builders.kya-os.org/badge/*` at Phase B of the program (see [`workers/badge/`](../workers/badge/) once it lands).
 
 Honesty rules, enforced by the registry validator and the site build:
 

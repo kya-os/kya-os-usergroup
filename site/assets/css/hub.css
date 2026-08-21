@@ -325,11 +325,20 @@ a.pc-title{display:inline-block}
 .tag{border:1px solid var(--line);padding:2px 8px}
 .scat-label .chip{margin-left:6px;font-size:10px;padding:1px 8px;text-transform:none;letter-spacing:.02em}
 
+/* ── The ladder (submit section): one trust ladder, four rungs ────────────── */
+.ladder{display:flex;flex-wrap:wrap;align-items:flex-start;gap:14px 12px;border:1px solid var(--line);background:var(--panel);padding:20px 24px;margin-bottom:14px}
+.rung{display:inline-flex;flex-direction:column;gap:7px}
+.ladder .chip{margin-bottom:0;padding:2px 10px}
+.rung-note{font-family:var(--font-mono);font-size:10px;color:var(--ink-faint)}
+.ladder-arrow{font-family:var(--font-mono);font-size:12px;color:var(--ink-faint);padding-top:4px}
+.ladder-copy{font-size:14px;color:var(--ink-muted);margin:0 0 28px}
+
 /* Solid accent button (the primary submit path). */
 .path-primary{display:flex;flex-direction:column;border-color:var(--line-mid);background:var(--panel-2)}
 .btn-solid{display:inline-block;margin-top:22px;font-family:var(--font-mono);font-size:13px;color:var(--on-accent);background:var(--accent);padding:10px 18px;text-align:center}
 .path-primary .btn-solid{margin-top:auto}
 .path-primary .pc-sub{margin-bottom:22px}
+.path-primary .agent-prompt{margin:24px 0 22px}
 a.btn-solid:hover{background:var(--accent-hover);color:var(--on-accent)}
 
 /* ── Waveform lockup (build-time SVG) ─────────────────────────────────────── */

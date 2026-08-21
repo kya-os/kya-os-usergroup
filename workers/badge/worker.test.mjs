@@ -81,7 +81,7 @@ function handlerWith(map, allowlist = ALLOWLIST) {
   });
 }
 
-const get = (handler, path) => handler(new Request(`https://badge.kya-os.org${path}`));
+const get = (handler, path) => handler(new Request(`https://builders.kya-os.org${path}`));
 
 // ── proof verification ──────────────────────────────────────────────────────
 
@@ -135,30 +135,30 @@ async function expectBadge(map, path, { message, color, status = 200 }) {
 }
 
 test("state: verified (subset claim renders categories, never a bare level)", async () => {
-  const svg = await expectBadge(happyMap(), "/v1/badge/fixture-impl.svg", {
+  const svg = await expectBadge(happyMap(), "/badge/fixture-impl.svg", {
     message: "L1 subset (signed-proof) verified",
     color: "#3fb950",
   });
   assert.ok(!/>L1 verified</.test(svg), "subset must never render as a bare level");
-  await expectBadge(happyMap(), "/v1/badge/fixture-impl.json", { message: "L1 subset (signed-proof) verified" });
+  await expectBadge(happyMap(), "/badge/fixture-impl.json", { message: "L1 subset (signed-proof) verified" });
 });
 
 test("state: revoked", async () => {
-  await expectBadge(happyMap({ [LIST_URLS.revocation]: statusLists.lists.revocation.bit3Set }), "/v1/badge/fixture-impl.svg", {
+  await expectBadge(happyMap({ [LIST_URLS.revocation]: statusLists.lists.revocation.bit3Set }), "/badge/fixture-impl.svg", {
     message: "revoked",
     color: "#f85149",
   });
 });
 
 test("state: contested (suspension bit)", async () => {
-  await expectBadge(happyMap({ [LIST_URLS.suspension]: statusLists.lists.suspension.bit3Set }), "/v1/badge/fixture-impl.svg", {
+  await expectBadge(happyMap({ [LIST_URLS.suspension]: statusLists.lists.suspension.bit3Set }), "/badge/fixture-impl.svg", {
     message: "contested",
     color: "#d29922",
   });
 });
 
 test("state: withdrawn", async () => {
-  await expectBadge(happyMap({ [LIST_URLS.withdrawal]: statusLists.lists.withdrawal.bit3Set }), "/v1/badge/fixture-impl.svg", {
+  await expectBadge(happyMap({ [LIST_URLS.withdrawal]: statusLists.lists.withdrawal.bit3Set }), "/badge/fixture-impl.svg", {
     message: "withdrawn",
     color: "#6e7681",
   });
@@ -167,28 +167,28 @@ test("state: withdrawn", async () => {
 test("state: superseded when the manifest moved past the credential's pin", async () => {
   await expectBadge(
     happyMap({ [MANIFEST_URL]: { suiteVersion: "1.1.0", vectorSetHash: "sha256:different" } }),
-    "/v1/badge/fixture-impl.svg",
+    "/badge/fixture-impl.svg",
     { message: "superseded", color: "#58a6ff" },
   );
 });
 
 test("state: unknown renders as unverified when no credential exists yet", async () => {
-  await expectBadge(happyMap(), "/v1/badge/no-claim-yet.svg", { message: "unverified", color: "#6e7681" });
+  await expectBadge(happyMap(), "/badge/no-claim-yet.svg", { message: "unverified", color: "#6e7681" });
 });
 
 test("fail-closed: fetch failures and bad proofs render unverified, never verified", async () => {
   // Credential URL 404s.
   const noCred = happyMap();
   delete noCred[CREDENTIAL_URL];
-  await expectBadge(noCred, "/v1/badge/fixture-impl.svg", { message: "unverified" });
+  await expectBadge(noCred, "/badge/fixture-impl.svg", { message: "unverified" });
   // Tampered credential served.
   const tampered = structuredClone(credential);
   tampered.credentialSubject.scope = "full";
-  await expectBadge(happyMap({ [CREDENTIAL_URL]: tampered }), "/v1/badge/fixture-impl.svg", { message: "unverified" });
+  await expectBadge(happyMap({ [CREDENTIAL_URL]: tampered }), "/badge/fixture-impl.svg", { message: "unverified" });
   // Status list unreachable.
   const noList = happyMap();
   delete noList[LIST_URLS.revocation];
-  await expectBadge(noList, "/v1/badge/fixture-impl.svg", { message: "unverified" });
+  await expectBadge(noList, "/badge/fixture-impl.svg", { message: "unverified" });
 });
 
 test("revocation precedence beats a stale manifest (revoked, not superseded)", async () => {
@@ -197,7 +197,7 @@ test("revocation precedence beats a stale manifest (revoked, not superseded)", a
       [LIST_URLS.revocation]: statusLists.lists.revocation.bit3Set,
       [MANIFEST_URL]: { suiteVersion: "9.9.9", vectorSetHash: "sha256:moved" },
     }),
-    "/v1/badge/fixture-impl.svg",
+    "/badge/fixture-impl.svg",
     { message: "revoked", color: "#f85149" },
   );
 });
@@ -207,7 +207,7 @@ test("revocation precedence beats a stale manifest (revoked, not superseded)", a
 test("status list without a proof renders unverified, never verified", async () => {
   const unsigned = structuredClone(statusLists.lists.revocation.allZero);
   delete unsigned.proof;
-  await expectBadge(happyMap({ [LIST_URLS.revocation]: unsigned }), "/v1/badge/fixture-impl.svg", {
+  await expectBadge(happyMap({ [LIST_URLS.revocation]: unsigned }), "/badge/fixture-impl.svg", {
     message: "unverified",
   });
 });
@@ -217,7 +217,7 @@ test("tampered signed status list renders unverified (bits cannot be cleared wit
   // attack that clears a revocation. The stale proof must not carry it.
   const tampered = structuredClone(statusLists.lists.revocation.bit3Set);
   tampered.credentialSubject.encodedList = statusLists.lists.revocation.allZero.credentialSubject.encodedList;
-  await expectBadge(happyMap({ [LIST_URLS.revocation]: tampered }), "/v1/badge/fixture-impl.svg", {
+  await expectBadge(happyMap({ [LIST_URLS.revocation]: tampered }), "/badge/fixture-impl.svg", {
     message: "unverified",
   });
 });
@@ -226,7 +226,7 @@ test("key separation: a status list signed by the ISSUER key renders unverified"
   // statusLists.issuerSigned is a validly signed all-zero revocation list,
   // but signed with the issuer key. A stolen issuer key must not be able to
   // clear its own revocation bits, so only the status keys may vouch for it.
-  await expectBadge(happyMap({ [LIST_URLS.revocation]: statusLists.issuerSigned }), "/v1/badge/fixture-impl.svg", {
+  await expectBadge(happyMap({ [LIST_URLS.revocation]: statusLists.issuerSigned }), "/badge/fixture-impl.svg", {
     message: "unverified",
   });
 });
@@ -238,19 +238,19 @@ test("key separation: a status list signed by the ISSUER key renders unverified"
 test("proofPurpose other than assertionMethod renders unverified", async () => {
   const result = await verifyEddsaJcs2022(invalidCredentials.wrongPurpose, issuerKeyBytes);
   assert.equal(result.ok, true, "fixture must be validly signed so the purpose check is what rejects");
-  await expectBadge(happyMap({ [CREDENTIAL_URL]: invalidCredentials.wrongPurpose }), "/v1/badge/fixture-impl.svg", {
+  await expectBadge(happyMap({ [CREDENTIAL_URL]: invalidCredentials.wrongPurpose }), "/badge/fixture-impl.svg", {
     message: "unverified",
   });
 });
 
 test("validFrom in the future beyond the 300s skew renders unverified", async () => {
-  await expectBadge(happyMap({ [CREDENTIAL_URL]: invalidCredentials.futureValidFrom }), "/v1/badge/fixture-impl.svg", {
+  await expectBadge(happyMap({ [CREDENTIAL_URL]: invalidCredentials.futureValidFrom }), "/badge/fixture-impl.svg", {
     message: "unverified",
   });
 });
 
 test("an unexpected validUntil is a schema violation rendering unverified, never an expired state", async () => {
-  const body = await expectBadge(happyMap({ [CREDENTIAL_URL]: invalidCredentials.withValidUntil }), "/v1/badge/fixture-impl.svg", {
+  const body = await expectBadge(happyMap({ [CREDENTIAL_URL]: invalidCredentials.withValidUntil }), "/badge/fixture-impl.svg", {
     message: "unverified",
   });
   assert.ok(!body.includes("expired"), "no expired state exists - the credential design has no expiry");
@@ -275,21 +275,21 @@ test("gzip bomb: inflating past the cap throws mid-stream, normal lists still re
 // ── routing and allowlist ───────────────────────────────────────────────────
 
 test("allowlist rejection: unlisted slug is a 404, not an unverified badge", async () => {
-  const response = await get(handlerWith(happyMap()), "/v1/badge/not-in-registry.svg");
+  const response = await get(handlerWith(happyMap()), "/badge/not-in-registry.svg");
   assert.equal(response.status, 404);
 });
 
 test("routing: bad paths 404, non-GET 405, query strings do not change the route", async () => {
   const handler = handlerWith(happyMap());
-  assert.equal((await get(handler, "/v1/badge/fixture-impl.png")).status, 404);
+  assert.equal((await get(handler, "/badge/fixture-impl.png")).status, 404);
   assert.equal((await get(handler, "/nope")).status, 404);
-  assert.equal((await handler(new Request("https://badge.kya-os.org/v1/badge/fixture-impl.svg", { method: "POST" }))).status, 405);
-  const withQuery = await get(handler, "/v1/badge/fixture-impl.svg?cachebust=1");
+  assert.equal((await handler(new Request("https://builders.kya-os.org/badge/fixture-impl.svg", { method: "POST" }))).status, 405);
+  const withQuery = await get(handler, "/badge/fixture-impl.svg?cachebust=1");
   assert.equal(withQuery.status, 200);
 });
 
 test("shields JSON shape", async () => {
-  const response = await get(handlerWith(happyMap()), "/v1/badge/fixture-impl.json");
+  const response = await get(handlerWith(happyMap()), "/badge/fixture-impl.json");
   const json = await response.json();
   assert.deepEqual(Object.keys(json).sort(), ["color", "isError", "label", "message", "schemaVersion"]);
   assert.equal(json.schemaVersion, 1);

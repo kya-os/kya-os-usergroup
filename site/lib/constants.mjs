@@ -16,7 +16,10 @@ export const CONFORMANCE_MD_URL = `${MCP_REPO_URL}/blob/main/CONFORMANCE.md`;
 export const ENTITY_CARD_URL = `${MCP_REPO_URL}/blob/main/SPEC-ENTITY-CARD.md`;
 export const MIGRATE_README_URL = `${MCP_REPO_URL}#migrate-any-mcp-server-in-2-lines`;
 export const DOCS_QUICKSTART_URL = `${SITE_URL}/mcp/docs/getting-started/quickstart`;
-export const SUBMISSION_ISSUE_URL = `${MCP_REPO_URL}/issues/new?template=conformance_submission.md`;
+// Conformance submissions open HERE - the community repo that carries the
+// registry - via .github/ISSUE_TEMPLATE/conformance_submission.yml. Claims
+// already in flight on the spec repo remain valid; see conformance/README.md.
+export const SUBMISSION_ISSUE_URL = `${REPO_URL}/issues/new?template=conformance_submission.yml`;
 export const REVOKED_TREE_URL = `${MCP_REPO_URL}/tree/main/examples/revoked`;
 export const PLAYGROUND_URL = `${SITE_URL}/mcp/playground`;
 export const DEMO_MCP_URL = "https://demo-mcp.kya-os.ai/mcp";
@@ -57,18 +60,18 @@ export const ADD_PROJECT_URL = `${REPO_URL}/new/main/registry/builders?filename=
 // their coding agent. Each renders as BOTH the copy button's payload and its
 // no-JS <details> fallback (the button copies from the fallback's DOM node,
 // and lib/assertions.mjs asserts the rendered pair carries exactly these
-// bytes). The conformance prompt interpolates the pinned suite so the prompt
-// can never drift from SUITE.
+// bytes). The join and claim prompts interpolate the pinned suite so neither
+// can ever drift from SUITE.
 export const PROMPTS = [
   {
-    id: "prompt-get-listed",
+    id: "prompt-join-registry",
     text:
-      "Add my project to the KYA-OS builders registry: read https://github.com/kya-os/kya-os-usergroup/blob/main/registry/builders/example-builder.json and CONTRIBUTING.md, create registry/builders/<my-slug>.json describing MY project (ask me for name, homepage, repo, kind, what it builds on), validate it against registry/schema/builder.schema.json, then open a PR to kya-os/kya-os-usergroup titled 'registry: add <my-slug>'.",
+      `Join the KYA-OS builders registry end to end: (1) read https://github.com/kya-os/kya-os-usergroup/blob/main/registry/builders/example-builder.json and CONTRIBUTING.md, ask me for my project's name, homepage, repo, kind, and what it builds on, and create registry/builders/<my-slug>.json; (2) if my project implements KYA-OS verification, also clone the repo, follow conformance/starter/README.md to run the pinned ${SUITE.vectors}-vector suite (suite ${SUITE.version}, vectorSetHash ${SUITE.vectorSetHash}), and embed a self-reported conformance object in my entry with the level and scope the run actually supports; (3) validate with npm test; (4) open ONE pull request to kya-os/kya-os-usergroup titled 'registry: add <my-slug>'; (5) if I want verification, also open a conformance submission issue on kya-os/kya-os-usergroup with my claim JSON and set my entry's status to in-verification with the issue as evidenceUrl - all in the same session.`,
   },
   {
     id: "prompt-prove-conformance",
     text:
-      `Prove my KYA-OS implementation conformant: clone https://github.com/kya-os/kya-os-usergroup and follow conformance/starter/README.md - fetch the pinned vector suite, run my implementation against the ${SUITE.vectors} vectors (suite ${SUITE.version}, vectorSetHash ${SUITE.vectorSetHash}), generate the claim JSON with scripts/make-claim.mjs, and open a conformance submission issue on decentralized-identity/kya-os-mcp with the claim.`,
+      `Prove my KYA-OS implementation conformant: clone https://github.com/kya-os/kya-os-usergroup and follow conformance/starter/README.md - fetch the pinned vector suite, run my implementation against the ${SUITE.vectors} vectors (suite ${SUITE.version}, vectorSetHash ${SUITE.vectorSetHash}), generate the claim JSON with scripts/make-claim.mjs, and open a conformance submission issue on kya-os/kya-os-usergroup with the claim.`,
   },
   {
     id: "prompt-run-revoked",

@@ -92,7 +92,7 @@ Levels (`L1` core crypto, `L2` full session, `L3` full delegation) are defined i
 
 ### 0:55 - Submit
 
-Open a submission issue on [decentralized-identity/kya-os-mcp](https://github.com/decentralized-identity/kya-os-mcp/issues/new) titled `Conformance claim: <name> <version>` and attach `claim.json`.
+Open a [conformance submission issue](https://github.com/kya-os/kya-os-usergroup/issues/new?template=conformance_submission.yml) on [kya-os/kya-os-usergroup](https://github.com/kya-os/kya-os-usergroup) - the community registry your claim ends up in - and attach `claim.json` (the form's fields map one-to-one onto it).
 The program re-runs your suite at `implementation.digest.gitCommit` and attests what it observes.
 
 ## The claim shape

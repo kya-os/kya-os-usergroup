@@ -10,11 +10,15 @@
   "compatibility_date": "2026-08-01",
   "workers_dev": false
 
-  // One-time setup (Phase B): create the Cloudflare Worker project, add the
-  // badge.kya-os.org custom domain, replace the placeholder issuer keys and
-  // manifest URL in worker.mjs with the Phase A values, then uncomment:
+  // One-time setup (Phase B): create the Cloudflare Worker project, replace
+  // the placeholder issuer keys and the suite-manifest URL in worker.mjs with
+  // the Phase A values, then uncomment the route below. It is a ZONE route
+  // (not a custom domain), so the worker takes over /badge/* on the builders
+  // host while Cloudflare Pages keeps serving every other path - the static
+  // badge tiers hand the same URLs to the worker with no embed churn. Zone
+  // routes require zone_name (the kya-os.org zone in the DIF account).
   //
   // "routes": [
-  //   { "pattern": "badge.kya-os.org/*", "custom_domain": true }
+  //   { "pattern": "builders.kya-os.org/badge/*", "zone_name": "kya-os.org" }
   // ]
 }
