@@ -389,6 +389,7 @@ footer a:hover{color:var(--ink-bright)}
 @keyframes scan{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
 @keyframes killFlash{0%,80%,100%{background:var(--signal);box-shadow:0 0 8px color-mix(in srgb,var(--signal) 80%,transparent)}85%,95%{background:var(--alert);box-shadow:0 0 8px color-mix(in srgb,var(--alert) 80%,transparent)}}
 @keyframes letterReveal{0%{opacity:.7;transform:translateY(-5px);text-shadow:0 0 20px var(--ink-bright)}100%{opacity:1;transform:translateY(0);text-shadow:none}}
+@keyframes letterRevealHome{0%{opacity:.7;text-shadow:0 0 20px var(--ink-bright)}100%{opacity:1;text-shadow:none}}
 
 /* ── Motion layer (js-anim gated; accompanies /ui/page-fx.js) ─────────────── */
 html.js-anim .fx{animation:fadeUp .7s ease-out both;animation-play-state:paused}
@@ -404,12 +405,17 @@ html.js-anim .fxd-50{animation-delay:.5s}
 html.js-anim [data-title-reveal]{visibility:hidden}
 html.js-anim .fade-overlay{position:fixed;inset:0;background:var(--canvas);z-index:9999;pointer-events:none;opacity:0;transition:opacity .4s ease-out}
 html.js-anim .fade-overlay.active{opacity:1;pointer-events:all}
-.title-letter{display:inline-block}
+/* Reference parity (kya-os.org main.css): letters carry a 0.3s opacity and
+   transform transition so they bloom in during the glitch phase instead of
+   snapping; the homepage reveal is glow-only (letterRevealHome), inner pages
+   rise 5px (letterReveal) - same split the reference draws for its home. */
+.title-letter{display:inline-block;transition:opacity .3s ease,transform .3s ease}
 .title-letter.glitching{color:var(--ink-muted);text-shadow:2px 0 var(--ink-bright),-2px 0 var(--alert),0 0 10px color-mix(in srgb,var(--ink-bright) 30%,transparent)}
 /* Hover glitch: kya-os.org css/main.css textGlitch, colors via tokens (dark values identical). */
 .glitching:not(.title-letter){animation:textGlitch .1s infinite}
 @keyframes textGlitch{0%,100%{text-shadow:1px 0 var(--alert),-1px 0 var(--signal)}25%{text-shadow:-1px 0 var(--alert),1px 0 var(--signal)}50%{text-shadow:1px 0 var(--signal),-1px 0 var(--alert)}75%{text-shadow:0 1px var(--alert),0 -1px var(--signal)}}
 .title-letter.revealed{animation:letterReveal .3s ease-out}
+.h1-home .title-letter.revealed{animation:letterRevealHome .3s ease-out}
 
 /* Reduced motion: no choreography (js-anim is never added) and no ambient
    loops - wire dots, cursor, pulses, and scans all hold still. */

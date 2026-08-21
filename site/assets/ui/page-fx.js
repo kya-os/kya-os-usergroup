@@ -203,10 +203,15 @@ export async function initPageFx() {
   const titleEl = document.querySelector("[data-title-reveal]");
   const title = titleEl ? new Title(titleEl, { revealDelay: 0, letterDelay: 30, glitchIterations: 3 }) : null;
   window.addEventListener("pageshow", (e) => { if (e.persisted && title) title.restore(); });
+  // Reference orchestration (kya-os.org PageInit): the hero shows, the title
+  // decrypts, and only THEN does the rest of the page stagger in - content is
+  // sequenced on the title, not raced against it. The hero's own .fx (any
+  // ancestor of the title) releases first so the decrypt is visible.
   await wait(50);
-  document.querySelectorAll(".fx").forEach((el) => { el.style.animationPlayState = "running"; });
-  await wait(200);
+  const fx = [...document.querySelectorAll(".fx")];
+  fx.filter((el) => titleEl && el.contains(titleEl)).forEach((el) => { el.style.animationPlayState = "running"; });
   if (title) await title.animateIn();
+  fx.forEach((el) => { el.style.animationPlayState = "running"; });
   document.querySelectorAll("[data-glitch]").forEach((el) => {
     if (el.children.length === 0) new GlitchText(el);
   });
