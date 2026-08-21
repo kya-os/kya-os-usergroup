@@ -25,12 +25,12 @@ Every entry must conform to [`registry/schema/builder.schema.json`](registry/sch
 | Field | Required | Rules |
 | --- | --- | --- |
 | `name` | yes | 1-80 characters |
-| `slug` | yes | `^[a-z0-9-]{2,40}$`, must equal the filename (`<slug>.json`), unique across builders AND interop |
+| `slug` | yes | `^[a-z0-9-]{2,40}$`, must equal the filename (`<slug>.json`), unique across builders AND interop - convention: your repo name, lowercased |
 | `description` | yes | 280 characters max |
 | `homepage` | yes | `https://` URL |
 | `repo` | no | `https://` URL |
 | `kind` | yes | one of `implementation`, `service`, `template`, `example`, `integration`, `marketplace` (see below) |
-| `buildsOn` | no | which KYA-OS repos you build on: `kya-os-mcp`, `kya-os-schema`, `kya-os`, `spec` |
+| `buildsOn` | no | which KYA-OS repos you build on: `kya-os-mcp` (the reference implementation - also the right slug if you consume the `@kya-os/mcp` npm package), `kya-os-schema` (the published schemas at schema.kya-os.org), `kya-os` (the spec text), `spec` (protocol-level work). List what you build ON, not yourself - a project that is one of these repos lists only its upstreams |
 | `standards` | no | interop-registry slugs you exercise; each must exist as `registry/interop/<slug>.json` |
 | `conformance` | no | a conformance claim (see below) |
 | `deploy` | no | one-click deploy targets: `{platform, url}` with platform one of `vercel`, `railway`, `cloudflare`, `docker`, `other` |
@@ -45,7 +45,7 @@ The template entry (`example-builder.json`) stays in the repo and is never rende
 `kind` decides which section of the site renders you:
 
 - **`implementation`** - you implement the protocol itself (an SDK, a library, an independent verifier). Renders under `#builders`, and this is the kind that usually carries a `conformance` claim.
-- **`service`** - you run something live that speaks KYA-OS (a hosted server, a demo endpoint). Include the live URL as `homepage`.
+- **`service`** - you run something live that speaks KYA-OS (a hosted server, a demo endpoint) or hosts KYA-OS artifacts at stable URLs (a schema host, a registry). Include the live URL as `homepage`.
 - **`integration`** - you wire KYA-OS into another product or ecosystem.
 - **`marketplace`** - you list or distribute KYA-OS-speaking agents/servers.
 - **`template`** - you ship a copyable starting point. Add `deploy` targets and the site renders one-click deploy buttons.
