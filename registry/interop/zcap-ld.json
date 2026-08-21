@@ -1,0 +1,10 @@
+{
+  "standard": "W3C CCG ZCAP-LD",
+  "slug": "zcap-ld",
+  "category": "credential-format",
+  "relationship": "The authority object: the credentialSubject of every delegation hop is an attenuated ZCAP-LD capability (context https://w3id.org/security/zcap/v1); chain attenuation invariants are enforced.",
+  "status": "shipping",
+  "evidence": "https://github.com/decentralized-identity/kya-os-mcp/blob/main/src/delegation/chain-enforcement.ts",
+  "notes": "Normative reference; chain enforcement in src/delegation/chain-enforcement.ts plus the delegation credential schema.",
+  "listedAt": "2026-08-19"
+}

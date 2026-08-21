@@ -1,0 +1,10 @@
+# Fetched at a pinned ref by scripts/fetch-suite.mjs; never vendored into git.
+suite/
+
+# Run outputs.
+report.json
+claim.json
+
+# Toolchain.
+node_modules/
+dist/

@@ -1,0 +1,15 @@
+{
+  "name": "@kya-os/mcp (reference implementation)",
+  "slug": "kya-os-mcp",
+  "description": "The reference implementation of KYA-OS for MCP servers: DID identity, scoped delegation with consent gating, and detached-JWS proofs in two added lines. The conformance vectors derive from this codebase, so its full-suite pass is self-reported, not independent evidence.",
+  "homepage": "https://kya-os.org",
+  "repo": "https://github.com/decentralized-identity/kya-os-mcp",
+  "kind": "implementation",
+  "conformance": {
+    "level": "L3",
+    "scope": "full",
+    "suiteVersion": "1.0.0",
+    "status": "self-reported"
+  },
+  "listedAt": "2026-08-20"
+}

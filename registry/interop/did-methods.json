@@ -1,0 +1,10 @@
+{
+  "standard": "W3C DIDs: did:web, did:key, did:cheqd",
+  "slug": "did-methods",
+  "category": "identity",
+  "relationship": "did:web REQUIRED for accountable entities, did:key for ephemeral or human principals (SPEC-ENTITY-CARD section 5.1); resolvers for all three in-tree.",
+  "status": "shipping",
+  "evidence": "https://github.com/decentralized-identity/kya-os-mcp/blob/main/src/delegation/did-web-resolver.ts",
+  "notes": "did:cheqd resolves via a configured resolver endpoint and is an integration (src/integrations/cheqd/resolver.ts), NOT one of the card spec's section 5.1 anchor methods.",
+  "listedAt": "2026-08-19"
+}

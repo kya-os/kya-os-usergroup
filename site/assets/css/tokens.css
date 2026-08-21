@@ -1,0 +1,116 @@
+/* tokens.css - the Builders Site design language, token layer.
+ *
+ * PROVENANCE: translated from the KYA-OS Builders Site design handoff
+ * (six .dc.html artboards). The design is dark by intent: #0a0a0a canvas,
+ * fixed dot grid, Space Grotesk display, JetBrains Mono micro-labels,
+ * #00ff88 signal green. The light side is the hub's own authored mapping
+ * (paper canvas, ink text, darkened signal green), held to the same >= 4.5:1
+ * text-contrast floor as dark.
+ *
+ * THEMING MODEL (dark-first): :root carries the dark tokens; the
+ * OS-preference branch (@media prefers-color-scheme: light, guarded as
+ * :root:not([data-theme="dark"]) so an explicit dark override wins) and the
+ * explicit :root[data-theme="light"] hook carry the same light tokens. Both
+ * light blocks MUST stay token-for-token identical - the build asserts it.
+ *
+ * CONTRAST (WCAG vs canvas, both themes hold >= 4.5:1 for text): the design's
+ * #999999 ladder step survives (6.95:1); the #666666 step ships as --ink-muted
+ * #808080 (5.01:1) and the #444444 step as --ink-faint #7a7a7a (4.61:1) - the
+ * two deliberate accessibility divergences from the artboard hex. Border and
+ * wire tones are non-text and keep the artboard values.
+ */
+
+:root {
+  color-scheme: dark;
+  --canvas: #0a0a0a;
+  --nav-bg: rgb(10 10 10 / 0.88);
+  --panel: rgb(255 255 255 / 0.02);
+  --panel-2: rgb(255 255 255 / 0.03);
+  --panel-3: rgb(255 255 255 / 0.04);
+  --ink-bright: #ffffff;
+  --ink: #e0e0e0;
+  --ink-dim: #999999;
+  --ink-muted: #808080;
+  --ink-faint: #7a7a7a;
+  --line-hair: #141414;
+  --line: #1a1a1a;
+  --line-quiet: #2a2a2a;
+  --line-mid: #333333;
+  --line-strong: #666666;
+  --wire: #222222;
+  --dot: #1a1a1a;
+  --signal: #00ff88;
+  --amber: #ffb340;
+  --info: #66aaff;
+  --alert: #ff0040;
+  --accent: #e0e0e0;
+  --accent-hover: #ffffff;
+  --on-accent: #0a0a0a;
+  --mark-white: inline-block;
+  --mark-black: none;
+  --font-sans: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+}
+
+/* The light side. Keep both light blocks identical - the build asserts it. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --canvas: #f4f3ee;
+    --nav-bg: rgb(244 243 238 / 0.88);
+    --panel: rgb(17 19 19 / 0.025);
+    --panel-2: rgb(17 19 19 / 0.035);
+    --panel-3: rgb(17 19 19 / 0.05);
+    --ink-bright: #000000;
+    --ink: #1a1a1a;
+    --ink-dim: #565656;
+    --ink-muted: #666666;
+    --ink-faint: #6e6e6e;
+    --line-hair: #e9e8e3;
+    --line: #e2e1dc;
+    --line-quiet: #d5d4cf;
+    --line-mid: #bdbcb7;
+    --line-strong: #6e6e6e;
+    --wire: #d8d7d2;
+    --dot: #e3e2dd;
+    --signal: #007545;
+    --amber: #875200;
+    --info: #0f62ac;
+    --alert: #b3003a;
+    --accent: #1a1a1a;
+    --accent-hover: #000000;
+    --on-accent: #f4f3ee;
+    --mark-white: none;
+    --mark-black: inline-block;
+  }
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --canvas: #f4f3ee;
+  --nav-bg: rgb(244 243 238 / 0.88);
+  --panel: rgb(17 19 19 / 0.025);
+  --panel-2: rgb(17 19 19 / 0.035);
+  --panel-3: rgb(17 19 19 / 0.05);
+  --ink-bright: #000000;
+  --ink: #1a1a1a;
+  --ink-dim: #565656;
+  --ink-muted: #666666;
+  --ink-faint: #6e6e6e;
+  --line-hair: #e9e8e3;
+  --line: #e2e1dc;
+  --line-quiet: #d5d4cf;
+  --line-mid: #bdbcb7;
+  --line-strong: #6e6e6e;
+  --wire: #d8d7d2;
+  --dot: #e3e2dd;
+  --signal: #007545;
+  --amber: #875200;
+  --info: #0f62ac;
+  --alert: #b3003a;
+  --accent: #1a1a1a;
+  --accent-hover: #000000;
+  --on-accent: #f4f3ee;
+  --mark-white: none;
+  --mark-black: inline-block;
+}

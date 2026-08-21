@@ -1,0 +1,113 @@
+name: conformance
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Fetch the pinned suite (verifies the vector-set hash)
+        run: node scripts/fetch-suite.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # The run gates the job once the adapter is real. Until then it is
+      # informational only. "Real" means either the NotImplementedError stubs
+      # are gone from src/adapter.ts, or the repo variable REPORT_EXPECTED is
+      # set to 'true' (e.g. for a bring-your-own-harness setup that commits its
+      # own runner step).
+      - name: Detect adapter stubs
+        id: adapter
+        run: |
+          if grep -q "throw new NotImplementedError" src/adapter.ts; then
+            echo "implemented=false" >> "$GITHUB_OUTPUT"
+            echo "src/adapter.ts still throws NotImplementedError."
+          else
+            echo "implemented=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run conformance (gating)
+        if: steps.adapter.outputs.implemented == 'true' || vars.REPORT_EXPECTED == 'true'
+        run: npm run conformance
+
+      - name: Run conformance (informational, adapter still stubbed)
+        if: steps.adapter.outputs.implemented != 'true' && vars.REPORT_EXPECTED != 'true'
+        run: npm run conformance || echo "Failures are expected until src/adapter.ts is implemented."
+
+      # Emits claim.json only from a gating (fully matching) run, and only when
+      # the repo variables CLAIM_SUBJECT and CLAIM_LEVEL are configured.
+      # make-claim refuses dishonest input on its own (failing report, dirty
+      # tree, mislabeled scope, placeholder name).
+      - name: Generate claim
+        if: >-
+          (steps.adapter.outputs.implemented == 'true' || vars.REPORT_EXPECTED == 'true') &&
+          vars.CLAIM_SUBJECT != '' && vars.CLAIM_LEVEL != ''
+        run: node scripts/make-claim.mjs
+        env:
+          CLAIM_SUBJECT: ${{ vars.CLAIM_SUBJECT }}
+          CLAIM_LEVEL: ${{ vars.CLAIM_LEVEL }}
+          CLAIM_SCOPE: ${{ vars.CLAIM_SCOPE }}
+
+      - name: Job summary
+        if: always()
+        run: |
+          node --input-type=module >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          import { existsSync, readFileSync } from 'node:fs';
+          const read = (p) => JSON.parse(readFileSync(p, 'utf8'));
+          const lines = ['## KYA-OS conformance'];
+          if (existsSync('suite/manifest.json')) {
+            const m = read('suite/manifest.json');
+            lines.push(`Suite: \`${m.package}@${m.packageVersion}\` at \`${m.ref}\` (${m.vectorCount} vectors, ${m.categories.length} categories)`);
+            lines.push(`Vector-set hash: \`${m.vectorSetHash}\``);
+          }
+          if (existsSync('report.json')) {
+            const r = read('report.json');
+            lines.push('', `Report: **${r.passed}/${r.total} matched** (adapter: ${r.adapter})${r.allMatched ? '' : ' - NOT submission-ready'}`);
+          } else {
+            lines.push('', 'No report.json was produced.');
+          }
+          if (existsSync('claim.json')) {
+            const c = read('claim.json');
+            lines.push('', '### Claim', '| field | value |', '| --- | --- |');
+            lines.push(`| subject | ${c.subject} |`);
+            lines.push(`| implementation | ${c.implementation.name}@${c.implementation.version} |`);
+            lines.push(`| commit | \`${c.implementation.digest.gitCommit}\` |`);
+            lines.push(`| level | ${c.level} |`);
+            lines.push(`| scope | ${c.scope} |`);
+            lines.push(`| categories | ${c.categories.join(', ')} |`);
+            lines.push(`| suite | ${c.suite.package}@${c.suite.packageVersion} |`);
+            lines.push(`| vectorSetHash | \`${c.suite.vectorSetHash}\` |`);
+            lines.push(`| ranAt | ${c.ranAt} |`);
+          } else {
+            lines.push('', 'No claim.json was produced (adapter stubbed, run failing, or CLAIM_SUBJECT/CLAIM_LEVEL repo variables unset).');
+          }
+          console.log(lines.join('\n'));
+          EOF
+
+      - name: Upload report and claim
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: conformance-output
+          path: |
+            report.json
+            claim.json
+          if-no-files-found: ignore

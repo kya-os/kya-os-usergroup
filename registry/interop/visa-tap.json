@@ -1,0 +1,9 @@
+{
+  "standard": "Visa Trusted Agent Protocol / TAP",
+  "slug": "visa-tap",
+  "category": "payments",
+  "relationship": "None. KYA-OS neither implements nor references TAP today.",
+  "status": "none",
+  "notes": "Confirmed zero at origin/main: the only matches are base64 lockfile false positives. The README DEF CON demo pays testnet invoices under a delegation VC but names no payment standard.",
+  "listedAt": "2026-08-19"
+}

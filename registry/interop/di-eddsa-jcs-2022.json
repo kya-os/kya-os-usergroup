@@ -1,0 +1,10 @@
+{
+  "standard": "W3C Data Integrity, eddsa-jcs-2022 cryptosuite",
+  "slug": "di-eddsa-jcs-2022",
+  "category": "credential-format",
+  "relationship": "Delegation proofs are DataIntegrityProof / eddsa-jcs-2022 (SPEC.md section 6.10); the schema literal is enforced, the suite gate rejects unknown proof.type, JCS canonicalization is in-tree.",
+  "status": "shipping",
+  "evidence": "https://github.com/decentralized-identity/kya-os-mcp/blob/main/src/card/delegation.ts",
+  "notes": "Shipping with a seam: raw Ed25519 sign/verify is an injected provider (SignatureVerificationFunction), not a bundled DI suite library. Legacy Ed25519Signature2020 proofs are also accepted.",
+  "listedAt": "2026-08-19"
+}

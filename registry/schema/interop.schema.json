@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "KYA-OS interop registry entry",
+  "description": "One standards-rail listing in the KYA-OS interop registry. Each entry lives at registry/interop/<slug>.json and the filename must equal the `slug` property. Entries state, with evidence, how KYA-OS relates to an external standard. Structural validation is enforced by scripts/validate.mjs; keep that script and this schema in sync. Honesty rule: `shipping` and `specified` require an evidence URL; a status is never listed above what the evidence shows.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["standard", "slug", "category", "relationship", "status", "listedAt"],
+  "properties": {
+    "standard": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "description": "Display name of the external standard or protocol surface."
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]{2,40}$",
+      "description": "URL-safe identifier. Must match the entry filename: registry/interop/<slug>.json. Unique across the whole registry (builders AND interop). Builder entries reference these slugs in their `standards` array."
+    },
+    "category": {
+      "enum": [
+        "discovery-projection",
+        "identity",
+        "credential-format",
+        "revocation",
+        "transparency",
+        "payments",
+        "canonicalization",
+        "transport"
+      ],
+      "description": "Which standards rail this entry belongs to; drives grouping on the site."
+    },
+    "relationship": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "description": "One-line statement of how KYA-OS relates to the standard (200 characters max). Details and caveats go in `notes`."
+    },
+    "status": {
+      "enum": ["shipping", "specified", "planned", "exploring", "none"],
+      "description": "Integration maturity. shipping = code at the current release; specified = normative spec text without shipped code; planned = on the roadmap; exploring = under evaluation; none = explicitly no current relationship (listed so nobody has to guess). When maturity is mixed, list the conservative tier and explain in `notes`."
+    },
+    "evidence": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://",
+      "description": "URL of the code or spec text that proves the status. Required when status is shipping or specified."
+    },
+    "notes": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 600,
+      "description": "Caveats, spec anchors, and provenance detail."
+    },
+    "listedAt": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the entry was added, YYYY-MM-DD."
+    }
+  },
+  "if": {
+    "properties": { "status": { "enum": ["shipping", "specified"] } },
+    "required": ["status"]
+  },
+  "then": {
+    "required": ["evidence"]
+  }
+}

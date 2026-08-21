@@ -1,0 +1,18 @@
+{
+  "name": "Mycelium Trails",
+  "slug": "mycelium-trails",
+  "description": "Independent Ed25519 implementation (action_ref / argentum-core, pynacl) cross-checked against the KYA-OS signed-proof conformance vectors; ran the upstream verify.py unmodified at 10/10 and filed a vector finding upstream.",
+  "homepage": "https://github.com/giskard09/argentum-core",
+  "repo": "https://github.com/giskard09/argentum-core",
+  "kind": "implementation",
+  "buildsOn": ["kya-os-mcp"],
+  "conformance": {
+    "level": "L1",
+    "scope": "subset",
+    "categories": ["signed-proof"],
+    "suiteVersion": "1.0.0",
+    "status": "in-verification",
+    "evidenceUrl": "https://github.com/decentralized-identity/kya-os-mcp/issues/149"
+  },
+  "listedAt": "2026-08-19"
+}

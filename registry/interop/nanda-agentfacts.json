@@ -1,0 +1,10 @@
+{
+  "standard": "NANDA AgentFacts",
+  "slug": "nanda-agentfacts",
+  "category": "discovery-projection",
+  "relationship": "Emits an AgentFacts JSON-LD projection of the Entity Card, populating NANDA's shipped owner slot from responsibleParty; namespaced kya:* keys ride graceful degradation.",
+  "status": "shipping",
+  "evidence": "https://github.com/decentralized-identity/kya-os-mcp/blob/main/src/card/emit.ts",
+  "notes": "toAgentFacts in src/card/emit.ts since v1.9.0; SPEC-ENTITY-CARD section 6.3 is NORMATIVE. Populates the owner slot, does not re-claim it. Spec anchor: SPEC-ENTITY-CARD.md#63-nanda-agentfacts.",
+  "listedAt": "2026-08-19"
+}

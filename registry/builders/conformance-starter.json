@@ -1,0 +1,10 @@
+{
+  "name": "Conformance Starter",
+  "slug": "conformance-starter",
+  "description": "Copyable template that takes an existing KYA-OS implementation to a submission-ready conformance claim in under an hour: fetches the pinned vector suite hash-verified, runs all 44 vectors through your adapter (or any-language harness), and emits claim.json.",
+  "homepage": "https://github.com/kya-os/conformance-starter",
+  "repo": "https://github.com/kya-os/kya-os-usergroup",
+  "kind": "template",
+  "buildsOn": ["kya-os-mcp"],
+  "listedAt": "2026-08-19"
+}

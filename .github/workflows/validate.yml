@@ -25,3 +25,7 @@ jobs:
         run: node scripts/validate.mjs
       - name: Build Pages artifact
         run: node site/build-pages.mjs
+      - name: Badge worker tests
+        run: node --test workers/badge/*.test.mjs
+      - name: Generated allowlist is committed and current
+        run: git diff --exit-code workers/badge/generated-allowlist.mjs

@@ -1,0 +1,12 @@
+{
+  "name": "Hobbsidian",
+  "slug": "hobbsidian",
+  "description": "Vault sharing for humans and AI agents: per-file access control, passkey-bound DIDs, and an MCP server where agent access is a capability- and path-scoped delegation verified with the @kya-os stack - the server never holds the minting key.",
+  "homepage": "https://h0bb5.dev",
+  "kind": "integration",
+  "buildsOn": ["kya-os-mcp"],
+  "contact": {
+    "github": "H0BB5"
+  },
+  "listedAt": "2026-08-20"
+}

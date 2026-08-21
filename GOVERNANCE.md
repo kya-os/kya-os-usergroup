@@ -32,6 +32,26 @@ the working group's process.
   [Code of Conduct](./CODE_OF_CONDUCT.md) may be removed by a maintainer,
   with the reason stated on the pull request or commit.
 
+## Conformance display rules
+
+The registry renders conformance claims; it does not grant them. Chips on
+the site render only what the entry proves:
+
+- A subset claim always renders with its categories ("L1 subset
+  (signed-proof)") and never as a bare level.
+- `verified` renders green only with the credential link
+  (`attestationUrl`), which the validator requires and the site build
+  asserts. At Phase B of the conformance program, CI additionally
+  cross-checks the rendered status against the credential itself, so a
+  registry entry cannot drift greener than its credential.
+- `in-verification` renders amber, `self-reported` renders grey, and no
+  wording anywhere may describe a listing as certified.
+
+Badge semantics (the states served by `workers/badge/`, and anything else
+that would change what a conformance display MEANS) belong to the working
+group under the meaning-change rule above: proposals land there first, not
+in this repo's PRs.
+
 ## Contributions
 
 Every commit requires a Developer Certificate of Origin sign-off

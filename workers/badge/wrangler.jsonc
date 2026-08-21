@@ -1,0 +1,20 @@
+// KYA-OS conformance badge worker - Cloudflare configuration.
+//
+// NOT DEPLOYABLE YET. Phase A of the conformance program has not issued any
+// real credentials, the pinned issuer keys in worker.mjs are placeholders,
+// and the Cloudflare project does not exist. The route below stays commented
+// out until all three are true - see README.md for the one-time setup.
+{
+  "name": "kya-os-badge",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-08-01",
+  "workers_dev": false
+
+  // One-time setup (Phase B): create the Cloudflare Worker project, add the
+  // badge.kya-os.org custom domain, replace the placeholder issuer keys and
+  // manifest URL in worker.mjs with the Phase A values, then uncomment:
+  //
+  // "routes": [
+  //   { "pattern": "badge.kya-os.org/*", "custom_domain": true }
+  // ]
+}

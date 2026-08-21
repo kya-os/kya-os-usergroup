@@ -1,0 +1,11 @@
+{
+  "name": "REVOKED",
+  "slug": "revoked-demo",
+  "description": "An on-chain kill switch for AI agents with wallet access: agents spend under scoped, verifiable delegations, and that authority is revocable on a public chain (cheqd testnet). Built at DEF CON 34; now the flagship example of the reference implementation.",
+  "homepage": "https://github.com/decentralized-identity/kya-os-mcp/tree/main/examples/revoked",
+  "repo": "https://github.com/decentralized-identity/kya-os-mcp",
+  "kind": "example",
+  "buildsOn": ["kya-os-mcp"],
+  "standards": ["cheqd-dlr"],
+  "listedAt": "2026-08-19"
+}

@@ -1,0 +1,10 @@
+{
+  "standard": "W3C VC Data Model 2.0",
+  "slug": "w3c-vc-2-0",
+  "category": "credential-format",
+  "relationship": "DelegationCredential is a VC 2.0 whose credentialSubject is an attenuated ZCAP-LD capability; the card delegation schema requires the credentials/v2 context first.",
+  "status": "shipping",
+  "evidence": "https://github.com/decentralized-identity/kya-os-mcp/blob/main/schemas/card-delegation-credential.json",
+  "notes": "Schema plus verifier plus conformance vectors; https://www.w3.org/ns/credentials/v2 is required as the first @context. CAVEAT: the legacy 1.x session profile (src/types/protocol.ts wrapDelegationAsVC) still pins the VC 1.1 context 2018/credentials/v1; VC 2.0 is the card-profile shape.",
+  "listedAt": "2026-08-19"
+}
