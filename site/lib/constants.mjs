@@ -60,13 +60,13 @@ export const ADD_PROJECT_URL = `${REPO_URL}/new/main/registry/builders?filename=
 // their coding agent. Each renders as BOTH the copy button's payload and its
 // no-JS <details> fallback (the button copies from the fallback's DOM node,
 // and lib/assertions.mjs asserts the rendered pair carries exactly these
-// bytes). The conformance prompt interpolates the pinned suite so the prompt
-// can never drift from SUITE.
+// bytes). The join and claim prompts interpolate the pinned suite so neither
+// can ever drift from SUITE.
 export const PROMPTS = [
   {
-    id: "prompt-get-listed",
+    id: "prompt-join-registry",
     text:
-      "Add my project to the KYA-OS builders registry: read https://github.com/kya-os/kya-os-usergroup/blob/main/registry/builders/example-builder.json and CONTRIBUTING.md, create registry/builders/<my-slug>.json describing MY project (ask me for name, homepage, repo, kind, what it builds on), validate it against registry/schema/builder.schema.json, then open a PR to kya-os/kya-os-usergroup titled 'registry: add <my-slug>'.",
+      `Join the KYA-OS builders registry end to end: (1) read https://github.com/kya-os/kya-os-usergroup/blob/main/registry/builders/example-builder.json and CONTRIBUTING.md, ask me for my project's name, homepage, repo, kind, and what it builds on, and create registry/builders/<my-slug>.json; (2) if my project implements KYA-OS verification, also clone the repo, follow conformance/starter/README.md to run the pinned ${SUITE.vectors}-vector suite (suite ${SUITE.version}, vectorSetHash ${SUITE.vectorSetHash}), and embed a self-reported conformance object in my entry with the level and scope the run actually supports; (3) validate with npm test; (4) open ONE pull request to kya-os/kya-os-usergroup titled 'registry: add <my-slug>'; (5) if I want verification, also open a conformance submission issue on kya-os/kya-os-usergroup with my claim JSON and set my entry's status to in-verification with the issue as evidenceUrl - all in the same session.`,
   },
   {
     id: "prompt-prove-conformance",

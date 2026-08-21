@@ -245,6 +245,6 @@ export function sectionSubmit() {
         <p>Run the pinned vector suite (the <a href="${STARTER_URL}">starter</a> automates it), then open a conformance submission issue with your <code>claim.json</code>. The program re-runs your suite independently and attests what it observes; your registry entry then carries the claim.</p>
       </div>
     </div>
-    ${promptBlock("prompt-get-listed")}
+    ${promptBlock("prompt-join-registry")}
   </section>`;
 }
