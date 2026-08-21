@@ -96,25 +96,21 @@ ${sectionMigrate()}
       <div class="rails-sub">how one proof reaches every protocol -&gt;</div>
     </div>
     <div class="rails-mini">
-      <div class="rm-node">
-        <div class="rm-box">AI</div>
-        <div class="rm-cap">agents &middot; orchestrators &middot; autonomous</div>
+      <div class="rm-box rm-c1">AI</div>
+      <div class="wire rm-w2"><span class="wire-dot"></span></div>
+      <div class="rm-box rm-core rm-c3">KYA-OS</div>
+      <div class="wire rm-w4"><span class="wire-dot wd-late"></span></div>
+      <div class="rm-outs rm-c5">
+        <span class="rm-out"><span>MCP server</span><span class="ok">&check;</span></span>
+        <span class="rm-out"><span>A2A peer</span><span class="ok">&check;</span></span>
+        <span class="rm-out"><span>any API</span><span class="ok">&check;</span></span>
       </div>
-      <div class="wire"><span class="wire-dot"></span></div>
-      <div class="rm-node">
-        <div class="rm-box rm-core">KYA-OS <span class="rm-signs">&#9998; signs</span></div>
+      <div class="rm-cap rm-u1">agents &middot; orchestrators &middot; autonomous</div>
+      <div class="rm-under rm-u3">
         <div class="rm-wf">${waveformLockup("kya-os:signed-proof:v1.14", { bars: 18, trackHeight: 12 })}</div>
         <div class="rm-cap">who acts &middot; for whom &middot; with what authority</div>
       </div>
-      <div class="wire"><span class="wire-dot wd-late"></span></div>
-      <div class="rm-node">
-        <div class="rm-outs">
-          <span class="rm-out"><span>MCP server</span><span class="ok">&check;</span></span>
-          <span class="rm-out"><span>A2A peer</span><span class="ok">&check;</span></span>
-          <span class="rm-out"><span>any API</span><span class="ok">&check;</span></span>
-        </div>
-        <div class="rm-cap">verified before it runs</div>
-      </div>
+      <div class="rm-cap rm-u5">verified before it runs</div>
     </div>
   </a>
   <div class="home-cards fx fxd-35">
