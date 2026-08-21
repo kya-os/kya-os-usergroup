@@ -1,0 +1,10 @@
+{
+  "name": "KYA-OS Schema Registry",
+  "slug": "kya-os-schema",
+  "description": "Hosts the canonical KYA-OS JSON Schemas at stable schema.kya-os.org URLs, byte-mirrored from the @kya-os/mcp npm package.",
+  "homepage": "https://schema.kya-os.org",
+  "repo": "https://github.com/kya-os/kya-os-schema",
+  "kind": "service",
+  "buildsOn": ["kya-os-mcp"],
+  "listedAt": "2026-08-20"
+}
