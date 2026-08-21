@@ -90,8 +90,12 @@ const LEVEL_ANCHORS = {
   L3: "level-3--full-delegation",
 };
 
+export function levelUrl(level) {
+  return `${CONFORMANCE_MD_URL}#${LEVEL_ANCHORS[level]}`;
+}
+
 export function conformanceLevelUrl(conformance) {
-  return `${CONFORMANCE_MD_URL}#${LEVEL_ANCHORS[conformance.level]}`;
+  return levelUrl(conformance.level);
 }
 
 export function renderBuildersJson(rendered) {

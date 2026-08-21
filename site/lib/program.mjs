@@ -8,8 +8,8 @@
  * measured-not-asserted language, subset claims never render bare, and the
  * badge states are labeled as the Phase B state machine, not live claims.
  */
-import { CONFORMANCE_MD_URL, SUITE, STARTER_URL } from "./constants.mjs";
-import { conformanceLabel, conformanceLevelUrl, withConformance } from "./data.mjs";
+import { CONFORMANCE_MD_URL, SUBMISSION_ISSUE_URL, SUITE, STARTER_URL } from "./constants.mjs";
+import { conformanceLabel, conformanceLevelUrl, levelUrl, withConformance } from "./data.mjs";
 import { conformanceStatusChip, esc, promptBlock } from "./html.mjs";
 import { waveformSvg } from "./waveform.mjs";
 
@@ -47,22 +47,22 @@ export function sectionsConformance(rendered) {
     <div class="grid-4">
       <div class="panel-card step">
         <div class="step-n">01</div>
-        <div class="pc-title">run the suite</div>
+        <div class="pc-title t-static">run the suite</div>
         <p>Fetch the pinned vectors hash-verified, run all ${SUITE.vectors} through your adapter.</p>
       </div>
       <div class="panel-card step">
         <div class="step-n">02</div>
-        <div class="pc-title">submit the claim</div>
+        <div class="pc-title t-static">submit the claim</div>
         <p>Open a conformance submission issue with your claim.json.</p>
       </div>
       <div class="panel-card step">
         <div class="step-n">03</div>
-        <div class="pc-title">independent re-run</div>
+        <div class="pc-title t-static">independent re-run</div>
         <p>The program re-runs your suite and attests exactly what it observes.</p>
       </div>
       <div class="panel-card step">
         <div class="step-n">04</div>
-        <div class="pc-title">credential + badge</div>
+        <div class="pc-title t-static">credential + badge</div>
         <p>Your registry entry carries the claim; the credential makes it portable.</p>
       </div>
     </div>
@@ -98,20 +98,20 @@ export function sectionsConformance(rendered) {
       <p class="micro">badge.kya-os.org &middot; ships at Phase B — states shown are the real state machine</p>
     </div>
   </section>
-  <section class="fx fxd-30">
+  <section id="levels" class="fx fxd-30">
     <h2>Levels</h2>
     <div class="rule"></div>
     <div class="grid-3">
       <div class="panel-card">
-        <div class="pc-title pc-lg">L1 <span class="pc-tag">core crypto</span></div>
+        <a class="pc-title pc-lg" href="${levelUrl("L1")}">L1 <span class="pc-tag">core crypto</span></a>
         <p>Identity anchored - anonymous calls stop here. Ed25519 signing and verification over canonical digests, against a DID the caller can prove it owns. The entry point for any implementation.</p>
       </div>
       <div class="panel-card">
-        <div class="pc-title pc-lg">L2 <span class="pc-tag">full session</span></div>
+        <a class="pc-title pc-lg" href="${levelUrl("L2")}">L2 <span class="pc-tag">full session</span></a>
         <p>Sessions that refuse replay - handshake, nonce and skew rules, and detached proofs binding every response to its request over a live transport binding.</p>
       </div>
       <div class="panel-card">
-        <div class="pc-title pc-lg">L3 <span class="pc-tag">full delegation</span></div>
+        <a class="pc-title pc-lg" href="${levelUrl("L3")}">L3 <span class="pc-tag">full delegation</span></a>
         <p>Authority you can revoke - attenuated delegation chains, fail-closed revocation checks, and tamper-evident audit, enforced end to end. The level that stops a rogue spend.</p>
       </div>
     </div>
@@ -122,7 +122,7 @@ export function sectionsConformance(rendered) {
     <div class="grid-3">
       <div class="panel-card">
         <span class="chip st-submitted demo">submitted</span>
-        <p>claim.json received. The claim is public from the moment it lands — nothing is gatekept.</p>
+        <p>claim.json received. The claim is public from the moment it lands — nothing is gatekept. <a href="${SUBMISSION_ISSUE_URL}">open a submission issue -&gt;</a></p>
       </div>
       <div class="panel-card state-verifying">
         <span class="bl-scan" aria-hidden="true"></span>

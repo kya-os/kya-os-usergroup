@@ -6,7 +6,7 @@
  * static translation of the "Protocol Rails" artboard with build-time
  * waveforms; use-cases carries the REVOKED flagship and the recipe grid.
  */
-import { MCP_REPO_URL, REPO_URL } from "./constants.mjs";
+import { ENTITY_CARD_URL, MCP_REPO_URL, REPO_URL, REVOKED_TREE_URL } from "./constants.mjs";
 import { interopByCategory } from "./data.mjs";
 import { esc, interopStatusChip, promptBlock } from "./html.mjs";
 import { waveformLockup } from "./waveform.mjs";
@@ -42,9 +42,15 @@ function standardsRow(entry) {
     : "";
   const evidence = entry.evidence ? `<a href="${esc(entry.evidence)}">evidence -&gt;</a>\n            ` : "";
   const notes = entry.notes ? `\n            <p class="srow-notes">${esc(entry.notes)}</p>` : "";
+  // The standard's name links its evidence when the row carries any; a row
+  // without evidence gets the de-afforded header style instead (no link
+  // promise a click cannot keep).
+  const name = entry.evidence
+    ? `<a class="sname" href="${esc(entry.evidence)}">${esc(entry.standard)}</a>`
+    : `<span class="sname t-static">${esc(entry.standard)}</span>`;
   return `        <details class="srow" id="std-${esc(entry.slug)}">
           <summary class="sgrid">
-            <span class="sname">${esc(entry.standard)}</span>
+            ${name}
             <span class="sshort">${esc(entry.relationship)}</span>
             <span>${interopStatusChip(entry.status)}</span>
             <span class="slisted">${esc(entry.listedAt)}</span>
@@ -139,15 +145,15 @@ export function sectionsRails(interopSorted) {
   <section class="fx fxd-40 sec-70">
     <div class="grid-3">
       <div class="panel-card">
-        <div class="pc-title">project onto A2A</div>
+        <a class="pc-title" href="${ENTITY_CARD_URL}#62-a2a-agentextension">project onto A2A</a>
         <p>Emits an AgentCard capability extension, scoped to agent entities. Activated via the A2A-Extensions header; unaware peers ignore it.</p>
       </div>
       <div class="panel-card">
-        <div class="pc-title">project onto MCP</div>
+        <a class="pc-title" href="${ENTITY_CARD_URL}#61-mcp-serverjson--catalogjson-_metaorgkya-oscard">project onto MCP</a>
         <p>An always-by-ref catalog index row plus Entity Card metadata in the MCP Registry _meta extension point — the index stays cheap, the card lazy-fetches.</p>
       </div>
       <div class="panel-card">
-        <div class="pc-title">project onto NANDA</div>
+        <a class="pc-title" href="${ENTITY_CARD_URL}#63-nanda-agentfacts">project onto NANDA</a>
         <p>An AgentFacts JSON-LD projection populating NANDA's shipped owner slot; namespaced kya:* keys degrade gracefully.</p>
       </div>
     </div>
@@ -157,7 +163,7 @@ export function sectionsRails(interopSorted) {
 
 export function sectionsUseCases() {
   const recipe = (title, body, tags) => `      <div class="panel-card">
-        <div class="pc-title">${esc(title)}</div>
+        <div class="pc-title t-static">${esc(title)}</div>
         <p>${esc(body)}</p>
         <div class="tag-row">${tags.map((tag) => `<span class="tag">${esc(tag)}</span>`).join("")}</div>
       </div>`;
@@ -170,7 +176,7 @@ export function sectionsUseCases() {
         <p class="flag-sub">Built solo in a weekend at DEF CON 34 - 2nd place in the Cryptocurrency Village hackathon. The agent was Claude Desktop; a local gateway wallet held the keys, so the LLM never touched key material. A hardware kill switch flipped a StatusList2021 bit in a did:cheqd DID-Linked Resource, and the agent's next transaction was refused in 828ms - measured, not asserted (the repo's own elapsedMs). Funds never moved.</p>
         <p class="flag-sub">The revocation path was upstreamed into the protocol itself (cheqd DID-Linked Resources, v1.14.0), and the actual DEF CON stage credential ships in the repo, now expired - fail-closed has layers. Accountability is not a theory here; it is a circuit breaker.</p>
         <div class="dlinks">
-          <a href="${MCP_REPO_URL}/tree/main/examples/revoked">repo -&gt;</a>
+          <a href="${REVOKED_TREE_URL}">repo -&gt;</a>
           <a href="${MCP_REPO_URL}">spec repo -&gt;</a>
           <a class="quiet" href="/standards/#std-cheqd-dlr">standards: cheqd-dlr</a>
         </div>

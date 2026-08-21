@@ -96,8 +96,10 @@ h2{font-family:var(--font-sans);font-size:22px;font-weight:600;color:var(--ink);
 .see-all{margin-top:28px;font-family:var(--font-mono);font-size:13px}
 
 /* ── Home: stats strip, THE RAILS panel, nav cards ────────────────────────── */
-.stats{display:flex;flex-wrap:wrap;gap:0 36px;margin:44px 0 0;font-family:var(--font-mono);font-size:13px;color:var(--ink-muted)}
-.stats span{padding:6px 0}
+.stats{display:flex;flex-wrap:wrap;gap:0 36px;margin:44px 0 0;font-family:var(--font-mono);font-size:13px}
+.stats a{color:var(--ink-muted);padding:6px 0 3px}
+.next-strip{margin-top:16px}
+.next-label{color:var(--ink-muted)}
 .rails-panel{display:block;margin-top:64px;border:1px solid var(--line);background:var(--panel);padding:36px 40px;overflow-x:auto}
 a.rails-panel:hover{border-color:var(--line-strong);background:var(--panel-3);color:var(--ink)}
 .rails-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:12px}
@@ -249,6 +251,16 @@ summary.sgrid:hover{background:var(--panel-2)}
 .sexpand .wf-lockup{margin:0 0 12px}
 .srow-notes{font-family:var(--font-mono);font-size:13px;line-height:1.7;color:var(--ink-muted);margin:0 0 16px}
 
+/* ── Title link grammar ───────────────────────────────────────────────────── */
+/* A bright mono card/row title is clickable ONLY when it is a real <a> (the
+   underline sweep + hover confirm it). Any title-styled element without a
+   destination carries .t-static: same size and mono face, dimmer ink, no
+   hover shift - a header, not a link promise. Keep this block after the
+   .pc-title and .sname rules so .t-static wins the cascade tie. */
+a.pc-title{display:inline-block}
+a.sname{justify-self:start}
+.t-static{color:var(--ink)}
+
 /* ── Rails diagram page ───────────────────────────────────────────────────── */
 .rails-diagram{border:1px solid var(--line);background:var(--panel);padding:44px 40px;overflow-x:auto}
 .rd-grid{display:grid;grid-template-columns:150px 1fr 250px 1fr 230px;gap:0 18px;align-items:center;min-width:860px}
@@ -310,7 +322,10 @@ a.btn-solid:hover{background:var(--accent-hover);color:var(--on-accent)}
 .copy-btn:hover{color:var(--ink-bright);border-color:var(--line-strong);background:var(--panel-3)}
 .copy-btn.copied{color:var(--signal);border-color:color-mix(in srgb,var(--signal) 45%,transparent)}
 .prompt-fallback{margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--ink-muted)}
-.prompt-fallback summary{cursor:pointer;letter-spacing:.06em}
+.prompt-fallback summary{cursor:pointer;letter-spacing:.06em;list-style:none}
+.prompt-fallback summary::-webkit-details-marker{display:none}
+.prompt-fallback summary::before{content:"+ "}
+.prompt-fallback[open] summary::before{content:"\2212 "}
 .prompt-fallback pre{white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid var(--line);background:var(--panel);padding:14px 16px;margin-top:8px;color:var(--ink);font-size:12px;line-height:1.7;user-select:all;max-width:760px}
 
 /* ── Footer + 404 ─────────────────────────────────────────────────────────── */

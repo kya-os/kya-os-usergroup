@@ -10,8 +10,8 @@
  * drive the filter, and native <details> rows carry the expansion - both
  * fully functional without JavaScript.
  */
-import { ADD_PROJECT_URL, DOCS_QUICKSTART_URL, MIGRATE_README_URL, REPO_URL, STARTER_URL, SUITE } from "./constants.mjs";
-import { conformanceLabel, directorySorted } from "./data.mjs";
+import { ADD_PROJECT_URL, DEMO_MCP_URL, DOCS_QUICKSTART_URL, MIGRATE_README_URL, PLAYGROUND_URL, REPO_URL, REVOKED_TREE_URL, STARTER_URL, SUITE } from "./constants.mjs";
+import { conformanceLabel, conformanceLevelUrl, directorySorted } from "./data.mjs";
 import { conformanceStatusChip, esc, promptBlock } from "./html.mjs";
 import { KINDS } from "../../scripts/validate.mjs";
 import { waveformLockup, waveformSvg } from "./waveform.mjs";
@@ -58,6 +58,12 @@ function sectionMigrate() {
     <h2>Two lines to a verifiable server</h2>
     <div class="rule"></div>
     <pre class="code-block"><code>${code}</code></pre>
+    <div class="dlinks next-strip">
+      <span class="next-label">what next:</span>
+      <a href="${STARTER_URL}">run the suite against it -&gt;</a>
+      <a href="/conformance/">claim conformance -&gt;</a>
+      <a href="${esc(ADD_PROJECT_URL)}">get listed -&gt;</a>
+    </div>
     <p class="note">High-integrity identity is a wrap, not a rewrite: every tool response now carries a detached JWS proof - invisible to the LLM, verifiable by anyone.</p>
     <div class="dlinks">
       <a href="${MIGRATE_README_URL}">reference README -&gt;</a>
@@ -68,7 +74,7 @@ function sectionMigrate() {
 
 /** The overview (home) page body. */
 export function sectionsHome({ rendered, interopSorted }) {
-  const stat = (html) => `    <span>${html}</span>`;
+  const stat = (href, html) => `    <a href="${href}">${html}</a>`;
   return `  <header class="hero fx">
     <div class="kicker">BUILDERS.KYA-OS.ORG</div>
     <h1 class="h1-home"><span data-title-reveal>BUILD ON KYA-OS</span><span class="cursor" aria-hidden="true">_</span></h1>
@@ -76,11 +82,11 @@ export function sectionsHome({ rendered, interopSorted }) {
   </header>
   <div class="stats fx fxd-15">
 ${[
-    stat(`suite <b>${esc(SUITE.version)}</b>`),
-    stat(`<b>${SUITE.vectors}</b> vectors`),
-    stat(`levels <b>L1–L3</b>`),
-    stat(`<b>${interopSorted.length}</b> standards mapped`),
-    stat(`<b>${rendered.length}</b> projects listed`),
+    stat("/conformance/", `suite <b>${esc(SUITE.version)}</b>`),
+    stat("/conformance/", `<b>${SUITE.vectors}</b> vectors`),
+    stat("/conformance/#levels", `levels <b>L1–L3</b>`),
+    stat("/standards/", `<b>${interopSorted.length}</b> standards mapped`),
+    stat("/builders/", `<b>${rendered.length}</b> projects listed`),
   ].join("\n")}
   </div>
 ${sectionMigrate()}
@@ -141,7 +147,7 @@ function directoryRow(entry) {
       ? `<span class="live-dot" title="hosted service: an endpoint you can point at today"></span>`
       : "";
   const confLine = c
-    ? `<div class="dconf-line tone-${CONF_TONE[c.status]}">${waveformSvg(`${entry.slug}#${conformanceLabel(c)}`, { bars: 16, trackHeight: 11, barWidth: 2, gap: 1.5 })}<p>conformance: ${esc(conformanceLabel(c))} — ${esc(CONF_TEXT[c.status])}</p></div>`
+    ? `<div class="dconf-line tone-${CONF_TONE[c.status]}">${waveformSvg(`${entry.slug}#${conformanceLabel(c)}`, { bars: 16, trackHeight: 11, barWidth: 2, gap: 1.5 })}<p>conformance: <a href="${esc(conformanceLevelUrl(c))}">${esc(conformanceLabel(c))}</a> — ${esc(CONF_TEXT[c.status])}</p></div>`
     : `<div class="dconf-line tone-faint"><p>Listed in the registry — no conformance claim yet.</p></div>`;
   const links = [`<a href="${esc(entry.homepage)}">homepage -&gt;</a>`];
   if (entry.repo && entry.repo !== entry.homepage) links.push(`<a href="${esc(entry.repo)}">repo -&gt;</a>`);
@@ -193,7 +199,7 @@ ${chips}
     <div class="dtable">
       <div class="dgrid dhead" aria-hidden="true"><span>PROJECT</span><span>TYPE</span><span>WHAT IT IS</span><span>CONFORMANCE</span><span>LISTED</span><span></span></div>
 ${rows}
-      <div class="dfoot">your project here — <a href="#submit">one JSON file and one pull request -&gt;</a></div>
+      <div class="dfoot">your project here — <a href="${esc(ADD_PROJECT_URL)}">one JSON file and one pull request -&gt;</a></div>
     </div>
     <p class="dnote">Ordered by verification: claims under measurement first, then hosted service endpoints, then everything listed. A <span class="tone-signal">&#9679;</span> next to the name marks a hosted service endpoint you can point at today.</p>
   </section>`;
@@ -206,17 +212,18 @@ export function sectionStartHere() {
     <div class="rule"></div>
     <div class="grid-3">
       <div class="panel-card">
-        <div class="pc-title">poke a live server</div>
+        <a class="pc-title" href="${PLAYGROUND_URL}">poke a live server</a>
         <p>Speak MCP to a real KYA-OS endpoint before running your own — inspect the signed proof in every response.</p>
-        <a class="pc-link" href="https://demo-mcp.kya-os.ai/mcp">demo-mcp.kya-os.ai -&gt;</a>
+        <p class="pc-sub">raw endpoint: <code>POST ${DEMO_MCP_URL}</code></p>
+        <a class="pc-link" href="${PLAYGROUND_URL}">open the playground -&gt;</a>
       </div>
       <div class="panel-card">
-        <div class="pc-title">fork the starter</div>
+        <a class="pc-title" href="${STARTER_URL}">fork the starter</a>
         <p>From existing implementation to submission-ready conformance claim in under an hour — all ${SUITE.vectors} vectors, any language.</p>
-        <a class="pc-link" href="${STARTER_URL}">conformance/starter -&gt;</a>
+        <a class="pc-link" href="${STARTER_URL}">conformance-starter -&gt;</a>
       </div>
       <div class="panel-card">
-        <div class="pc-title">read the flagship</div>
+        <a class="pc-title" href="${REVOKED_TREE_URL}">read the flagship</a>
         <p>REVOKED: an on-chain kill switch for wallet agents. A genuinely revoked credential is anchored on-chain right now.</p>
         <a class="pc-link" href="/use-cases/">use-cases -&gt;</a>
       </div>
@@ -232,17 +239,17 @@ export function sectionSubmit() {
     <p class="section-lede">Three paths, all public, none gatekept. Corrections count too: every standards-matrix row is one file in <code>registry/interop/</code> — use the row's edit link on <a href="/standards/">the standards page</a>, or PR the file directly.</p>
     <div class="grid-3">
       <div class="panel-card path-primary">
-        <div class="pc-title">1 &middot; add your project</div>
+        <div class="pc-title t-static">1 &middot; add your project</div>
         <p>One click opens the GitHub editor on <code>registry/builders/</code> with the entry template prefilled. Rename to <code>&lt;your-slug&gt;.json</code>, edit the fields, propose the change — GitHub forks and opens the PR for you.</p>
         <p class="pc-sub">Two fields CI will not forgive: set <code>listedAt</code> to today's real date, and keep <code>slug</code> equal to your filename.</p>
         <a class="btn-solid" href="${esc(ADD_PROJECT_URL)}">add your project -&gt;</a>
       </div>
       <div class="panel-card">
-        <div class="pc-title">2 &middot; copy the template file</div>
+        <div class="pc-title t-static">2 &middot; copy the template file</div>
         <p>Prefer a local workflow? Copy <a href="${REPO_URL}/blob/main/registry/builders/example-builder.json"><code>example-builder.json</code></a> to <code>registry/builders/&lt;your-slug&gt;.json</code>, run <code>npm test</code> (no dependencies to install), and open a PR. Full field reference in <a href="${REPO_URL}/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>.</p>
       </div>
       <div class="panel-card">
-        <div class="pc-title">3 &middot; claim conformance</div>
+        <div class="pc-title t-static">3 &middot; claim conformance</div>
         <p>Run the pinned vector suite (the <a href="${STARTER_URL}">starter</a> automates it), then open a conformance submission issue with your <code>claim.json</code>. The program re-runs your suite independently and attests what it observes; your registry entry then carries the claim.</p>
       </div>
     </div>
