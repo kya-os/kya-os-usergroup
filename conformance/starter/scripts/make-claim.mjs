@@ -233,5 +233,5 @@ console.log(`  categories: ${ranCategories.join(', ')}`);
 console.log(`  suite:      ${manifest.package}@${manifest.packageVersion} ${manifest.vectorSetHash}`);
 console.log(`  report:     ${report.passed}/${report.total} matched (adapter: ${report.adapter})`);
 console.log('');
-console.log('Next: open the submission issue on decentralized-identity/kya-os-mcp and attach claim.json.');
+console.log('Next: open the conformance submission issue on kya-os/kya-os-usergroup and attach claim.json.');
 console.log('Remember: the program attests only what it re-runs at your pinned commit; a subset claim is labeled a subset.');

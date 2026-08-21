@@ -1,0 +1,107 @@
+# The conformance submission form: the public front door of the program.
+# A claim submitted here starts the independent re-run described in
+# conformance/README.md. The fields map one-to-one onto claim.json, which
+# conformance/starter (npm run claim) generates - copy values from it.
+name: Conformance submission
+description: Submit a KYA-OS conformance claim for the program to independently re-run.
+title: "Conformance claim: <implementation> <version>"
+labels: [conformance-submission]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The program re-runs your suite at the pinned commit and attests exactly what it observes - no more, no less.
+        Every field below comes from your `claim.json`; the [conformance starter](https://github.com/kya-os/kya-os-usergroup/tree/main/conformance/starter) generates it with `npm run claim`.
+        Once this issue is open, set your registry entry's `conformance.status` to `in-verification` with this issue as `evidenceUrl` (see [CONTRIBUTING.md](https://github.com/kya-os/kya-os-usergroup/blob/main/CONTRIBUTING.md)).
+  - type: input
+    id: implementation-name
+    attributes:
+      label: Implementation name
+      placeholder: acme-kya
+    validations:
+      required: true
+  - type: input
+    id: implementation-version
+    attributes:
+      label: Implementation version
+      placeholder: 0.3.0
+    validations:
+      required: true
+  - type: input
+    id: implementation-repo
+    attributes:
+      label: Repository URL
+      description: Where the tested bytes live. The program clones this repository - an implementation need not be an MCP server, or live anywhere in particular.
+      placeholder: https://github.com/acme/acme-kya
+    validations:
+      required: true
+  - type: input
+    id: git-commit
+    attributes:
+      label: Tested gitCommit
+      description: The 40-hex commit SHA your run pinned (`implementation.digest.gitCommit` in claim.json). The re-run happens at exactly this commit.
+      placeholder: 0123456789abcdef0123456789abcdef01234567
+    validations:
+      required: true
+  - type: dropdown
+    id: level
+    attributes:
+      label: Level
+      description: Per CONFORMANCE.md - claim the level whose requirements you meet.
+      options:
+        - L1
+        - L2
+        - L3
+    validations:
+      required: true
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      description: A subset claim covers exactly the categories it names and never rounds up to the bare level.
+      options:
+        - full
+        - subset
+    validations:
+      required: true
+  - type: input
+    id: categories
+    attributes:
+      label: Categories
+      description: "Required for a subset claim: exactly the vector categories your run covered. A full claim covers all nine."
+      placeholder: signed-proof, delegation-chain
+  - type: input
+    id: suite-version
+    attributes:
+      label: suiteVersion
+      description: The suite version your run pinned (`suite.suiteVersion` in claim.json).
+      placeholder: 1.0.0
+    validations:
+      required: true
+  - type: input
+    id: vector-set-hash
+    attributes:
+      label: vectorSetHash
+      description: The vector-set hash your fetch verified (`suite.vectorSetHash` in claim.json, from suite/manifest.json).
+      placeholder: "sha256:<from suite/manifest.json>"
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: Report JSON
+      description: Your full claim.json (or report.json), verbatim.
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce the run
+      description: The commands the program runs from a fresh clone at the pinned commit to reproduce your report.
+      placeholder: |
+        npm install
+        npm run fetch-suite
+        npm run conformance
+    validations:
+      required: true

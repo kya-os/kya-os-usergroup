@@ -62,12 +62,13 @@ A `conformance` block states what you proved against the [pinned vector suite](c
   "categories": ["signed-proof"],
   "suiteVersion": "1.0.0",
   "status": "in-verification",
-  "evidenceUrl": "https://github.com/decentralized-identity/kya-os-mcp/issues/149"
+  "evidenceUrl": "https://github.com/kya-os/kya-os-usergroup/issues/123"
 }
 ```
 
 - `scope: "subset"` requires `categories` - a subset never renders as a bare level.
-- `status` starts at `self-reported`; it becomes `in-verification` when your [submission issue](https://github.com/decentralized-identity/kya-os-mcp/issues/new?template=conformance_submission.md) is open, and `verified` only when the program's re-run issues a credential - at which point `attestationUrl` (the credential's canonical URL) is required.
+- `status` starts at `self-reported`; it becomes `in-verification` when your [submission issue](https://github.com/kya-os/kya-os-usergroup/issues/new?template=conformance_submission.yml) is open on this repo, and `verified` only when the program's re-run issues a credential - at which point `attestationUrl` (the credential's canonical URL) is required.
+  (Claims already in flight as issues on the spec repo remain valid `evidenceUrl` targets; new submission issues open here.)
   The validator enforces both rules, and the site renders `verified` green only as a link to that credential.
 - `evidenceUrl` (optional, strongly recommended) is the public record grounding a non-verified claim - your submission issue or verification thread.
   The site renders `self-reported` and `in-verification` chips as links to it, so put it on the entry as soon as the issue exists.

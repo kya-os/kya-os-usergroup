@@ -59,7 +59,7 @@ Field-by-field guidance is in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ### 3. A conformance claim
 
-Run the pinned vector suite (the [starter](conformance/starter/) automates it), open a [conformance submission issue](https://github.com/decentralized-identity/kya-os-mcp/issues/new?template=conformance_submission.md) on kya-os-mcp with your `claim.json`, and add or update your registry entry with the `conformance` block.
+Run the pinned vector suite (the [starter](conformance/starter/) automates it), open a [conformance submission issue](https://github.com/kya-os/kya-os-usergroup/issues/new?template=conformance_submission.yml) on this repo with your `claim.json`, and add or update your registry entry with the `conformance` block.
 The full flow is in [conformance/README.md](conformance/README.md).
 
 ## Honest conformance language

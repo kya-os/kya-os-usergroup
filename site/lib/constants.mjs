@@ -16,7 +16,10 @@ export const CONFORMANCE_MD_URL = `${MCP_REPO_URL}/blob/main/CONFORMANCE.md`;
 export const ENTITY_CARD_URL = `${MCP_REPO_URL}/blob/main/SPEC-ENTITY-CARD.md`;
 export const MIGRATE_README_URL = `${MCP_REPO_URL}#migrate-any-mcp-server-in-2-lines`;
 export const DOCS_QUICKSTART_URL = `${SITE_URL}/mcp/docs/getting-started/quickstart`;
-export const SUBMISSION_ISSUE_URL = `${MCP_REPO_URL}/issues/new?template=conformance_submission.md`;
+// Conformance submissions open HERE - the community repo that carries the
+// registry - via .github/ISSUE_TEMPLATE/conformance_submission.yml. Claims
+// already in flight on the spec repo remain valid; see conformance/README.md.
+export const SUBMISSION_ISSUE_URL = `${REPO_URL}/issues/new?template=conformance_submission.yml`;
 export const REVOKED_TREE_URL = `${MCP_REPO_URL}/tree/main/examples/revoked`;
 export const PLAYGROUND_URL = `${SITE_URL}/mcp/playground`;
 export const DEMO_MCP_URL = "https://demo-mcp.kya-os.ai/mcp";
@@ -68,7 +71,7 @@ export const PROMPTS = [
   {
     id: "prompt-prove-conformance",
     text:
-      `Prove my KYA-OS implementation conformant: clone https://github.com/kya-os/kya-os-usergroup and follow conformance/starter/README.md - fetch the pinned vector suite, run my implementation against the ${SUITE.vectors} vectors (suite ${SUITE.version}, vectorSetHash ${SUITE.vectorSetHash}), generate the claim JSON with scripts/make-claim.mjs, and open a conformance submission issue on decentralized-identity/kya-os-mcp with the claim.`,
+      `Prove my KYA-OS implementation conformant: clone https://github.com/kya-os/kya-os-usergroup and follow conformance/starter/README.md - fetch the pinned vector suite, run my implementation against the ${SUITE.vectors} vectors (suite ${SUITE.version}, vectorSetHash ${SUITE.vectorSetHash}), generate the claim JSON with scripts/make-claim.mjs, and open a conformance submission issue on kya-os/kya-os-usergroup with the claim.`,
   },
   {
     id: "prompt-run-revoked",
