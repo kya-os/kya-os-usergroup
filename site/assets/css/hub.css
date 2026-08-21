@@ -315,7 +315,7 @@ a.btn-solid:hover{background:var(--accent-hover);color:var(--on-accent)}
    border and 5%-tint pill went together - without the border the tint read
    as a rendering artifact, so both are gone. */
 .wf{display:block}
-.wf-lockup{display:inline-flex;align-items:center;gap:8px;color:var(--signal)}
+.wf-lockup{display:inline-flex;align-items:center;gap:8px;padding:5px 10px;background:color-mix(in srgb,var(--signal) 5%,transparent);color:var(--signal)}
 .wf-label{font-family:var(--font-mono);font-size:9px;letter-spacing:.12em;white-space:nowrap;line-height:1}
 .wf-sm .wf-label{font-size:8px}
 

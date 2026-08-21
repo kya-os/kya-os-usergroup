@@ -46,7 +46,10 @@ function standardsRow(entry) {
   // without evidence gets the de-afforded header style instead (no link
   // promise a click cannot keep).
   const name = entry.evidence
-    ? `<a class="sname" href="${esc(entry.evidence)}">${esc(entry.standard)}</a>`
+    // Never an anchor: the name sits inside the row's <summary>, and a link
+    // nested in a disclosure trigger fights it for the click (same rule as
+    // the directory chips). The expanded row carries the evidence link.
+    ? `<span class="sname">${esc(entry.standard)}</span>`
     : `<span class="sname t-static">${esc(entry.standard)}</span>`;
   return `        <details class="srow" id="std-${esc(entry.slug)}">
           <summary class="sgrid">
