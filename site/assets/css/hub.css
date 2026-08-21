@@ -82,7 +82,7 @@ main>section.scat{margin-top:0;margin-bottom:52px}
 .hero{margin-bottom:80px}
 .kicker{font-family:var(--font-mono);font-size:12px;letter-spacing:.18em;color:var(--ink-muted);margin-bottom:22px;text-transform:uppercase}
 h1{font-family:var(--font-mono);font-size:clamp(32px,7vw,48px);font-weight:100;color:var(--ink-bright);letter-spacing:-.02em;margin:0 0 16px;line-height:1.05}
-.h1-home{font-family:var(--font-sans);font-size:clamp(40px,8.5vw,64px)}
+.h1-home{font-size:clamp(40px,8.5vw,64px)}
 .cursor{animation:blink 1.2s step-end infinite;color:var(--ink-muted)}
 .lede{font-size:18px;line-height:1.9;color:var(--ink);max-width:660px;margin:0}
 .h1-home+.lede,.h1-home~.lede{max-width:640px}
