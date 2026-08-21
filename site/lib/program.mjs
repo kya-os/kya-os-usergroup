@@ -137,7 +137,7 @@ export function sectionsConformance(rendered) {
         <div class="readout">
           <div><span class="tone-signal">&check;</span> vectors <b>${SUITE.vectors}/${SUITE.vectors}</b> &middot; suite <b>${esc(SUITE.version)}</b></div>
           <div>attested <b>${esc(SUITE.vectorSetHash.slice(0, 11))}&hellip;${esc(SUITE.vectorSetHash.slice(-4))}</b></div>
-          <div>credential <b>vc-jwt &middot; did:web:badge.kya-os.org</b></div>
+          <div>credential <b>vc-jwt &middot; did:web:kya-os.org:conformance</b></div>
         </div>
       </div>
     </div>

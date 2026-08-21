@@ -11,10 +11,10 @@
   "workers_dev": false
 
   // One-time setup (Phase B): create the Cloudflare Worker project, add the
-  // badge.kya-os.org custom domain, replace the placeholder issuer keys and
+  // builders.kya-os.org/badge/* route (the worker overrides Pages static on that
   // manifest URL in worker.mjs with the Phase A values, then uncomment:
   //
   // "routes": [
-  //   { "pattern": "badge.kya-os.org/*", "custom_domain": true }
+  //   { "pattern": "builders.kya-os.org/badge/*" }
   // ]
 }

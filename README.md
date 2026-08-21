@@ -35,7 +35,7 @@ Machine-readable mirrors ship next to the pages: [`/builders.json`](https://buil
 - `registry/builders/*.json` - one file per project building on KYA-OS (`registry/schema/builder.schema.json`).
 - `registry/interop/*.json` - one file per standards rail, with grounded status and evidence (`registry/schema/interop.schema.json`).
 - `conformance/` - the conformance program docs and the [starter template](conformance/starter/) (fold-in of the former conformance-starter repo).
-- `workers/badge/` - the Phase B badge worker scaffold for `badge.kya-os.org` (not deployable yet; see its README).
+- `workers/badge/` - the Phase B badge worker scaffold, taking over `builders.kya-os.org/badge/*` from the static tiers (not deployable yet; see its README).
 - `site/build-pages.mjs` - renders both registries into the static site. Zero npm dependencies, deterministic output.
 - `scripts/validate.mjs` - dependency-free structural validation of both registries, run by CI and by the build.
 
@@ -70,7 +70,7 @@ The registry renders what an entry proves, nothing more:
 - `verified` renders green only as a link to the verification credential; `in-verification` is amber; `self-reported` is grey.
 - Non-verified chips link their public grounding (`conformance.evidenceUrl`, e.g. the submission issue) when the entry carries one, so the middle tiers are auditable too.
 - A claim is an attestation of an observed re-run, never a seal of approval, and listing implies no endorsement by the working group (see [GOVERNANCE.md](GOVERNANCE.md)).
-- Live badges at `badge.kya-os.org` ship at Phase B of the program.
+- Live verified badges take over `builders.kya-os.org/badge/*` at Phase B of the program.
 
 ## Related
 

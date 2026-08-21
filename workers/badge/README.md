@@ -1,10 +1,10 @@
 # KYA-OS conformance badge worker
 
-Serves live conformance badges at `badge.kya-os.org` (Phase B of the conformance program):
+Serves live conformance badges on the builders host at `builders.kya-os.org/badge/*` (Phase B of the conformance program):
 
 ```text
-GET /v1/badge/<slug>.svg     flat SVG badge
-GET /v1/badge/<slug>.json    shields.io endpoint JSON
+GET /badge/<slug>.svg     flat SVG badge
+GET /badge/<slug>.json    shields.io endpoint JSON
 ```
 
 Until this worker deploys, the site build emits the static badge tiers on the same `/badge/<slug>.{svg,json}` path space (`site/lib/badge.mjs`): listed, self-reported, and in-verification only - the `verified` tier exists solely as this worker's live credential verification, and the static build refuses to render it.
@@ -17,7 +17,7 @@ It must not be deployed until all three are true:
 1. **Phase A issues real credentials.**
    The pinned issuer and status keys in `worker.mjs` are placeholders (degenerate Ed25519 keys that verify nothing by construction), and the signed suite manifest URL points at a file that does not exist yet.
 2. **The Cloudflare project exists.**
-   There is no `kya-os-badge` worker or `badge.kya-os.org` custom domain today; the route in `wrangler.jsonc` is commented out.
+   There is no `kya-os-badge` worker or route today; the route in `wrangler.jsonc` is commented out.
 3. **The working group has signed off on the badge semantics.**
    Per GOVERNANCE.md, anything that changes what a listing means belongs to the working group; the state machine below is scaffold semantics, proposed not decided.
 

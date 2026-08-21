@@ -35,7 +35,7 @@ The signed per-release suite manifest (the durable home for that pin) is publish
    The program re-runs your suite at the pinned commit and attests what it observes - not what the claim says.
 4. **Credential + badge.**
    A verified claim gets a credential at a canonical URL; your registry entry's `conformance.attestationUrl` points at it and the site renders the claim green.
-   Live badges at `badge.kya-os.org` ship at Phase B of the program (see [`workers/badge/`](../workers/badge/) once it lands).
+   Live verified badges take over `builders.kya-os.org/badge/*` at Phase B of the program (see [`workers/badge/`](../workers/badge/) once it lands).
 
 Honesty rules, enforced by the registry validator and the site build:
 
