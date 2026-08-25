@@ -152,6 +152,7 @@ a.panel-card:hover{border-color:var(--line-strong);background:var(--panel-3);col
 .st-self{color:var(--ink-dim);border-color:var(--line-mid)}
 .st-submitted{color:var(--ink-dim);border-color:var(--line-mid)}
 .st-listed{color:var(--ink-faint);border-color:transparent;padding-left:0}
+.st-revoked{color:var(--ink-muted);border-color:var(--line-mid);background:color-mix(in srgb,var(--line-quiet) 55%,transparent)}
 .chip-link:hover .chip{border-color:currentColor}
 .pulse{animation:glowPulse 2.4s ease-in-out infinite;font-size:10px}
 .pulse-ring{animation:pulseRing 2s ease-out infinite}

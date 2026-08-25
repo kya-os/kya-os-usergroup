@@ -29,13 +29,26 @@ const TYPE_DEFS = {
   example: "example — a working demonstration to learn from",
 };
 
-// The honest per-status conformance line for the expanded row.
+// The honest per-state conformance line for the expanded row, keyed on the
+// DISPLAY state: the entry status refined by the build's credential verdict
+// (a suspension bit renders a verified entry as suspended).
 const CONF_TEXT = {
   "in-verification": `Claim being independently re-run against suite ${SUITE.version} — the program attests exactly what it observes.`,
-  verified: "The program re-ran the suite and the claim links its credential: verify it yourself without trusting this site.",
+  verified:
+    "The program re-ran the suite, this build cryptographically verified the linked credential, and its status bits are clean: verify it yourself without trusting this site.",
+  suspended:
+    "Credential under appeal: the program set the suspension bit on its signed status list while a dispute is resolved - the linked credential carries the public record.",
+  revoked:
+    "The program revoked this credential; the revocation bit on its signed status list is the public record. The claim no longer counts as verified.",
   "self-reported": "Self-reported against the pinned suite, not yet independently re-run by the program.",
 };
-const CONF_TONE = { "in-verification": "amber", verified: "signal", "self-reported": "faint" };
+const CONF_TONE = { "in-verification": "amber", verified: "signal", suspended: "amber", revoked: "faint", "self-reported": "faint" };
+
+/** The display state for one claim: the entry status refined by the verdict. */
+function displayState(conformance, verdict) {
+  if (conformance.status === "verified" && verdict?.state === "suspended") return "suspended";
+  return conformance.status;
+}
 
 
 function sectionMigrate() {
@@ -169,10 +182,11 @@ function probeSignal(entry, probes) {
   };
 }
 
-function directoryRow(entry, probes) {
+function directoryRow(entry, probes, verdicts) {
   const c = entry.conformance;
+  const verdict = verdicts.get(entry.slug);
   const chip = c
-    ? conformanceStatusChip(c, { link: false })
+    ? conformanceStatusChip(c, { link: false, verdict })
     : `<span class="chip st-listed">&middot; listed</span>`;
   const { dot: liveDot, line: probeLine } = probeSignal(entry, probes);
   // The provenance tie: the probe's reported deployment version beside the
@@ -180,8 +194,9 @@ function directoryRow(entry, probes) {
   // (the claim's verification thread documents the tie).
   const provenanceVersion = probes?.results?.[entry.slug]?.provenanceVersion;
   const deployed = c && provenanceVersion ? ` <span class="dprov">&middot; deployed ${esc(provenanceVersion)}</span>` : "";
+  const state = c && displayState(c, verdict);
   const confLine = c
-    ? `<div class="dconf-line tone-${CONF_TONE[c.status]}">${waveformSvg(`${entry.slug}#${conformanceLabel(c)}`, { bars: 16, trackHeight: 11, barWidth: 2, gap: 1.5 })}<p>conformance: <a href="${esc(conformanceLevelUrl(c))}">${esc(conformanceLabel(c))}</a>${deployed} — ${esc(CONF_TEXT[c.status])}</p></div>`
+    ? `<div class="dconf-line tone-${CONF_TONE[state]}">${waveformSvg(`${entry.slug}#${conformanceLabel(c)}`, { bars: 16, trackHeight: 11, barWidth: 2, gap: 1.5 })}<p>conformance: <a href="${esc(conformanceLevelUrl(c))}">${esc(conformanceLabel(c))}</a>${deployed} — ${esc(CONF_TEXT[state])}</p></div>`
     : `<div class="dconf-line tone-faint"><p>Listed in the registry — no conformance claim yet.</p></div>`;
   const founding =
     entry.listedAt <= FOUNDING_CUTOFF
@@ -219,7 +234,7 @@ function directoryRow(entry, probes) {
 }
 
 /** The directory: CSS-only type filter + expandable registry rows. */
-export function sectionDirectory(rendered, probes) {
+export function sectionDirectory(rendered, probes, verdicts) {
   const types = ["all", ...KINDS];
   const counts = { all: rendered.length };
   for (const entry of rendered) counts[entry.kind] = (counts[entry.kind] ?? 0) + 1;
@@ -238,7 +253,7 @@ export function sectionDirectory(rendered, probes) {
     .map((t) => `<span class="fh fh-${t}">${esc(TYPE_DEFS[t])}</span>`)
     .join("");
   const rows = directorySorted(rendered)
-    .map((entry) => directoryRow(entry, probes))
+    .map((entry) => directoryRow(entry, probes, verdicts))
     .join("\n");
   return `  <section class="dir fx fxd-15">
 ${inputs}
