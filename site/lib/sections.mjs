@@ -10,7 +10,7 @@
  * drive the filter, and native <details> rows carry the expansion - both
  * fully functional without JavaScript.
  */
-import { ADD_PROJECT_URL, DEMO_MCP_URL, DOCS_QUICKSTART_URL, FOUNDING_CUTOFF, MIGRATE_README_URL, ORIGIN, PLAYGROUND_URL, REPO_URL, REVOKED_TREE_URL, STARTER_URL, SUITE, MIGRATE_LINES } from "./constants.mjs";
+import { ADD_PROJECT_URL, DEMO_MCP_URL, DOCS_QUICKSTART_URL, MIGRATE_README_URL, ORIGIN, PLAYGROUND_URL, REPO_URL, REVOKED_TREE_URL, STARTER_URL, SUITE, MIGRATE_LINES } from "./constants.mjs";
 import { conformanceLabel, conformanceLevelUrl, directorySorted } from "./data.mjs";
 import { conformanceStatusChip, esc, promptBlock } from "./html.mjs";
 import { highlightTs } from "./highlight.mjs";
@@ -182,6 +182,22 @@ function probeSignal(entry, probes) {
   };
 }
 
+// Row marks: first-party entries carry the KYA-OS mark, partner entries their
+// own brand asset (both theme-paired like the nav logo); everything else
+// keeps the first-letter box. Presentation-only - no registry field.
+const KYA_MARK_SLUGS = new Set(["kya-os-mcp", "kya-os-demo-server", "conformance-starter", "kya-os-schema"]);
+const BRAND_LOGOS = { "knowthat-ai": { onDark: "/img/knowthat-logo-ondark.svg", onLight: "/img/knowthat-logo-onlight.svg" } };
+function rowMark(entry) {
+  if (KYA_MARK_SLUGS.has(entry.slug)) {
+    return `<span class="dmark dmark-logo" aria-hidden="true"><img class="mark mark-white" src="/img/kya-mark-white.svg" alt="" width="14" height="16" /><img class="mark mark-black" src="/img/kya-mark-black.svg" alt="" width="14" height="16" /></span>`;
+  }
+  const brand = BRAND_LOGOS[entry.slug];
+  if (brand) {
+    return `<span class="dmark dmark-logo dmark-wide" aria-hidden="true"><img class="mark mark-white" src="${brand.onDark}" alt="" height="14" /><img class="mark mark-black" src="${brand.onLight}" alt="" height="14" /></span>`;
+  }
+  return `<span class="dmark" aria-hidden="true">${esc(entry.name.charAt(0))}</span>`;
+}
+
 function directoryRow(entry, probes, verdicts) {
   const c = entry.conformance;
   const verdict = verdicts.get(entry.slug);
@@ -198,10 +214,6 @@ function directoryRow(entry, probes, verdicts) {
   const confLine = c
     ? `<div class="dconf-line tone-${CONF_TONE[state]}">${waveformSvg(`${entry.slug}#${conformanceLabel(c)}`, { bars: 16, trackHeight: 11, barWidth: 2, gap: 1.5 })}<p>conformance: <a href="${esc(conformanceLevelUrl(c))}">${esc(conformanceLabel(c))}</a>${deployed} — ${esc(CONF_TEXT[state])}</p></div>`
     : `<div class="dconf-line tone-faint"><p>Listed in the registry — no conformance claim yet.</p></div>`;
-  const founding =
-    entry.listedAt <= FOUNDING_CUTOFF
-      ? `<span class="tag-founding" title="listed during the founding window (through ${esc(FOUNDING_CUTOFF)})">founding builder</span>`
-      : "";
   const capabilities = [];
   if (entry.buildsOn?.length) capabilities.push(`builds on: ${entry.buildsOn.map((repo) => esc(repo)).join(", ")}`);
   if (entry.standards?.length) capabilities.push(`speaks: ${entry.standards.map((slug) => esc(slug)).join(", ")}`);
@@ -218,7 +230,7 @@ function directoryRow(entry, probes, verdicts) {
           <div class="dembed">[![KYA-OS conformance](${esc(ORIGIN)}/badge/${esc(entry.slug)}.svg)](${esc(ORIGIN)}/builders/#${esc(entry.slug)})</div>`;
   return `      <details class="drow k-${esc(entry.kind)}" id="${esc(entry.slug)}">
         <summary class="dgrid">
-          <span class="dname"><span class="dmark" aria-hidden="true">${esc(entry.name.charAt(0))}</span><span class="dtitle">${esc(entry.name)}</span>${liveDot}${founding}</span>
+          <span class="dname">${rowMark(entry)}<span class="dtitle">${esc(entry.name)}</span>${liveDot}</span>
           <span class="dtype">${esc(entry.kind)}</span>
           <span class="dwhat">${esc(entry.description)}</span>
           <span class="dconf">${chip}</span>
