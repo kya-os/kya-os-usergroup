@@ -185,8 +185,8 @@ function probeSignal(entry, probes) {
 // Row marks: first-party entries carry the KYA-OS mark, partner entries their
 // own brand asset (both theme-paired like the nav logo); everything else
 // keeps the first-letter box. Presentation-only - no registry field.
-const KYA_MARK_SLUGS = new Set(["kya-os-mcp", "kya-os-demo-server", "conformance-starter", "kya-os-schema"]);
-const BRAND_LOGOS = { "knowthat-ai": { onDark: "/img/knowthat-logo-ondark.svg", onLight: "/img/knowthat-logo-onlight.svg" } };
+const KYA_MARK_SLUGS = new Set(["kya-os-mcp", "kya-os-demo-server", "kya-os-schema"]);
+const BRAND_LOGOS = { "knowthat-ai": { onDark: "/img/knowthat-mark-ondark.png", onLight: "/img/knowthat-mark-onlight.png" } };
 function rowMark(entry) {
   if (KYA_MARK_SLUGS.has(entry.slug)) {
     return `<span class="dmark dmark-logo" aria-hidden="true"><img class="mark mark-white" src="/img/kya-mark-white.svg" alt="" width="14" height="16" /><img class="mark mark-black" src="/img/kya-mark-black.svg" alt="" width="14" height="16" /></span>`;
@@ -223,11 +223,6 @@ function directoryRow(entry, probes, verdicts) {
   if (c?.attestationUrl) links.push(`<a href="${esc(c.attestationUrl)}">credential -&gt;</a>`);
   if (c?.evidenceUrl) links.push(`<a href="${esc(c.evidenceUrl)}">evidence -&gt;</a>`);
   if (entry.contact?.github) links.push(`<a href="https://github.com/${esc(entry.contact.github)}">@${esc(entry.contact.github)} -&gt;</a>`);
-  // The copy-ready badge embed, in every expanded row: a plain selectable
-  // line (user-select: all), deliberately not a copy button - per-row buttons
-  // would dilute the prompt-parity contract the copy module asserts.
-  const embed = `<p class="micro">your badge, copy-ready (click selects):</p>
-          <div class="dembed">[![KYA-OS conformance](${esc(ORIGIN)}/badge/${esc(entry.slug)}.svg)](${esc(ORIGIN)}/builders/#${esc(entry.slug)})</div>`;
   return `      <details class="drow k-${esc(entry.kind)}" id="${esc(entry.slug)}">
         <summary class="dgrid">
           <span class="dname">${rowMark(entry)}<span class="dtitle">${esc(entry.name)}</span>${liveDot}</span>
@@ -240,7 +235,7 @@ function directoryRow(entry, probes, verdicts) {
         <div class="dexpand">
           ${probeLine ? `${probeLine}\n          ` : ""}${confLine}
           ${capLine ? `${capLine}\n          ` : ""}<div class="dlinks">${links.join("\n            ")}</div>
-          ${embed}
+          
         </div>
       </details>`;
 }
@@ -300,7 +295,7 @@ export function sectionStartHere() {
         <a class="pc-link" href="${STARTER_URL}">conformance-starter -&gt;</a>
       </div>
       <div class="panel-card">
-        <a class="pc-title" href="${REVOKED_TREE_URL}">read the flagship</a>
+        <a class="pc-title" href="${REVOKED_TREE_URL}">see it in action</a>
         <p>REVOKED: an on-chain kill switch for wallet agents. A genuinely revoked credential is anchored on-chain right now.</p>
         <a class="pc-link" href="/use-cases/">use-cases -&gt;</a>
       </div>

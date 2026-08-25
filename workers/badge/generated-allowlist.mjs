@@ -6,7 +6,6 @@
 // the static tier; credentialUrl is the canonical credential location
 // when a credential-backed status exists, else null.
 export const BADGE_ALLOWLIST = {
-  "conformance-starter": { name: "Conformance Starter", claim: null, status: null, credentialUrl: null },
   "hobbsidian": { name: "Hobbsidian", claim: null, status: null, credentialUrl: null },
   "knowthat-ai": { name: "KnowThat.ai", claim: null, status: null, credentialUrl: null },
   "kya-os-demo-server": { name: "KYA-OS Demo Server", claim: "L3 full", status: "verified", credentialUrl: "https://builders.kya-os.org/credentials/d71a31395ecbc2c91b6f441eca9f7a3b.json" },
