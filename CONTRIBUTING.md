@@ -130,6 +130,7 @@ Entries that stop meeting the criteria (dead links, abandoned squats, claims tha
 Interop entries state, with evidence, how KYA-OS relates to an external standard; they are held to a stricter bar than builder entries because the site presents them as ground truth.
 `shipping` and `specified` require an `evidence` URL, a status is never listed above what the evidence shows, and mixed maturity lists the conservative tier with the detail in `notes`.
 Expect maintainers to check the evidence link before merging.
+`shipping` rows should also carry `implementation`: the URL of the file in the reference implementation (or its npm module) where the behaviour lives, so a developer can go from the row straight to code; the validator accepts only github.com/decentralized-identity/kya-os-mcp and npmjs.com hosts for it.
 
 ## Everything else
 
