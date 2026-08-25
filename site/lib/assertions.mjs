@@ -11,8 +11,9 @@
  * hash from the emitted page bytes for the same reason; the font, mark, and
  * ui-module checks re-read the committed files rather than trusting the copy
  * step; the prompt-parity check re-extracts button/fallback pairs from the
- * page bytes and matches them against lib/constants.mjs. The theme, gating,
- * prompt-parity, and suite-pin checks live in lib/checks.mjs (split to keep
+ * page bytes and matches them against lib/constants.mjs and
+ * lib/snippets.mjs. The theme, gating, copy-parity, migration-hook, and
+ * suite-pin checks live in lib/checks.mjs (split to keep
  * both files under the lib LOC cap) and run from here.
  */
 import { createHash } from "node:crypto";
@@ -26,10 +27,11 @@ import { esc } from "./html.mjs";
 import {
   assertAnimGating,
   assertBuild,
+  assertCopyParity,
   assertFoundingCohort,
   assertLadderReadout,
+  assertMigrateHook,
   assertProbeHonesty,
-  assertPromptParity,
   assertSuitePinAgreement,
   assertThemeIntegrity,
 } from "./checks.mjs";
@@ -141,7 +143,8 @@ export function runRenderChecks({ distDir, rendered, interopSorted, probes, cred
   for (const [name, html] of Object.entries(pages)) {
     assertPageScripts(name, html, cspHashes[0], referenceScript);
   }
-  assertPromptParity(pages);
+  assertCopyParity(pages);
+  assertMigrateHook(pages["index.html"]);
 
   // Client modules: dist/ui/*.js must be exact byte copies of the committed
   // site/assets/ui/*.js (both directions - same file set), page-fx must keep

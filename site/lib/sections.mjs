@@ -1,6 +1,7 @@
 /**
- * Page bodies for the overview (home) and builders directory pages,
- * translated from the Builders Site design handoff artboards. Every renderer
+ * Page bodies for the builders directory page (the home page lives in
+ * lib/home.mjs), translated from the Builders Site design handoff
+ * artboards. Every renderer
  * is a pure function of the shaped registry data from lib/data.mjs; markup
  * primitives come from lib/html.mjs; waveforms are computed at build time by
  * lib/waveform.mjs.
@@ -10,12 +11,11 @@
  * drive the filter, and native <details> rows carry the expansion - both
  * fully functional without JavaScript.
  */
-import { ADD_PROJECT_URL, DEMO_MCP_URL, DOCS_QUICKSTART_URL, MIGRATE_README_URL, ORIGIN, PLAYGROUND_URL, REPO_URL, REVOKED_TREE_URL, STARTER_URL, SUITE, MIGRATE_LINES } from "./constants.mjs";
+import { ADD_PROJECT_URL, DEMO_MCP_URL, PLAYGROUND_URL, REPO_URL, REVOKED_TREE_URL, STARTER_URL, SUITE } from "./constants.mjs";
 import { conformanceLabel, conformanceLevelUrl, directorySorted } from "./data.mjs";
 import { conformanceStatusChip, esc, promptBlock } from "./html.mjs";
-import { highlightTs } from "./highlight.mjs";
 import { KINDS } from "../../scripts/validate.mjs";
-import { waveformLockup, waveformSvg } from "./waveform.mjs";
+import { waveformSvg } from "./waveform.mjs";
 
 // What each entry kind means, shown under the filter strip (design copy,
 // verbatim; marketplace added for the hub's schema).
@@ -50,101 +50,6 @@ function displayState(conformance, verdict) {
   return conformance.status;
 }
 
-
-function sectionMigrate() {
-  // One source (MIGRATE_LINES), two renders: the visible block carries
-  // build-time token highlighting and diff gutters; the hidden raw <pre> is
-  // what the copy button reads, so clipboard text is always the plain code.
-  const code = MIGRATE_LINES.map(
-    ([text, added]) => `<span class="cl${added ? " hl" : ""}">${highlightTs(text)}</span>`,
-  ).join("");
-  const raw = esc(MIGRATE_LINES.map(([text]) => text).join("\n"));
-  return `  <section class="fx fxd-20">
-    <h2>Two lines to a verifiable server</h2>
-    <div class="rule"></div>
-    <div class="code-wrap">
-      <pre class="code-block"><code>${code}</code></pre>
-      <pre id="migrate-code" hidden aria-hidden="true">${raw}</pre>
-      <button type="button" class="copy-code" data-copy-target="migrate-code" hidden>[ copy ]</button>
-    </div>
-    <div class="dlinks next-strip">
-      <span class="next-label">what next:</span>
-      <a href="${STARTER_URL}">run the suite against it -&gt;</a>
-      <a href="/conformance/">claim conformance -&gt;</a>
-      <a href="${esc(ADD_PROJECT_URL)}">get listed -&gt;</a>
-    </div>
-    <p class="note">High-integrity identity is a wrap, not a rewrite: every tool response now carries a detached JWS proof - invisible to the LLM, verifiable by anyone.</p>
-    <div class="dlinks">
-      <a href="${MIGRATE_README_URL}">reference README -&gt;</a>
-      <a href="${DOCS_QUICKSTART_URL}">docs quickstart -&gt;</a>
-    </div>
-  </section>`;
-}
-
-/** The overview (home) page body. */
-export function sectionsHome({ rendered, interopSorted }) {
-  const stat = (href, html) => `    <a href="${href}">${html}</a>`;
-  return `  <header class="hero fx">
-    <div class="kicker">BUILDERS.KYA-OS.ORG</div>
-    <h1 class="h1-home"><span data-title-reveal>BUILD ON KYA-OS</span><span class="cursor" aria-hidden="true">_</span></h1>
-    <p class="lede">Authority and accountability for the agentic web. Verifiable identity and scoped delegation rooted at a <a href="https://kya-os.org/mcp/docs/concepts/delegation-layer">Responsible Party</a> - every agent action authorized before it runs, and audit-ready after.</p>
-  </header>
-  <div class="stats fx fxd-15">
-${[
-    stat("/conformance/", `suite <b>${esc(SUITE.version)}</b>`),
-    stat("/conformance/", `<b>${SUITE.vectors}</b> vectors`),
-    stat("/conformance/#levels", `levels <b>L1–L3</b>`),
-    stat("/standards/", `<b>${interopSorted.length}</b> standards mapped`),
-    stat("/builders/", `<b>${rendered.length}</b> projects listed`),
-    stat(
-      "/builders/",
-      `<b>${rendered.filter((entry) => entry.conformance?.status === "in-verification").length}</b> in verification &middot; <b>${rendered.filter((entry) => entry.conformance?.status === "verified").length}</b> verified`,
-    ),
-  ].join("\n")}
-  </div>
-${sectionMigrate()}
-  <a href="/rails/" class="rails-panel fx fxd-25" aria-label="The rails: AI agents send signed requests through KYA-OS to MCP servers, A2A peers, and any API - verified before they run. Read how one proof reaches every protocol.">
-    <div class="rails-head">
-      <div class="rails-title">THE RAILS</div>
-      <div class="rails-sub">how one proof reaches every protocol -&gt;</div>
-    </div>
-    <div class="rails-mini" aria-hidden="true">
-      <div class="rm-box rm-c1">AI</div>
-      <div class="wire rm-w2"><span class="wire-dot"></span></div>
-      <div class="rm-box rm-core rm-c3">KYA-OS</div>
-      <div class="wire rm-w4"><span class="wire-dot wd-late"></span></div>
-      <div class="rm-outs rm-c5">
-        <span class="rm-out"><span>MCP server</span><span class="ok">&check;</span></span>
-        <span class="rm-out"><span>A2A peer</span><span class="ok">&check;</span></span>
-        <span class="rm-out"><span>any API</span><span class="ok">&check;</span></span>
-      </div>
-      <div class="rm-cap rm-u1">agents &middot; orchestrators &middot; autonomous</div>
-      <div class="rm-under rm-u3">
-        <div class="rm-wf">${waveformLockup("kya-os:signed-proof:v1.14", { bars: 18, trackHeight: 12 })}</div>
-        <div class="rm-cap">who acts &middot; for whom &middot; with what authority</div>
-      </div>
-      <div class="rm-cap rm-u5">verified before it runs</div>
-    </div>
-  </a>
-  <div class="home-cards fx fxd-35">
-    <a href="/builders/" class="panel-card">
-      <div class="pc-head"><span class="pc-title">builders -&gt;</span></div>
-      <p>Who is building on KYA-OS — implementations, services, templates, and the examples to start from. Listing is one JSON file and one pull request.</p>
-    </a>
-    <a href="/conformance/" class="panel-card">
-      <div class="pc-head"><span class="pc-title">conformance -&gt;</span><span class="chip st-shipping pulse">verifiable</span></div>
-      <p>Measured, not asserted. Run the pinned vector suite, submit a claim, and the program independently re-runs your bytes and attests what it observes.</p>
-    </a>
-    <a href="/standards/" class="panel-card">
-      <div class="pc-head"><span class="pc-title">standards -&gt;</span></div>
-      <p>Every standard KYA-OS provides, carries, or projects onto — ${interopSorted.length} rows, each grounded in evidence and dated. Disputes are one pull request.</p>
-    </a>
-    <a href="/use-cases/" class="panel-card">
-      <div class="pc-head"><span class="pc-title">use-cases -&gt;</span></div>
-      <p>What people actually build: on-chain kill switches, consent-gated tools, delegated spend ceilings. Read them before you build, steal from them while you build.</p>
-    </a>
-  </div>`;
-}
 
 /**
  * The live signal for a service row. Without probe data: the neutral static

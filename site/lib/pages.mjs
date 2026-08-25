@@ -12,7 +12,8 @@ import { DESCRIPTION, ORIGIN, TITLE } from "./constants.mjs";
 import { esc, pageShell } from "./html.mjs";
 import { sectionsConformance } from "./program.mjs";
 import { sectionsRails, sectionsStandards, sectionsUseCases } from "./rails.mjs";
-import { sectionDirectory, sectionsHome, sectionStartHere, sectionSubmit } from "./sections.mjs";
+import { sectionsHome } from "./home.mjs";
+import { sectionDirectory, sectionStartHere, sectionSubmit } from "./sections.mjs";
 
 function metaHead({ title, description, path }) {
   return `<meta name="description" content="${esc(description)}" />

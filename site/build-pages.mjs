@@ -70,8 +70,13 @@
  *   lib/data.mjs        registry loading + shaping, machine-readable artifacts
  *   lib/html.mjs        escaping, chips, the prompt block, the shared shell
  *                       + nav, the 404 page (honesty rules enforced there)
+ *   lib/snippets.mjs    the code snippets as data (the migrate pair verbatim
+ *                       from the reference README) - parity-asserted
+ *   lib/highlight.mjs   build-time TypeScript highlighting + the copyable
+ *                       code block
  *   lib/waveform.mjs    build-time seeded proof waveforms as static SVG
- *   lib/sections.mjs    the overview and directory page bodies
+ *   lib/home.mjs        the overview page body (the two-line hook hero)
+ *   lib/sections.mjs    the directory page bodies
  *   lib/program.mjs     the conformance page body
  *   lib/rails.mjs       the standards, rails, and use-cases page bodies
  *   lib/pages.mjs       page assembly: hero + sections per page, per-page meta

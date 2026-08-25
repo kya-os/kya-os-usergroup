@@ -1,15 +1,17 @@
 /**
  * Standalone build checks, split from lib/assertions.mjs to keep both files
  * under the lib LOC cap: theme integrity and motion gating (on the emitted
- * stylesheets), prompt parity (button vs fallback vs constant), and the
+ * stylesheets), copy parity (button vs source vs constant, prompts and code
+ * snippets alike), the home hero's migration hook, and the
  * suite pin agreement across every committed copy of the pin. Same
  * philosophy as lib/assertions.mjs: read the finished bytes back, never
  * trust the renderers.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { MIGRATE_LINES, PROMPTS, SUITE } from "./constants.mjs";
+import { CONTEXT7_EXAMPLE_URL, PROMPTS, SUITE } from "./constants.mjs";
 import { esc } from "./html.mjs";
+import { SNIPPETS, snippetById, snippetText } from "./snippets.mjs";
 
 export function assertBuild(condition, message) {
   if (!condition) {
@@ -81,67 +83,76 @@ export function assertAnimGating(sheets) {
 }
 
 /**
- * Prompt parity, per page: every copy button must name a fallback <pre> on
- * the same page, every fallback must carry exactly the prompt text from
- * lib/constants.mjs (re-escaped here), and every prompt in PROMPTS must
- * appear as such a pair somewhere on the site - so the button, the manual
- * fallback, and the constant can never disagree.
+ * Copy parity, per page: every copy button must name a source element on
+ * the same page that carries exactly the bytes of the prompt (lib/
+ * constants.mjs PROMPTS, via the <details> fallback <pre>) or the snippet
+ * (lib/snippets.mjs, via the raw <pre>) it copies; every visible snippet
+ * block (data-snippet - highlighting can restyle the code, never change it)
+ * must reconstruct to the same bytes once its spans are stripped; every
+ * button ships hidden (no JS, no dead button); and every prompt and snippet
+ * defined must render somewhere - so the button, the fallback, and the
+ * constant can never disagree.
  */
-export function assertPromptParity(pages) {
+const unescapeHtml = (text) =>
+  text.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'").replace(/&quot;/g, '"');
+
+function visibleSnippetText(block) {
+  // Split on line spans first (token spans nest inside them), then strip
+  // every remaining tag per line - reconstruction beats fragile pairing. A
+  // plain block (no line spans) is one line of stripped text.
+  const lines = block.includes('<span class="cl') ? block.split(/<span class="cl(?: hl)?">/).slice(1) : [block];
+  return unescapeHtml(lines.map((chunk) => chunk.replace(/<[^>]+>/g, "")).join("\n"));
+}
+
+export function assertCopyParity(pages) {
   const seen = new Set();
+  const hiddenButton = (html, target) =>
+    new RegExp(`<button[^>]*data-copy-target="${target}"[^>]*\\bhidden\\b`).test(html) ||
+    new RegExp(`<button[^>]*\\bhidden\\b[^>]*data-copy-target="${target}"`).test(html);
   for (const [name, html] of Object.entries(pages)) {
+    for (const [, id] of html.matchAll(/data-snippet="([^"]+)"/g)) {
+      const snippet = snippetById(id);
+      assertBuild(snippet !== undefined, `${name}: visible block names unknown snippet "${id}"`);
+      const block = html.match(new RegExp(`<(\\w+)[^>]*data-snippet="${id}"[^>]*>([\\s\\S]*?)</\\1>`))?.[2];
+      assertBuild(block !== undefined, `${name}: the visible "${id}" block is malformed`);
+      assertBuild(visibleSnippetText(block) === snippetText(snippet), `${name}: the visible "${id}" block drifted from lib/snippets.mjs`);
+      seen.add(id);
+    }
     for (const [, target] of html.matchAll(/<button[^>]*data-copy-target="([^"]+)"[^>]*>/g)) {
-      if (target === "migrate-code") {
-        // The code-copy triangle: the hidden raw <pre> the button reads, the
-        // visible highlighted block, and the MIGRATE_LINES constant must all
-        // carry the same code - highlighting can restyle it, never change it.
-        const rawText = MIGRATE_LINES.map(([text]) => text).join("\n");
-        const rawPre = html.match(/<pre id="migrate-code"[^>]*>([\s\S]*?)<\/pre>/)?.[1];
-        assertBuild(rawPre === esc(rawText), `${name}: the migrate-code raw source drifted from MIGRATE_LINES`);
-        const visible = html.match(/<pre class="code-block"><code>([\s\S]*?)<\/code><\/pre>/)?.[1];
-        assertBuild(visible !== undefined, `${name}: the highlighted migrate block is missing`);
-        // Split on line spans first (token spans nest inside them), then strip
-        // every remaining tag per line - reconstruction beats fragile pairing.
-        const lines = visible
-          .split(/<span class="cl(?: hl)?">/)
-          .slice(1)
-          .map((chunk) => chunk.replace(/<[^>]+>/g, ""));
-        const unescaped = lines
-          .join("\n")
-          .replace(/&amp;/g, "&")
-          .replace(/&lt;/g, "<")
-          .replace(/&gt;/g, ">")
-          .replace(/&#39;/g, "'")
-          .replace(/&quot;/g, '"');
-        assertBuild(
-          unescaped === rawText,
-          `${name}: the highlighted migrate block drifted from MIGRATE_LINES`,
-        );
-        assertBuild(
-          /<button[^>]*data-copy-target="migrate-code"[^>]*\bhidden\b|<button[^>]*\bhidden\b[^>]*data-copy-target="migrate-code"/.test(html),
-          `${name}: the migrate-code copy button must ship hidden`,
-        );
-        continue;
-      }
       const prompt = PROMPTS.find((p) => p.id === target);
-      assertBuild(prompt !== undefined, `${name}: copy button targets unknown prompt "${target}"`);
-      const fallback = html.match(new RegExp(`<pre id="${target}">([\\s\\S]*?)</pre>`))?.[1];
-      assertBuild(fallback !== undefined, `${name}: copy button "${target}" has no <details> fallback <pre>`);
+      const snippet = snippetById(target);
+      assertBuild(prompt !== undefined || snippet !== undefined, `${name}: copy button targets unknown source "${target}"`);
+      const source = html.match(new RegExp(`<pre id="${target}"[^>]*>([\\s\\S]*?)</pre>`))?.[1];
+      assertBuild(source !== undefined, `${name}: copy button "${target}" has no source <pre>`);
       assertBuild(
-        fallback === esc(prompt.text),
-        `${name}: the "${target}" fallback text drifted from the prompt the button copies`,
+        source === esc(prompt ? prompt.text : snippetText(snippet)),
+        `${name}: the "${target}" source text drifted from what the button is meant to copy`,
       );
-      assertBuild(
-        new RegExp(`<button[^>]*data-copy-target="${target}"[^>]*\\bhidden\\b`).test(html) ||
-          new RegExp(`<button[^>]*\\bhidden\\b[^>]*data-copy-target="${target}"`).test(html),
-        `${name}: the "${target}" copy button must ship hidden (no JS, no dead button)`,
-      );
+      assertBuild(hiddenButton(html, target), `${name}: the "${target}" copy button must ship hidden (no JS, no dead button)`);
       seen.add(target);
     }
   }
-  for (const prompt of PROMPTS) {
-    assertBuild(seen.has(prompt.id), `prompt "${prompt.id}" is defined but rendered on no page`);
+  for (const { id } of [...PROMPTS, ...SNIPPETS]) {
+    assertBuild(seen.has(id), `prompt or snippet "${id}" is defined but rendered on no page`);
   }
+}
+
+/**
+ * The home hero's migration hook: both README blocks sit inside the hero,
+ * the After snippet still carries the two names the whole pitch rests on
+ * (withKyaOs + NodeCryptoProvider - if README parity drifts, this is the
+ * build failure to look at), and the real migrated server is linked.
+ */
+export function assertMigrateHook(landingHtml) {
+  const hero = landingHtml.match(/<header class="hero fx">([\s\S]*?)<\/header>/)?.[1] ?? "";
+  for (const id of ["migrate-before", "migrate-code"]) {
+    assertBuild(hero.includes(`data-snippet="${id}"`), `the home hero must carry the "${id}" block`);
+  }
+  const after = landingHtml.match(/<pre id="migrate-code"[^>]*>([\s\S]*?)<\/pre>/)?.[1] ?? "";
+  for (const symbol of ["withKyaOs", "NodeCryptoProvider"]) {
+    assertBuild(after.includes(symbol), `the home hero After snippet lost "${symbol}" - README parity drifted`);
+  }
+  assertBuild(landingHtml.includes(`href="${CONTEXT7_EXAMPLE_URL}"`), "the home hero must link the context7 example migrated with exactly two lines");
 }
 
 /**
