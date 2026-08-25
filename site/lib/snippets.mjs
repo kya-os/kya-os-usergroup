@@ -15,7 +15,7 @@
  * render with the diff gutter); `text` is a plain snippet. snippetText()
  * gives the clipboard bytes for either.
  */
-import { ENTRY_TEMPLATE } from "./constants.mjs";
+import { ENTRY_TEMPLATE, ORIGIN } from "./constants.mjs";
 
 /** The "before" block: a standard MCP server with no identity or proofs. */
 export const MIGRATE_BEFORE = {
@@ -54,7 +54,18 @@ export const MIGRATE_AFTER = {
  */
 export const ENTRY_PREVIEW = { id: "entry-preview", text: JSON.stringify(ENTRY_TEMPLATE, null, 2) };
 
-export const SNIPPETS = [MIGRATE_BEFORE, MIGRATE_AFTER, ENTRY_PREVIEW];
+/**
+ * The README embed for a badge: the real /badge/<slug>.svg path the build
+ * emits (lib/badge.mjs) and the worker serves, linking the directory row.
+ * "your-slug" is the placeholder the badge preview fills in.
+ */
+export const BADGE_EMBED_SLUG = "your-slug";
+export const BADGE_EMBED = {
+  id: "badge-embed",
+  text: `[![KYA-OS conformance](${ORIGIN}/badge/${BADGE_EMBED_SLUG}.svg)](${ORIGIN}/builders/#${BADGE_EMBED_SLUG})`,
+};
+
+export const SNIPPETS = [MIGRATE_BEFORE, MIGRATE_AFTER, ENTRY_PREVIEW, BADGE_EMBED];
 
 /** The plain-text bytes of a snippet: what the clipboard receives. */
 export function snippetText(snippet) {

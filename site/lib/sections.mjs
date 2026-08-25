@@ -12,9 +12,10 @@
  * fully functional without JavaScript.
  */
 import { ADD_PROJECT_URL, DEMO_MCP_URL, PLAYGROUND_URL, REPO_URL, REVOKED_TREE_URL, STARTER_URL, SUITE } from "./constants.mjs";
+import { CLAIM_WAVE, claimWaveSeed } from "../../scripts/lib/builder-entry.mjs";
 import { conformanceLabel, conformanceLevelUrl, directorySorted } from "./data.mjs";
 import { conformanceStatusChip, esc, promptBlock } from "./html.mjs";
-import { KINDS } from "../../scripts/validate.mjs";
+import { KINDS } from "../../scripts/lib/registry-enums.mjs";
 import { waveformSvg } from "./waveform.mjs";
 
 // What each entry kind means, shown under the filter strip (design copy,
@@ -117,7 +118,7 @@ function directoryRow(entry, probes, verdicts) {
   const deployed = c && provenanceVersion ? ` <span class="dprov">&middot; deployed ${esc(provenanceVersion)}</span>` : "";
   const state = c && displayState(c, verdict);
   const confLine = c
-    ? `<div class="dconf-line tone-${CONF_TONE[state]}">${waveformSvg(`${entry.slug}#${conformanceLabel(c)}`, { bars: 16, trackHeight: 11, barWidth: 2, gap: 1.5 })}<p>conformance: <a href="${esc(conformanceLevelUrl(c))}">${esc(conformanceLabel(c))}</a>${deployed} — ${esc(CONF_TEXT[state])}</p></div>`
+    ? `<div class="dconf-line tone-${CONF_TONE[state]}">${waveformSvg(claimWaveSeed(entry.slug, c), CLAIM_WAVE)}<p>conformance: <a href="${esc(conformanceLevelUrl(c))}">${esc(conformanceLabel(c))}</a>${deployed} - ${esc(CONF_TEXT[state])}</p></div>`
     : `<div class="dconf-line tone-faint"><p>Listed in the registry — no conformance claim yet.</p></div>`;
   const capabilities = [];
   if (entry.buildsOn?.length) capabilities.push(`builds on: ${entry.buildsOn.map((repo) => esc(repo)).join(", ")}`);

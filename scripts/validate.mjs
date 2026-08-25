@@ -71,9 +71,6 @@ const repoRoot = join(here, "..");
 const buildersDir = join(repoRoot, "registry", "builders");
 const interopDir = join(repoRoot, "registry", "interop");
 
-// The vocabulary, re-exported for the build's renderers (one import site).
-export const { KINDS, BUILDS_ON, INTEROP_CATEGORIES, INTEROP_STATUSES } = vocab;
-
 function readDirEntries(dir, relDir, errors) {
   const parsed = [];
   if (!existsSync(dir)) {

@@ -16,8 +16,8 @@ import { assertBuild } from "./checks.mjs";
 
 // The module map, restated independently of lib/html.mjs and lib/pages.mjs.
 export const SHELL_MODULES = ["page-fx.js", "copy-prompt.js"];
-export const PAGE_MODULES = { "builders/index.html": ["entry-builder.js"] };
-export const COPIED_MODULES = { "builder-entry.js": "scripts/lib/builder-entry.mjs" };
+export const PAGE_MODULES = { "builders/index.html": ["entry-builder.js"], "conformance/index.html": ["badge-preview.js"] };
+export const COPIED_MODULES = { "builder-entry.js": "scripts/lib/builder-entry.mjs", "waveform.js": "site/lib/waveform.mjs" };
 export const GENERATED_MODULES = ["registry-enums.js"];
 
 const jsFiles = (dir) => readdirSync(dir).filter((name) => name.endsWith(".js")).sort();
@@ -100,6 +100,9 @@ export function assertClientModules({ distDir, pages, interopSorted, repoUrl }) 
   assertBuild(copyPrompt.includes("data-copy-target") && copyPrompt.includes("hidden = false"), "copy-prompt.js lost the hidden-button reveal wiring");
   const entryBuilder = readFileSync(join(distUi, "entry-builder.js"), "utf8");
   assertBuild(entryBuilder.includes("form.hidden = false") && entryBuilder.includes("builderEntryErrors("), "entry-builder.js lost the hidden-form reveal or the shared rule check");
+  const badgePreview = readFileSync(join(distUi, "badge-preview.js"), "utf8");
+  assertBuild(badgePreview.includes("form.hidden = false") && badgePreview.includes("claimWaveSeed("), "badge-preview.js lost the hidden-form reveal or the shared seed derivation");
+  assertBuild(/<form id="badge-preview"[^>]*\bhidden\b/.test(pages["conformance/index.html"]), "the badge-preview form must ship hidden (no JS, the build-time lockup stands)");
   const buildersHtml = pages["builders/index.html"];
   assertBuild(/<form id="entry-builder"[^>]*\bhidden\b/.test(buildersHtml), "the entry-builder form must ship hidden (no JS, no dead form)");
   assertBuild(buildersHtml.includes('<details class="disclosure">') && buildersHtml.includes('data-snippet="entry-preview"'), "the entry builder must keep its no-JS template fallback");

@@ -4,14 +4,60 @@
  * verification pipeline, the badge anatomy (with build-time signature
  * waveforms), the levels, the verification state machine, and the
  * implementations table rendered from the registry entries that carry a
- * conformance claim. Honesty rules from lib/html.mjs apply throughout:
+ * conformance claim, plus the README embed block and the client-side badge
+ * preview. Honesty rules from lib/html.mjs apply throughout:
  * measured-not-asserted language, subset claims never render bare, and the
  * badge states are labeled as the Phase B state machine, not live claims.
  */
+import { CLAIM_WAVE, claimWaveSeed } from "../../scripts/lib/builder-entry.mjs";
+import { CONFORMANCE_LEVELS } from "../../scripts/lib/registry-enums.mjs";
 import { CONFORMANCE_MD_URL, ORIGIN, SUBMISSION_ISSUE_URL, SUITE, STARTER_URL } from "./constants.mjs";
 import { conformanceLabel, conformanceLevelUrl, levelUrl, withConformance } from "./data.mjs";
 import { conformanceStatusChip, esc, promptBlock } from "./html.mjs";
+import { BADGE_EMBED, BADGE_EMBED_SLUG, snippetText } from "./snippets.mjs";
 import { waveformSvg } from "./waveform.mjs";
+
+const brandCell = (size) =>
+  `<span class="bl-brand"><img class="mark mark-white" src="/img/kya-mark-white.svg" alt="" width="${size}" height="${size + 2}" /><img class="mark mark-black" src="/img/kya-mark-black.svg" alt="" width="${size}" height="${size + 2}" />KYA-OS</span>`;
+
+/**
+ * The README embed block: the visible line with the placeholder slug
+ * highlighted (the preview module fills it in), the raw <pre> the copy
+ * button reads, and the button - the copy-prompt pattern.
+ */
+function embedBlock() {
+  const slugSpan = `<span class="hl" data-embed-slug>${BADGE_EMBED_SLUG}</span>`;
+  return `<div class="code-wrap embed-wrap">
+        <div class="embed-snippet" data-snippet="${BADGE_EMBED.id}">${esc(snippetText(BADGE_EMBED)).split(BADGE_EMBED_SLUG).join(slugSpan)}</div>
+        <pre id="${BADGE_EMBED.id}" hidden aria-hidden="true">${esc(snippetText(BADGE_EMBED))}</pre>
+        <button type="button" class="copy-code" data-copy-target="${BADGE_EMBED.id}" hidden>[ copy ]</button>
+      </div>`;
+}
+
+/**
+ * Preview your badge: slug + claimed level in, the grey unverified lockup
+ * out, drawn at build time for the placeholder and redrawn client-side by
+ * /ui/badge-preview.js from the same waveform bytes and the same seed
+ * derivation the directory row uses. Visual only - the label says so.
+ */
+function badgePreview() {
+  const level = CONFORMANCE_LEVELS[0];
+  const seed = claimWaveSeed(BADGE_EMBED_SLUG, { level, scope: "full" });
+  const levels = CONFORMANCE_LEVELS.map((l) => `<option value="${l}">${l}</option>`).join("");
+  return `<div class="badge-preview">
+        <div class="pc-title t-static">preview your badge</div>
+        <form id="badge-preview" class="eb bp-form" hidden novalidate>
+          <div class="eb-field"><label class="eb-label" for="bp-slug">your slug</label><input id="bp-slug" name="slug" type="text" maxlength="40" placeholder="${BADGE_EMBED_SLUG}" autocomplete="off" spellcheck="false" /></div>
+          <div class="eb-field"><label class="eb-label" for="bp-level">claimed level</label><select id="bp-level" name="level">${levels}</select></div>
+        </form>
+        <span class="badge-lockup bl-preview">
+          ${brandCell(11)}
+          <span class="bl-wave" id="bp-wave">${waveformSvg(seed, CLAIM_WAVE)}</span>
+          <span class="bl-state">&middot; preview</span>
+        </span>
+        <p class="micro">preview of the visual only - not a verified badge; verification comes from the program &middot; seed <span id="bp-seed">${esc(seed)}</span> - the same derivation the directory row draws your wave from</p>
+      </div>`;
+}
 
 function implementationsTable(conformanceEntries, verdicts) {
   if (conformanceEntries.length === 0) {
@@ -79,7 +125,8 @@ export function sectionsConformance(rendered, verdicts) {
       <p class="lede-lg">The payoff of the pipeline. A badge is not a logo you paste — it resolves to the signed credential behind it, so anyone can verify your claim without trusting this site. The waveform is the credential's signature fingerprint: the same credential always draws the same wave, and a re-issued one redraws it completely.</p>
       <p class="note">It renders <span class="tone-signal">verified</span> only while the claim links its credential; revoke the credential and every embedded badge downgrades itself. Amber means the program is still re-running your suite.</p>
       <p class="note">Embed it the day you are listed: every tier builds with the site — grey <span class="tone-faint">listed</span> and <span class="tone-faint">self-reported</span>, amber <span class="tone-amber">in verification</span>, and <span class="tone-signal">verified</span> only after the build has cryptographically verified your credential against the program keys and its signed status lists (build-time verification of in-repo state). The badge upgrades itself as your status climbs the ladder.</p>
-      <div class="embed-snippet">[![KYA-OS conformance](${ORIGIN}/badge/<span class="hl">your-slug</span>.svg)](${ORIGIN}/builders/#<span class="hl">your-slug</span>)</div>
+      <p class="note">Paste this into your README the day you are listed - it is the same <code>/badge/&lt;slug&gt;.svg</code> the build emits and the worker serves, so it upgrades itself as your status climbs:</p>
+      ${embedBlock()}
       <div class="badge-row">
         <span class="badge-lockup bl-verified">
           <span class="bl-scan" aria-hidden="true"></span>
@@ -99,6 +146,7 @@ export function sectionsConformance(rendered, verdicts) {
         </span>
       </div>
       <p class="micro">badges build with the site at /badge/&lt;slug&gt;.svg &middot; verified renders only from build-time credential verification</p>
+      ${badgePreview()}
     </div>
   </section>
   <section id="levels" class="fx fxd-30">

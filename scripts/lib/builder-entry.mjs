@@ -60,13 +60,14 @@ export function conformanceLabel(conformance) {
 }
 
 /**
- * The seed a listed claim's proof waveform draws from (the directory row
- * and the conformance page's badge preview both use it, so the preview
- * matches the wave the entry will get).
+ * The seed and geometry a listed claim's proof waveform draws with. The
+ * directory row and the conformance page's badge preview both use them, so
+ * the preview IS the wave the entry will get.
  */
 export function claimWaveSeed(slug, conformance) {
   return `${slug}#${conformanceLabel(conformance)}`;
 }
+export const CLAIM_WAVE = { bars: 16, trackHeight: 11, barWidth: 2, gap: 1.5 };
 
 /**
  * The prefilled GitHub new-file URL: opens the editor on registry/builders/

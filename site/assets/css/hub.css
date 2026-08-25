@@ -224,7 +224,15 @@ details[open]>summary .caret::before{content:"\2212"}
 .pipe-dot{position:absolute;top:-2px;width:6px;height:5px;background:var(--signal);box-shadow:0 0 10px color-mix(in srgb,var(--signal) 80%,transparent);animation:pipeDot 5s linear infinite}
 .badge-copy{max-width:720px}
 .embed-snippet .hl{color:var(--ink)}
-.embed-snippet{font-family:var(--font-mono);font-size:12px;background:var(--panel);border:1px solid var(--line);padding:14px 18px;line-height:1.8;color:var(--ink-muted);overflow-wrap:anywhere;margin-top:20px}
+.embed-snippet{font-family:var(--font-mono);font-size:12px;background:var(--panel);border:1px solid var(--line);padding:14px 84px 14px 18px;line-height:1.8;color:var(--ink-muted);overflow-wrap:anywhere}
+.embed-wrap{margin:14px 0 24px}
+.badge-preview{margin-top:36px;border-top:1px solid var(--line);padding-top:28px}
+.bp-form{display:flex;flex-wrap:wrap;gap:0 24px;margin-bottom:6px}
+.bp-form .eb-field{flex:1 1 200px;max-width:320px}
+.bl-preview{border-color:var(--line-quiet)}
+.bl-preview .bl-brand{background:var(--panel-2);border-right-color:var(--line-quiet);color:var(--ink-dim)}
+.bl-preview .bl-wave{color:var(--ink-dim);border-right-color:var(--line-quiet)}
+.bl-preview .bl-state{color:var(--ink-muted)}
 /* Build-time syntax tokens (theme-token colors; AA in both themes) and the
    diff grammar: every code line carries a 2ch gutter, added lines get the
    plus and a signal wash. Gutters are pseudo-content, so copied text and the

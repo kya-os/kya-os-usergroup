@@ -17,7 +17,7 @@ import { ENTRY_TEMPLATE, REPO_URL } from "./constants.mjs";
 import { esc } from "./html.mjs";
 import { ENTRY_PREVIEW, snippetText } from "./snippets.mjs";
 import { DESCRIPTION_MAX } from "../../scripts/lib/builder-entry.mjs";
-import { BUILDS_ON, KINDS } from "../../scripts/validate.mjs";
+import { BUILDS_ON, KINDS } from "../../scripts/lib/registry-enums.mjs";
 
 function field(name, label, control, hint = "") {
   return `        <div class="eb-field">

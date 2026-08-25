@@ -81,9 +81,10 @@ export function renderConformanceHtml({ rendered, verdicts }) {
     path: "/conformance/",
     hero: pageHero({
       title: "CONFORMANCE",
-      lede: "Measured, not asserted. The program attests exactly the bytes it re-runs against the published vector suite at your pinned commit.",
+      lede: "What you get: a signed, revocable credential for exactly what the program observed, a badge that re-verifies against that credential every time it renders, and a listing that climbs the ladder in public. Measured, not asserted: the program attests exactly the bytes it re-runs against the published vector suite at your pinned commit.",
     }),
     sections: [sectionsConformance(rendered, verdicts)],
+    modules: ["badge-preview.js"],
   });
 }
 
