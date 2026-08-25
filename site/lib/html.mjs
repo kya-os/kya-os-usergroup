@@ -21,20 +21,32 @@ export function esc(value) {
 }
 
 /**
- * Conformance status chip. `verified` is green ONLY because the schema and
- * validator guarantee attestationUrl exists when status is verified; the chip
- * itself is the credential link. No credential link, no green - by
- * construction there is no other code path.
+ * Conformance status chip. `verified` is green ONLY when the build's
+ * cryptographic verification produced a verdict for the entry's credential
+ * (site/lib/credentials.mjs - the build refuses before rendering otherwise)
+ * AND the credential's status bits are clean; the chip itself is the
+ * credential link. No verified credential, no green - by construction there
+ * is no other code path. A suspension bit renders the claim contested
+ * ("under appeal", amber) and a revoked credential renders the terminal dark
+ * chip - both still linking the credential, which carries the public record.
  *
  * Non-verified chips follow the same pattern one tier down: when the entry
  * carries evidenceUrl (the public submission issue or verification thread),
  * the chip links it, so the middle credibility tiers are auditable on-page.
- * Wording is fixed (verified / in verification / self-reported); the design
- * swap restyled the chips, never the words.
+ * Wording is fixed (verified / in verification / self-reported / under
+ * appeal / revoked); the design swap restyled the chips, never the words.
  */
-export function conformanceStatusChip(conformance, { link = true } = {}) {
-  if (conformance.status === "verified") {
-    const inner = `<span class="chip st-verified">&check; verified</span>`;
+export function conformanceStatusChip(conformance, { link = true, verdict } = {}) {
+  if (conformance.status === "verified" || conformance.status === "revoked") {
+    if (verdict === undefined) {
+      throw new Error(`a "${conformance.status}" chip cannot render without the build's credential verdict (fail closed)`);
+    }
+    const inner =
+      verdict.state === "revoked"
+        ? `<span class="chip st-revoked">revoked</span>`
+        : verdict.state === "suspended"
+          ? `<span class="chip st-inverif">&#9676; under appeal</span>`
+          : `<span class="chip st-verified">&check; verified</span>`;
     return link ? `<a class="chip-link" href="${esc(conformance.attestationUrl)}">${inner}</a>` : inner;
   }
   const [label, cls, mark] =

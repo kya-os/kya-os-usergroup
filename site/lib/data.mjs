@@ -19,16 +19,19 @@ import { validateRegistry, INTEROP_CATEGORIES } from "../../scripts/validate.mjs
 import { CONFORMANCE_MD_URL, REPO_URL, TEMPLATE_SLUG } from "./constants.mjs";
 
 /**
- * Validate both registries (plus the committed probe results) and shape them
- * for rendering. Callers must treat a non-empty `errors` as fatal; shaping
- * is skipped on errors because invalid entries need not carry sortable
- * fields. `probes` is the parsed registry/probes.json (null when absent) -
- * committed data, so the build stays deterministic.
- * @returns {{ errors: string[], rendered: object[], interopSorted: object[], probes: object|null }}
+ * Validate both registries (plus the committed probe results and credential
+ * artifacts) and shape them for rendering. Callers must treat a non-empty
+ * `errors` as fatal; shaping is skipped on errors because invalid entries
+ * need not carry sortable fields. `probes` is the parsed
+ * registry/probes.json (null when absent); `credentialData` carries the
+ * structurally validated program keys, credentials, status lists, and
+ * allocation ledger for site/lib/credentials.mjs to verify
+ * cryptographically. All committed data, so the build stays deterministic.
+ * @returns {{ errors: string[], rendered: object[], interopSorted: object[], probes: object|null, credentialData: object|null }}
  */
 export function loadSiteData() {
-  const { entries, interop, probes, errors } = validateRegistry();
-  if (errors.length > 0) return { errors, rendered: [], interopSorted: [], probes: null };
+  const { entries, interop, probes, programKeys, credentials, statusLists, allocations, errors } = validateRegistry();
+  if (errors.length > 0) return { errors, rendered: [], interopSorted: [], probes: null, credentialData: null };
 
   const rendered = entries
     .filter((entry) => entry.slug !== TEMPLATE_SLUG)
@@ -36,7 +39,7 @@ export function loadSiteData() {
   const interopSorted = [...interop].sort(
     (a, b) => INTEROP_CATEGORIES.indexOf(a.category) - INTEROP_CATEGORIES.indexOf(b.category) || a.slug.localeCompare(b.slug, "en"),
   );
-  return { errors, rendered, interopSorted, probes };
+  return { errors, rendered, interopSorted, probes, credentialData: { programKeys, credentials, statusLists, allocations, entries } };
 }
 
 /** The rendered entries of one kind, in registry order. */
@@ -46,11 +49,12 @@ export function byKind(entries, kind) {
 
 /**
  * Directory order: the trust ladder itself - verified, then in verification,
- * then self-reported, then everything listed - rank ties broken by slug so
- * the order stays deterministic. The kind filter is orthogonal (CSS-only),
- * so within any kind group the same ladder order holds.
+ * then self-reported, then everything listed, with revoked last (the one
+ * post-verified state that fell off the ladder) - rank ties broken by slug
+ * so the order stays deterministic. The kind filter is orthogonal
+ * (CSS-only), so within any kind group the same ladder order holds.
  */
-const LADDER_RANK = { verified: 0, "in-verification": 1, "self-reported": 2 };
+const LADDER_RANK = { verified: 0, "in-verification": 1, "self-reported": 2, revoked: 4 };
 export function directoryRank(entry) {
   return entry.conformance !== undefined ? LADDER_RANK[entry.conformance.status] : 3;
 }

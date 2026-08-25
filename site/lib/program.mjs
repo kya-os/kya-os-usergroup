@@ -13,7 +13,7 @@ import { conformanceLabel, conformanceLevelUrl, levelUrl, withConformance } from
 import { conformanceStatusChip, esc, promptBlock } from "./html.mjs";
 import { waveformSvg } from "./waveform.mjs";
 
-function implementationsTable(conformanceEntries) {
+function implementationsTable(conformanceEntries, verdicts) {
   if (conformanceEntries.length === 0) {
     return `      <div class="ifoot">no conformance claims yet — <a href="/builders/#submit">claim conformance -&gt;</a></div>`;
   }
@@ -24,7 +24,7 @@ function implementationsTable(conformanceEntries) {
         <a class="iname" href="/builders/#${esc(entry.slug)}">${esc(entry.name)}</a>
         <a class="iclaim" href="${esc(conformanceLevelUrl(c))}">${esc(conformanceLabel(c))}</a>
         <span class="isuite">${esc(c.suiteVersion)}</span>
-        <span>${conformanceStatusChip(c)}</span>
+        <span>${conformanceStatusChip(c, { verdict: verdicts.get(entry.slug) })}</span>
         <a class="ilink" href="${esc(entry.homepage)}">homepage</a>
       </div>`;
     })
@@ -33,7 +33,7 @@ function implementationsTable(conformanceEntries) {
       <div class="ifoot">your implementation here — <a href="/builders/#submit">claim conformance -&gt;</a></div>`;
 }
 
-export function sectionsConformance(rendered) {
+export function sectionsConformance(rendered, verdicts) {
   const conformanceEntries = withConformance(rendered);
   return `  <div class="pin-strip fx fxd-10">
     <span>suite <b>${esc(SUITE.version)}</b></span>
@@ -78,7 +78,7 @@ export function sectionsConformance(rendered) {
     <div class="badge-copy">
       <p class="lede-lg">The payoff of the pipeline. A badge is not a logo you paste — it resolves to the signed credential behind it, so anyone can verify your claim without trusting this site. The waveform is the credential's signature fingerprint: the same credential always draws the same wave, and a re-issued one redraws it completely.</p>
       <p class="note">It renders <span class="tone-signal">verified</span> only while the claim links its credential; revoke the credential and every embedded badge downgrades itself. Amber means the program is still re-running your suite.</p>
-      <p class="note">Embed it the day you are listed: the static tiers build with the site — grey <span class="tone-faint">listed</span> and <span class="tone-faint">self-reported</span>, amber <span class="tone-amber">in verification</span> — and the badge upgrades itself as your status climbs the ladder, because the Phase B worker takes over the same URLs for live credential verification. Only the worker ever renders <span class="tone-signal">verified</span>.</p>
+      <p class="note">Embed it the day you are listed: every tier builds with the site — grey <span class="tone-faint">listed</span> and <span class="tone-faint">self-reported</span>, amber <span class="tone-amber">in verification</span>, and <span class="tone-signal">verified</span> only after the build has cryptographically verified your credential against the program keys and its signed status lists (v1.5: build-time verification of in-repo state). The badge upgrades itself as your status climbs the ladder; the Phase B worker upgrades the same URLs to request-time verification.</p>
       <div class="embed-snippet">[![KYA-OS conformance](${ORIGIN}/badge/<span class="hl">your-slug</span>.svg)](${ORIGIN}/builders/#<span class="hl">your-slug</span>)</div>
       <div class="badge-row">
         <span class="badge-lockup bl-verified">
@@ -98,7 +98,7 @@ export function sectionsConformance(rendered) {
           <span class="bl-state">&middot; no claim</span>
         </span>
       </div>
-      <p class="micro">static tiers build with the site at /badge/&lt;slug&gt;.svg &middot; the verified tier ships at Phase B on the same paths — states shown are the real state machine</p>
+      <p class="micro">badges build with the site at /badge/&lt;slug&gt;.svg &middot; verified renders only from build-time credential verification &middot; Phase B makes the same paths request-time — states shown are the real state machine</p>
     </div>
   </section>
   <section id="levels" class="fx fxd-30">
@@ -138,18 +138,18 @@ export function sectionsConformance(rendered) {
         <div class="readout">
           <div><span class="tone-signal">&check;</span> vectors <b>${SUITE.vectors}/${SUITE.vectors}</b> &middot; suite <b>${esc(SUITE.version)}</b></div>
           <div>attested <b>${esc(SUITE.vectorSetHash.slice(0, 11))}&hellip;${esc(SUITE.vectorSetHash.slice(-4))}</b></div>
-          <div>credential <b>vc-jwt &middot; did:web:kya-os.org:conformance</b></div>
+          <div>credential <b>eddsa-jcs-2022 &middot; did:web:builders.kya-os.org</b></div>
         </div>
       </div>
     </div>
-    <p class="dnote">The static badge tiers at <code>/badge/&lt;slug&gt;.svg</code> mirror these chips; the <span class="tone-signal">verified</span> tier ships at Phase B of the program as live credential verification on the same paths. Until then the status chips are the source of truth.</p>
+    <p class="dnote">The badge tiers at <code>/badge/&lt;slug&gt;.svg</code> mirror these chips. The <span class="tone-signal">verified</span> tier renders only when this site's build has cryptographically verified the credential and its signed status lists (a suspension renders <span class="tone-amber">under appeal</span>, a revocation renders dark); Phase B upgrades the same paths to request-time verification.</p>
   </section>
   <section class="fx fxd-50">
     <h2>Implementations</h2>
     <div class="rule"></div>
     <div class="itable">
       <div class="igrid ihead" aria-hidden="true"><span>IMPLEMENTATION</span><span>CLAIM</span><span>SUITE</span><span>STATUS</span><span>LINKS</span></div>
-${implementationsTable(conformanceEntries)}
+${implementationsTable(conformanceEntries, verdicts)}
     </div>
   </section>`;
 }

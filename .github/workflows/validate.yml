@@ -25,7 +25,9 @@ jobs:
         run: node scripts/validate.mjs
       - name: Build Pages artifact
         run: node site/build-pages.mjs
-      - name: Badge worker tests
+      - name: Badge worker tests (incl. cross-implementation parity)
         run: node --test workers/badge/*.test.mjs
+      - name: Conformance program tests (attestation core + issuance e2e dry run)
+        run: node --test scripts/__tests__/*.test.mjs
       - name: Generated allowlist is committed and current
         run: git diff --exit-code workers/badge/generated-allowlist.mjs

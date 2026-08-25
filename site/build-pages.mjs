@@ -18,12 +18,19 @@
  *   - 404.html                 real not-found page linking every page
  *   - builders.json            machine-readable merged builder registry (open CORS)
  *   - interop.json             machine-readable standards-rail registry (open CORS)
- *   - badge/                   static badge tiers per rendered entry
- *                              (<slug>.svg + <slug>.json, shields endpoint
- *                              schema) from lib/badge.mjs - listed /
- *                              self-reported / in-verification only; a
- *                              verified entry fails the build (that tier is
- *                              the Phase B worker's alone)
+ *   - badge/                   badge tiers per rendered entry (<slug>.svg +
+ *                              <slug>.json, shields endpoint schema) from
+ *                              lib/badge.mjs - the verified/under-appeal/
+ *                              revoked tiers render ONLY from the build's
+ *                              cryptographic credential verification below
+ *   - credentials/             the published credential schema (always) plus
+ *                              byte copies of every committed credential and
+ *                              both signed status lists (provisioned era) -
+ *                              each VERIFIED at build time by
+ *                              lib/credentials.mjs before anything renders
+ *   - .well-known/did.json     the did:web issuer document from the
+ *                              committed program public keys - never emitted
+ *                              on the unprovisioned sentinel
  *   - fonts/                   byte copies of site/assets/fonts/ (the two
  *                              self-hosted variable woff2 faces + their OFL
  *                              licenses)
@@ -89,6 +96,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runRenderChecks } from "./lib/assertions.mjs";
 import { renderBadgeFiles } from "./lib/badge.mjs";
+import { renderDidJson, verifyCredentialArtifacts } from "./lib/credentials.mjs";
 import { loadSiteData, renderBadgeAllowlist, renderBuildersJson, renderInteropJson } from "./lib/data.mjs";
 import { render404Html } from "./lib/html.mjs";
 import {
@@ -109,7 +117,7 @@ const imgSrcDir = join(here, "assets", "img");
 const cssSrcDir = join(here, "assets", "css");
 const uiSrcDir = join(here, "assets", "ui");
 
-function renderHeaders() {
+function renderHeaders({ withDid }) {
   // Security headers for every route; content type + open CORS for the
   // machine-readable registries. The pages ship exactly ONE inline script
   // (the theme toggle + js-anim gate), so script-src allows exactly its
@@ -119,31 +127,50 @@ function renderHeaders() {
   // stylesheets (no <style> blocks, no style attributes - asserted).
   // font-src 'self' covers the self-hosted woff2 files; img-src 'self'
   // covers the logo marks. Nothing else loosens.
+  //
+  // /credentials/* (the attestation credentials, status lists, and schema)
+  // and, once the program keys are provisioned, /.well-known/did.json are
+  // open-CORS JSON: external verifiers and DID resolvers must be able to
+  // fetch them cross-origin - that is the whole point of publishing them.
   const sha256 = (script) => createHash("sha256").update(script, "utf8").digest("base64");
+  const jsonBlock = (route) => [
+    route,
+    "  Content-Type: application/json; charset=utf-8",
+    "  Access-Control-Allow-Origin: *",
+    "  Cache-Control: public, max-age=300, s-maxage=3600",
+  ];
   return [
     "/*",
     "  X-Content-Type-Options: nosniff",
     "  X-Frame-Options: DENY",
     "  Referrer-Policy: strict-origin-when-cross-origin",
     `  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-${sha256(THEME_SCRIPT)}'; style-src 'self'; img-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
-    "/builders.json",
-    "  Content-Type: application/json; charset=utf-8",
-    "  Access-Control-Allow-Origin: *",
-    "  Cache-Control: public, max-age=300, s-maxage=3600",
-    "/interop.json",
-    "  Content-Type: application/json; charset=utf-8",
-    "  Access-Control-Allow-Origin: *",
-    "  Cache-Control: public, max-age=300, s-maxage=3600",
+    ...jsonBlock("/builders.json"),
+    ...jsonBlock("/interop.json"),
+    ...jsonBlock("/credentials/*"),
+    ...(withDid ? jsonBlock("/.well-known/did.json") : []),
     "",
   ].join("\n");
 }
 
 // ── gate: never render an invalid registry ──────────────────────────────────
 
-const { errors, rendered, interopSorted, probes } = loadSiteData();
+const { errors, rendered, interopSorted, probes, credentialData } = loadSiteData();
 if (errors.length > 0) {
   console.error(`Refusing to build: registry validation failed (${errors.length} error${errors.length === 1 ? "" : "s"}):`);
   for (const error of errors) console.error(`  - ${error}`);
+  process.exit(1);
+}
+
+// ── gate: the build IS the verifier - refuse on any credential failure ──────
+// Every committed credential's eddsa-jcs-2022 proof and status bits are
+// cryptographically verified here against the committed program keys
+// (site/lib/credentials.mjs); nothing may render verified without this.
+
+const { verdicts, errors: credentialErrors } = verifyCredentialArtifacts(credentialData);
+if (credentialErrors.length > 0) {
+  console.error(`Refusing to build: credential verification failed (${credentialErrors.length} error${credentialErrors.length === 1 ? "" : "s"}):`);
+  for (const error of credentialErrors) console.error(`  - ${error}`);
   process.exit(1);
 }
 
@@ -156,22 +183,51 @@ for (const page of ["builders", "conformance", "standards", "rails", "use-cases"
 }
 
 writeFileSync(join(distDir, "index.html"), renderLandingHtml({ rendered, interopSorted }));
-writeFileSync(join(distDir, "builders", "index.html"), renderBuildersHtml({ rendered, probes }));
-writeFileSync(join(distDir, "conformance", "index.html"), renderConformanceHtml({ rendered }));
+writeFileSync(join(distDir, "builders", "index.html"), renderBuildersHtml({ rendered, probes, verdicts }));
+writeFileSync(join(distDir, "conformance", "index.html"), renderConformanceHtml({ rendered, verdicts }));
 writeFileSync(join(distDir, "standards", "index.html"), renderStandardsHtml({ interopSorted }));
 writeFileSync(join(distDir, "rails", "index.html"), renderRailsHtml({ interopSorted }));
 writeFileSync(join(distDir, "use-cases", "index.html"), renderUseCasesHtml());
 writeFileSync(join(distDir, "404.html"), render404Html());
 writeFileSync(join(distDir, "builders.json"), renderBuildersJson(rendered));
 writeFileSync(join(distDir, "interop.json"), renderInteropJson(interopSorted));
-writeFileSync(join(distDir, "_headers"), renderHeaders());
+writeFileSync(join(distDir, "_headers"), renderHeaders({ withDid: credentialData.programKeys.provisioned }));
 
-// Static badge tiers: one .svg + shields .json pair per rendered entry, from
-// the same chip semantics as the pages. A "verified" entry refuses here -
-// that tier is minted only by the Phase B worker's live verification.
+// Badge tiers: one .svg + shields .json pair per rendered entry, from the
+// same chip semantics as the pages. The "verified" tier renders ONLY for
+// entries whose credential the gate above cryptographically verified.
 mkdirSync(join(distDir, "badge"), { recursive: true });
-for (const [name, contents] of renderBadgeFiles(rendered)) {
+for (const [name, contents] of renderBadgeFiles(rendered, verdicts)) {
   writeFileSync(join(distDir, "badge", name), contents);
+}
+
+// Credential artifacts: the published schema always; each committed
+// credential, both signed status lists, and /.well-known/did.json (the
+// did:web issuer document, from the committed publics) only in the
+// provisioned era - the sentinel emits nothing green and no DID.
+mkdirSync(join(distDir, "credentials", "schema"), { recursive: true });
+copyFileSync(
+  join(repoRoot, "registry", "credentials", "schema", "attestation-v1.json"),
+  join(distDir, "credentials", "schema", "attestation-v1.json"),
+);
+const { programKeys, credentials, statusLists } = credentialData;
+for (const { id32 } of credentials) {
+  copyFileSync(join(repoRoot, "registry", "credentials", `${id32}.json`), join(distDir, "credentials", `${id32}.json`));
+}
+if (statusLists.revocation !== null || statusLists.suspension !== null) {
+  mkdirSync(join(distDir, "credentials", "status"), { recursive: true });
+  for (const purpose of ["revocation", "suspension"]) {
+    if (statusLists[purpose] === null) continue;
+    copyFileSync(
+      join(repoRoot, "registry", "credentials", "status", `${purpose}-1.json`),
+      join(distDir, "credentials", "status", `${purpose}-1.json`),
+    );
+  }
+}
+const didJson = renderDidJson(programKeys);
+if (didJson !== null) {
+  mkdirSync(join(distDir, ".well-known"), { recursive: true });
+  writeFileSync(join(distDir, ".well-known", "did.json"), didJson);
 }
 
 // Fonts and logo marks: deterministic byte copies of the committed binaries,
@@ -215,7 +271,7 @@ writeFileSync(join(badgeDir, "generated-allowlist.mjs"), renderBadgeAllowlist(re
 
 // ── render check: assert the artifact is complete and honest ────────────────
 
-runRenderChecks({ distDir, rendered, interopSorted, probes });
+runRenderChecks({ distDir, rendered, interopSorted, probes, credentialData, verdicts });
 
 console.log(
   `Built Pages artifact: ${rendered.length} entr${rendered.length === 1 ? "y" : "ies"}, ${interopSorted.length} standards rails -> dist/ (6 pages, static + one hashed inline script + page-fx/copy-prompt modules and stylesheets, build-time waveforms, self-hosted fonts, real 404.html, no worker)`,

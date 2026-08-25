@@ -20,6 +20,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { SUITE, TEMPLATE_SLUG } from "./constants.mjs";
 import { assertBadges } from "./badge.mjs";
+import { assertCredentialArtifacts } from "./credential-checks.mjs";
 import { withConformance } from "./data.mjs";
 import { esc } from "./html.mjs";
 import {
@@ -93,7 +94,7 @@ function assertPageScripts(name, html, themeHash, referenceScript) {
 }
 
 /** Verify every dist/ artifact against the shaped registry data; exits non-zero on the first failure. */
-export function runRenderChecks({ distDir, rendered, interopSorted, probes }) {
+export function runRenderChecks({ distDir, rendered, interopSorted, probes, credentialData, verdicts }) {
   assertSuitePinAgreement(join(distDir, ".."));
   const conformanceEntries = withConformance(rendered);
 
@@ -211,14 +212,15 @@ export function runRenderChecks({ distDir, rendered, interopSorted, probes }) {
     }
   }
 
-  // A verified entry's expanded directory row must link its credential
-  // (the summary chip is unlinked by design - see above).
+  // A verified or revoked entry's expanded directory row must link its
+  // credential - the public record either way (the summary chip is unlinked
+  // by design - see above).
   for (const entry of rendered) {
     const c = entry.conformance;
-    if (c?.status === "verified") {
+    if (c?.status === "verified" || c?.status === "revoked") {
       assertBuild(
         pages["builders/index.html"].includes(`<a href="${esc(c.attestationUrl)}">credential -&gt;</a>`),
-        `verified entry ${entry.slug} does not link its credential in the expanded row`,
+        `${c.status} entry ${entry.slug} does not link its credential in the expanded row`,
       );
     }
   }
@@ -251,8 +253,9 @@ export function runRenderChecks({ distDir, rendered, interopSorted, probes }) {
           `subset claim for "${entry.slug}" must render with its categories, never as a bare level`,
         );
       }
-      // Non-verified claims that carry public evidence must render it.
-      if (c.status !== "verified" && c.evidenceUrl) {
+      // The middle rungs (no credential yet) that carry public evidence must
+      // render it; verified and revoked link the credential itself instead.
+      if ((c.status === "self-reported" || c.status === "in-verification") && c.evidenceUrl) {
         assertBuild(html.includes(`href="${esc(c.evidenceUrl)}"`), `evidenceUrl for "${entry.slug}" did not render`);
       }
     }
@@ -312,10 +315,17 @@ export function runRenderChecks({ distDir, rendered, interopSorted, probes }) {
   const publishedInterop = JSON.parse(readFileSync(join(distDir, "interop.json"), "utf8"));
   assertBuild(publishedInterop.count === interopSorted.length, "interop.json count mismatch");
 
-  // Static badge tiers: every rendered entry has its .svg + shields .json
-  // pair, states match the entries, and no static file ever says verified
-  // (checks live in lib/badge.mjs, on the dist bytes).
-  assertBadges(distDir, rendered);
+  // Badge tiers: every rendered entry has its .svg + shields .json pair,
+  // states match the entries, and "verified" appears exactly where the build
+  // cryptographically verified the credential (checks live in lib/badge.mjs,
+  // on the dist bytes).
+  assertBadges(distDir, rendered, verdicts);
+
+  // Credential artifacts: the sentinel provably renders nothing green; a
+  // provisioned build ships did.json + byte-identical credential copies and
+  // re-verifies every shipped credential from its dist bytes (checks live in
+  // lib/credential-checks.mjs).
+  assertCredentialArtifacts({ distDir, rendered, credentialData, verdicts });
 
   // The 404 page really is one, and it hands the reader every page.
   const notFoundHtml = pages["404.html"];

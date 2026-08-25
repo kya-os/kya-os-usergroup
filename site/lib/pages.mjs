@@ -56,7 +56,7 @@ export function renderLandingHtml({ rendered, interopSorted }) {
 }
 
 /** The directory: filterable registry rows, the on-ramps, and the submission paths. */
-export function renderBuildersHtml({ rendered, probes }) {
+export function renderBuildersHtml({ rendered, probes, verdicts }) {
   return contentPage({
     title: `Builders · ${TITLE}`,
     description: "Who builds on KYA-OS: implementations, services, integrations, templates, and examples - one PR to get listed.",
@@ -65,12 +65,12 @@ export function renderBuildersHtml({ rendered, probes }) {
       title: "BUILDERS",
       lede: "Everyone building on KYA-OS, in one registry — ordered by how much has been proven. Conformance here is measured against the pinned vector suite, never self-asserted.",
     }),
-    sections: [sectionDirectory(rendered, probes), sectionStartHere(), sectionSubmit()],
+    sections: [sectionDirectory(rendered, probes, verdicts), sectionStartHere(), sectionSubmit()],
   });
 }
 
 /** The program: suite pin, pipeline, badge anatomy, levels, states, implementations. */
-export function renderConformanceHtml({ rendered }) {
+export function renderConformanceHtml({ rendered, verdicts }) {
   return contentPage({
     title: `Conformance · ${TITLE}`,
     description: "The KYA-OS conformance program: measured claims, independent re-runs, and the pinned vector suite.",
@@ -79,7 +79,7 @@ export function renderConformanceHtml({ rendered }) {
       title: "CONFORMANCE",
       lede: "Measured, not asserted. The program attests exactly the bytes it re-runs against the published vector suite at your pinned commit.",
     }),
-    sections: [sectionsConformance(rendered)],
+    sections: [sectionsConformance(rendered, verdicts)],
   });
 }
 

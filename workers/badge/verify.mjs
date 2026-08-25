@@ -8,6 +8,15 @@
  * implementation, Node since v20 without flags) and both expose
  * DecompressionStream("gzip").
  *
+ * DELIBERATE REDUNDANCY RULE: scripts/lib/{jcs,keys,attest}.mjs implement
+ * the same primitives independently for the issuance and site-build side,
+ * and neither side may import the other - this worker must stay
+ * self-contained for Cloudflare bundling, and the repo's house style is
+ * independent implementations cross-proving each other. The ONLY place both
+ * sides meet is workers/badge/parity.test.mjs, which asserts byte-for-byte
+ * JCS agreement and sign-here/verify-there interop; a divergence fails the
+ * suite, never ships.
+ *
  * Everything here is fail-closed: malformed input returns { ok: false } (or
  * throws to the caller's catch, which must map to the "unknown"/unverified
  * badge state), never a false positive.

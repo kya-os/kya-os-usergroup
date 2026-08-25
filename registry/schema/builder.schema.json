@@ -87,14 +87,14 @@
           "description": "The conformance suite version the claim ran against (semver)."
         },
         "status": {
-          "enum": ["self-reported", "in-verification", "verified"],
-          "description": "Claim status. `verified` requires `attestationUrl` and renders green only with that credential link; anything else renders amber or grey."
+          "enum": ["self-reported", "in-verification", "verified", "revoked"],
+          "description": "Claim status. `verified` requires `attestationUrl` and renders green only after the site build cryptographically verifies that credential; `revoked` is the terminal post-verified state set by the program's revocation workflow and keeps `attestationUrl` as the public record; anything else renders amber or grey."
         },
         "attestationUrl": {
           "type": "string",
           "format": "uri",
           "pattern": "^https://",
-          "description": "Canonical URL of the verification credential. Required when status is verified."
+          "description": "Canonical URL of the verification credential (https://builders.kya-os.org/credentials/<id32>.json). Required when status is verified or revoked; forbidden below the verified rung."
         },
         "evidenceUrl": {
           "type": "string",
@@ -113,11 +113,14 @@
       "allOf": [
         {
           "if": {
-            "properties": { "status": { "const": "verified" } },
+            "properties": { "status": { "enum": ["verified", "revoked"] } },
             "required": ["status"]
           },
           "then": {
             "required": ["attestationUrl"]
+          },
+          "else": {
+            "not": { "required": ["attestationUrl"] }
           }
         }
       ],

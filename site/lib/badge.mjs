@@ -6,18 +6,23 @@
  * the honest claim label so a subset never renders as a bare level. The
  * label cell always says KYA-OS.
  *
- * HARD BOUNDARY: a status "verified" entry REFUSES static generation with a
- * build error naming the Phase B worker - a verified badge may only ever
- * come from live credential verification (workers/badge/worker.mjs), never
- * from a static build. The worker takes over the same /badge/ path space at
- * Phase B, which is what lets an embedded badge upgrade itself as the
- * entry's status climbs.
+ * THE VERIFIED BOUNDARY (v1.5): a "verified" badge renders here ONLY when
+ * the build cryptographically verified the entry's credential against the
+ * committed program keys and its signed status lists
+ * (site/lib/credentials.mjs - the build refuses before this module runs
+ * otherwise). The badge is therefore backed by build-time verification of
+ * in-repo state: green "✓ <claim> verified" on a clean credential, amber
+ * "◌ under appeal" while the suspension bit is set, dark "revoked" once the
+ * revocation bit is terminal. The Phase B worker upgrades the same
+ * /badge/ paths to request-time verification (workers/badge/worker.mjs).
+ * An entry at status verified/revoked WITHOUT a build verdict refuses with
+ * a build error - a verified badge can never render on trust.
  *
  * Deterministic by construction: fixed dimensions from a fixed mono advance,
- * no timestamps - each file is a pure function of its entry. The rendering
- * is the design's flat two-cell shields grammar in the site palette (dark
- * side of tokens.css): canvas label cell, line-tone message cell, ink-dim or
- * amber mono text.
+ * no timestamps - each file is a pure function of its entry and the
+ * committed credential state. The rendering is the design's flat two-cell
+ * shields grammar in the site palette (dark side of tokens.css): canvas
+ * label cell, line-tone message cell, tier-toned mono text.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -28,24 +33,41 @@ import { esc } from "./html.mjs";
 const LABEL = "KYA-OS";
 const FONT = "JetBrains Mono,SFMono-Regular,Consolas,monospace";
 // Site palette (tokens.css, dark side): canvas / line cells, ink-bright /
-// ink-dim / amber text. Raw hex on purpose - SVG files carry no CSS layer.
+// tier text. Raw hex on purpose - SVG files carry no CSS layer. Verified is
+// the signal-green family tuned to read on the message cell; revoked is the
+// dead grey tier, dimmer than listed's #999999.
 const CELL_LABEL = "#0a0a0a";
 const CELL_MESSAGE = "#1a1a1a";
 const TEXT_LABEL = "#ffffff";
-const STATE_COLORS = { listed: "999999", "self-reported": "999999", "in-verification": "ffb340" };
+const STATE_COLORS = {
+  listed: "999999",
+  "self-reported": "999999",
+  "in-verification": "ffb340",
+  verified: "00c86e",
+  suspended: "ffb340",
+  revoked: "6e7681",
+};
 
 /**
- * The badge state for one rendered entry: chip glyph + honest label + tier
- * color. Refuses "verified" - that tier is the Phase B worker's alone.
+ * The badge state for one rendered entry: honest message + tier color.
+ * `verdict` is the build's credential verification result for the slug;
+ * required (and trusted only because site/lib/credentials.mjs refused the
+ * build on any verification failure) whenever the entry claims a rung that
+ * needs a credential behind it.
  */
-export function badgeState(entry) {
+export function badgeState(entry, verdict) {
   const c = entry.conformance;
-  assertBuild(
-    c?.status !== "verified",
-    `static badge for "${entry.slug}" refused: a "verified" badge is minted only by the Phase B badge worker ` +
-      `(workers/badge/worker.mjs) from live credential verification - the static build never renders one`,
-  );
   if (!c) return { message: "· listed", color: STATE_COLORS.listed };
+  if (c.status === "verified" || c.status === "revoked") {
+    assertBuild(
+      verdict !== undefined,
+      `badge for "${entry.slug}" refused: status "${c.status}" renders only from build-time cryptographic verification ` +
+        `of the linked credential (site/lib/credentials.mjs) - no verdict, no badge`,
+    );
+    if (verdict.state === "revoked") return { message: "revoked", color: STATE_COLORS.revoked };
+    if (verdict.state === "suspended") return { message: "◌ under appeal", color: STATE_COLORS.suspended };
+    return { message: `✓ ${conformanceLabel(c)} verified`, color: STATE_COLORS.verified };
+  }
   const glyph = c.status === "in-verification" ? "◌" : "·";
   const suffix = c.status === "in-verification" ? "in verification" : "self-reported";
   return { message: `${glyph} ${conformanceLabel(c)} ${suffix}`, color: STATE_COLORS[c.status] };
@@ -80,10 +102,10 @@ export function renderBadgeJson({ message, color }) {
   return JSON.stringify({ schemaVersion: 1, label: LABEL, message, color }) + "\n";
 }
 
-/** Every rendered entry's badge pair, as [filename, contents] - refuses verified. */
-export function renderBadgeFiles(rendered) {
+/** Every rendered entry's badge pair, as [filename, contents]. */
+export function renderBadgeFiles(rendered, verdicts) {
   return rendered.flatMap((entry) => {
-    const state = badgeState(entry);
+    const state = badgeState(entry, verdicts.get(entry.slug));
     return [
       [`${entry.slug}.svg`, renderBadgeSvg(state)],
       [`${entry.slug}.json`, renderBadgeJson(state)],
@@ -92,12 +114,32 @@ export function renderBadgeFiles(rendered) {
 }
 
 /**
- * Badge render checks, on the finished dist/badge/ bytes. The expected
- * message is reconstructed inline (never through badgeState or the
- * formatters), matching the assertion philosophy in lib/assertions.mjs: a
- * regression in a renderer cannot make its own check pass.
+ * The expected badge message and color for one entry, reconstructed WITHOUT
+ * badgeState or the formatters (assertion philosophy: a regression in a
+ * renderer cannot make its own check pass). The verdict is data from the
+ * build's independent cryptographic verification, not renderer output.
  */
-export function assertBadges(distDir, rendered) {
+function expectedBadge(entry, verdict) {
+  const c = entry.conformance;
+  const label = c && (c.scope === "subset" ? `${c.level} subset (${c.categories.join(", ")})` : `${c.level} full`);
+  if (!c) return { message: "· listed", color: "999999" };
+  if (c.status === "verified" || c.status === "revoked") {
+    if (verdict.state === "revoked") return { message: "revoked", color: "6e7681" };
+    if (verdict.state === "suspended") return { message: "◌ under appeal", color: "ffb340" };
+    return { message: `✓ ${label} verified`, color: "00c86e" };
+  }
+  if (c.status === "in-verification") return { message: `◌ ${label} in verification`, color: "ffb340" };
+  return { message: `· ${label} self-reported`, color: "999999" };
+}
+
+/**
+ * Badge render checks, on the finished dist/badge/ bytes: exactly one
+ * .svg + .json pair per rendered entry, each carrying the expected state.
+ * "verified" may appear in a badge file ONLY for an entry whose credential
+ * this build cryptographically verified with clean status bits; a subset
+ * never renders as a bare level; banned terms appear nowhere.
+ */
+export function assertBadges(distDir, rendered, verdicts) {
   const badgeDir = join(distDir, "badge");
   const emitted = readdirSync(badgeDir).sort();
   const expectedFiles = rendered.flatMap((entry) => [`${entry.slug}.json`, `${entry.slug}.svg`]).sort();
@@ -107,14 +149,12 @@ export function assertBadges(distDir, rendered) {
   );
   for (const entry of rendered) {
     const c = entry.conformance;
-    assertBuild(c?.status !== "verified", `verified entry "${entry.slug}" must never reach static badge emission (Phase B worker territory)`);
-    const label = c && (c.scope === "subset" ? `${c.level} subset (${c.categories.join(", ")})` : `${c.level} full`);
-    const message = !c
-      ? "· listed"
-      : c.status === "in-verification"
-        ? `◌ ${label} in verification`
-        : `· ${label} self-reported`;
-    const color = c?.status === "in-verification" ? "ffb340" : "999999";
+    const verdict = verdicts.get(entry.slug);
+    assertBuild(
+      !(c?.status === "verified" || c?.status === "revoked") || verdict !== undefined,
+      `entry "${entry.slug}" reached badge assertion at status "${c?.status}" without a build verdict - the verifier must refuse first`,
+    );
+    const { message, color } = expectedBadge(entry, verdict);
 
     for (const ext of ["svg", "json"]) {
       const path = join(badgeDir, `${entry.slug}.${ext}`);
@@ -137,9 +177,12 @@ export function assertBadges(distDir, rendered) {
     assertBuild(shields.color === color, `dist/badge/${entry.slug}.json color does not match the entry's tier (${color})`);
     for (const [ext, bytes] of [["svg", svg], ["json", JSON.stringify(shields)]]) {
       assertBuild(!/certified|certification/i.test(bytes), `banned term leaked into dist/badge/${entry.slug}.${ext}`);
-      assertBuild(!bytes.includes("verified"), `"verified" leaked into static dist/badge/${entry.slug}.${ext} - that tier belongs to the Phase B worker`);
+      assertBuild(
+        bytes.includes("verified") === (verdict?.state === "verified"),
+        `"verified" in dist/badge/${entry.slug}.${ext} must appear exactly when the build verified the credential (state: ${verdict?.state ?? "none"})`,
+      );
     }
-    if (c?.scope === "subset") {
+    if (c?.scope === "subset" && shields.message.includes(c.level)) {
       assertBuild(shields.message.includes(`${c.level} subset (`), `subset badge for "${entry.slug}" must name its categories, never a bare level`);
     }
   }
