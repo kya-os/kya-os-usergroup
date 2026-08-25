@@ -8,7 +8,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { FOUNDING_CUTOFF, MIGRATE_LINES, PROMPTS, SUITE } from "./constants.mjs";
+import { MIGRATE_LINES, PROMPTS, SUITE } from "./constants.mjs";
 import { esc } from "./html.mjs";
 
 export function assertBuild(condition, message) {
@@ -210,27 +210,18 @@ export function assertProbeHonesty(pages, rendered, probes) {
 }
 
 /**
- * The founding cohort and the profile rows, per directory row (blocks
- * re-extracted from the page bytes, the cutoff compared here - never through
- * the renderer's own predicate): every rendered entry listed on or before
- * the cutoff, and no other, carries the founding-builder tag; every expanded
- * row carries its copy-ready badge embed.
+ * Profile rows, per directory row: every expanded row carries its copy-ready
+ * badge embed. (The founding-builder tag was retired by owner direction; its
+ * absence is asserted so it cannot quietly return without a decision.)
  */
 export function assertFoundingCohort(buildersHtml, rendered) {
   for (const entry of rendered) {
     const start = buildersHtml.indexOf(`id="${entry.slug}"`);
     assertBuild(start !== -1, `no directory row found for "${entry.slug}"`);
     const row = buildersHtml.slice(start, buildersHtml.indexOf("</details>", start));
-    const expected = entry.listedAt <= FOUNDING_CUTOFF;
-    assertBuild(
-      row.includes("founding builder") === expected,
-      `"${entry.slug}" (listed ${entry.listedAt}) must ${expected ? "" : "not "}carry the founding-builder tag (cutoff ${FOUNDING_CUTOFF})`,
-    );
     assertBuild(row.includes(`/badge/${entry.slug}.svg`), `the expanded row for "${entry.slug}" must carry its badge embed snippet`);
   }
-  const count = (buildersHtml.match(/founding builder/g) ?? []).length;
-  const expectedCount = rendered.filter((entry) => entry.listedAt <= FOUNDING_CUTOFF).length;
-  assertBuild(count === expectedCount, `${count} founding-builder tags rendered, expected ${expectedCount}`);
+  assertBuild(!buildersHtml.includes("founding builder"), "the retired founding-builder tag rendered");
 }
 
 /**

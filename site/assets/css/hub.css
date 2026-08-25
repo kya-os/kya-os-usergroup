@@ -177,6 +177,8 @@ summary.dgrid::-webkit-details-marker{display:none}
 summary.dgrid:hover{background:var(--panel-2)}
 .dname{display:flex;align-items:center;flex-wrap:wrap;gap:6px 9px;min-width:0}
 .dmark{width:16px;height:16px;border:1px solid var(--line-mid);color:var(--ink-muted);font-family:var(--font-mono);font-size:9px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.dmark-logo{display:inline-flex;align-items:center;justify-content:center;background:transparent;border:none}
+.dmark-wide{width:auto}
 .dtitle{font-family:var(--font-mono);font-size:13px;color:var(--ink-bright);white-space:nowrap}
 .live-dot{width:6px;height:6px;border-radius:50%;background:var(--signal);animation:liveDot 2.4s ease-in-out infinite;flex-shrink:0}
 /* Probe-classified live signals: open is muted (honest, not shamed),
@@ -184,7 +186,6 @@ summary.dgrid:hover{background:var(--panel-2)}
 .dot-open{background:var(--ink-muted);animation:none;box-shadow:none}
 .dot-off{background:transparent;border:1px solid var(--ink-faint);animation:none}
 .dprobe{font-family:var(--font-mono);font-size:11px;line-height:1.7;margin:0 0 12px}
-.tag-founding{font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;color:var(--ink-muted);border:1px dashed var(--line-quiet);padding:1px 7px;white-space:nowrap}
 .dtype{font-family:var(--font-mono);font-size:10px;color:var(--ink-dim)}
 .dwhat{font-size:13px;line-height:1.6;color:var(--ink-dim);min-width:0}
 .dconf .chip{font-size:10px}

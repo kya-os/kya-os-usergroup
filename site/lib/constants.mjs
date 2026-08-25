@@ -34,11 +34,6 @@ export const SUITE = {
   vectorSetHash: "sha256:81d537d4574d3f66d651a03ca41c0b18493b67ea6f3e61aba47d1bda4f3cf49b",
 };
 
-// The founding window: entries listed on or before this date carry the
-// "founding builder" tag in the directory (site-only; badges are unchanged).
-// The window closes with the Phase C announcement - adjust this date by one
-// PR when that lands.
-export const FOUNDING_CUTOFF = "2026-09-30";
 
 export const TITLE = "KYA-OS Builders";
 export const DESCRIPTION =

@@ -180,8 +180,9 @@ export class ScrollSkew {
     const currentScroll = window.scrollY;
     const delta = currentScroll - this.lastScroll;
     this.lastScroll = currentScroll;
-    const excess = Math.max(0, Math.abs(delta) - 14) * Math.sign(delta);
-    this.targetSkew = clamp(excess * 0.05 * this.options.skewAmount, -this.options.skewAmount, this.options.skewAmount);
+    // 1:1 with kya-os.org's SmoothScroll: plain velocity mapping, no dead
+    // zone, same 0.1 factor - the two sites must feel identical under hand.
+    this.targetSkew = clamp(delta * 0.1 * this.options.skewAmount, -this.options.skewAmount, this.options.skewAmount);
   }
   update() {
     this.targetSkew *= 0.95;
