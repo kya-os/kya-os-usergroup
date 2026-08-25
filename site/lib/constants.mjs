@@ -4,6 +4,7 @@
  * Everything here is data, not behavior - renderers import from this file
  * so a URL or suite pin changes in exactly one place.
  */
+import { newEntryUrl } from "../../scripts/lib/builder-entry.mjs";
 
 export const ORIGIN = "https://builders.kya-os.org"; // planned; final URL decision open
 export const SITE_URL = "https://kya-os.org";
@@ -42,10 +43,12 @@ export const TITLE = "KYA-OS Builders";
 export const DESCRIPTION =
   "The KYA-OS community registry: who builds on it, what conforms to it, and the standards it carries.";
 
-// The prefilled "Add your project" link: opens the GitHub new-file editor on
-// registry/builders/ with the entry template already in the buffer. GitHub
-// auto-forks for non-collaborators and opens the PR from the fork.
-const ENTRY_TEMPLATE = {
+// The entry template: the file contributors start from, the JSON the
+// builders page's entry builder shows before a field is typed, and the
+// buffer the prefilled "Add your project" link opens the GitHub new-file
+// editor on registry/builders/ with (GitHub auto-forks for
+// non-collaborators and opens the PR from the fork). Keys in schema order.
+export const ENTRY_TEMPLATE = {
   name: "Your Project",
   slug: "your-project",
   description: "One or two sentences on what you ship on KYA-OS.",
@@ -56,9 +59,7 @@ const ENTRY_TEMPLATE = {
   contact: { github: "your-github-username" },
   listedAt: "YYYY-MM-DD",
 };
-export const ADD_PROJECT_URL = `${REPO_URL}/new/main/registry/builders?filename=your-project.json&value=${encodeURIComponent(
-  JSON.stringify(ENTRY_TEMPLATE, null, 2) + "\n",
-)}`;
+export const ADD_PROJECT_URL = newEntryUrl(REPO_URL, ENTRY_TEMPLATE);
 
 // The copy-to-agent prompts: curated onboarding prompts a visitor hands to
 // their coding agent. Each renders as BOTH the copy button's payload and its

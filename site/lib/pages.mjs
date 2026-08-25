@@ -12,8 +12,9 @@ import { DESCRIPTION, ORIGIN, TITLE } from "./constants.mjs";
 import { esc, pageShell } from "./html.mjs";
 import { sectionsConformance } from "./program.mjs";
 import { sectionsRails, sectionsStandards, sectionsUseCases } from "./rails.mjs";
+import { sectionEntryBuilder } from "./entry-builder.mjs";
 import { sectionsHome } from "./home.mjs";
-import { sectionDirectory, sectionStartHere, sectionSubmit } from "./sections.mjs";
+import { sectionAddCta, sectionDirectory, sectionStartHere, sectionSubmit } from "./sections.mjs";
 
 function metaHead({ title, description, path }) {
   return `<meta name="description" content="${esc(description)}" />
@@ -37,12 +38,13 @@ function pageHero({ title, lede }) {
   </header>`;
 }
 
-function contentPage({ title, description, path, hero, sections }) {
+function contentPage({ title, description, path, hero, sections, modules }) {
   return pageShell({
     title,
     headExtra: metaHead({ title, description, path }),
     body: [hero, ...sections].join("\n"),
     current: path,
+    modules,
   });
 }
 
@@ -56,17 +58,18 @@ export function renderLandingHtml({ rendered, interopSorted }) {
   });
 }
 
-/** The directory: filterable registry rows, the on-ramps, and the submission paths. */
-export function renderBuildersHtml({ rendered, probes, verdicts }) {
+/** The directory: the add-your-project strip, filterable registry rows, the on-ramps, the entry builder, and the submission paths. */
+export function renderBuildersHtml({ rendered, interopSorted, probes, verdicts }) {
   return contentPage({
     title: `Builders · ${TITLE}`,
     description: "Who builds on KYA-OS: implementations, services, integrations, templates, and examples - one PR to get listed.",
     path: "/builders/",
     hero: pageHero({
       title: "BUILDERS",
-      lede: "Everyone building on KYA-OS, in one registry - ordered by how much has been proven. Conformance here is measured against the pinned vector suite, never self-asserted.",
+      lede: "Everyone building on KYA-OS, in one registry. Verified implementations lead the list, and every listing is one pull request away. Conformance here is measured against the pinned vector suite, never self-asserted.",
     }),
-    sections: [sectionDirectory(rendered, probes, verdicts), sectionStartHere(), sectionSubmit()],
+    sections: [sectionAddCta(), sectionDirectory(rendered, probes, verdicts), sectionStartHere(), sectionEntryBuilder(interopSorted), sectionSubmit()],
+    modules: ["entry-builder.js"],
   });
 }
 

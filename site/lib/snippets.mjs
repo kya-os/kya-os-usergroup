@@ -15,6 +15,7 @@
  * render with the diff gutter); `text` is a plain snippet. snippetText()
  * gives the clipboard bytes for either.
  */
+import { ENTRY_TEMPLATE } from "./constants.mjs";
 
 /** The "before" block: a standard MCP server with no identity or proofs. */
 export const MIGRATE_BEFORE = {
@@ -46,7 +47,14 @@ export const MIGRATE_AFTER = {
   ],
 };
 
-export const SNIPPETS = [MIGRATE_BEFORE, MIGRATE_AFTER];
+/**
+ * The entry template: what the builders page's entry builder shows before a
+ * field is typed (the live preview replaces it as the visitor types) and
+ * what the no-JS <details> fallback carries.
+ */
+export const ENTRY_PREVIEW = { id: "entry-preview", text: JSON.stringify(ENTRY_TEMPLATE, null, 2) };
+
+export const SNIPPETS = [MIGRATE_BEFORE, MIGRATE_AFTER, ENTRY_PREVIEW];
 
 /** The plain-text bytes of a snippet: what the clipboard receives. */
 export function snippetText(snippet) {

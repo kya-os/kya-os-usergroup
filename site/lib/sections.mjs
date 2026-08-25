@@ -145,6 +145,16 @@ function directoryRow(entry, probes, verdicts) {
       </details>`;
 }
 
+/** The compact add-your-project strip under the lede: the invitation first, the detail at the bottom. */
+export function sectionAddCta() {
+  return `  <div class="cta-strip fx fxd-10">
+    <span class="cta-lede">Add your project: one JSON file, one pull request, listed in five minutes.</span>
+    <a class="btn-solid" href="#build-entry">build your entry -&gt;</a>
+    <a href="${esc(ADD_PROJECT_URL)}">or open the prefilled editor -&gt;</a>
+    <a class="quiet" href="#submit">the three paths -&gt;</a>
+  </div>`;
+}
+
 /** The directory: CSS-only type filter + expandable registry rows. */
 export function sectionDirectory(rendered, probes, verdicts) {
   const types = ["all", ...KINDS];

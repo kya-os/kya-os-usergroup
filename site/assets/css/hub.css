@@ -368,17 +368,47 @@ a.btn-solid:hover{background:var(--accent-hover);color:var(--on-accent)}
 .wf-label{font-family:var(--font-mono);font-size:9px;letter-spacing:.12em;white-space:nowrap;line-height:1}
 .wf-sm .wf-label{font-size:8px}
 
-/* ── Copy-to-agent prompt ─────────────────────────────────────────────────── */
+/* ── Copy-to-agent prompt + the generic disclosure ────────────────────────── */
 .agent-prompt{margin-top:28px}
 .copy-btn{font-family:var(--font-mono);font-size:12px;letter-spacing:.06em;color:var(--ink);background:transparent;border:1px solid var(--line-mid);padding:10px 16px;cursor:pointer}
 .copy-btn:hover{color:var(--ink-bright);border-color:var(--line-strong);background:var(--panel-3)}
 .copy-btn.copied{color:var(--signal);border-color:color-mix(in srgb,var(--signal) 45%,transparent)}
-.prompt-fallback{margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--ink-muted)}
-.prompt-fallback summary{cursor:pointer;letter-spacing:.06em;list-style:none}
-.prompt-fallback summary::-webkit-details-marker{display:none}
-.prompt-fallback summary::before{content:"+ "}
-.prompt-fallback[open] summary::before{content:"\2212 "}
-.prompt-fallback pre{white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid var(--line);background:var(--panel);padding:14px 16px;margin-top:8px;color:var(--ink);font-size:12px;line-height:1.7;user-select:all;max-width:760px}
+.prompt-fallback,.disclosure{margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--ink-muted)}
+.disclosure{margin-top:24px}
+.prompt-fallback summary,.disclosure summary{cursor:pointer;letter-spacing:.06em;list-style:none}
+.prompt-fallback summary::-webkit-details-marker,.disclosure summary::-webkit-details-marker{display:none}
+.prompt-fallback summary::before,.disclosure summary::before{content:"+ "}
+.prompt-fallback[open] summary::before,.disclosure[open] summary::before{content:"\2212 "}
+.prompt-fallback pre,.disclosure pre{white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid var(--line);background:var(--panel);padding:14px 16px;margin-top:8px;color:var(--ink);font-size:12px;line-height:1.7;user-select:all;max-width:760px}
+.disclosure .note{font-family:var(--font-sans);max-width:760px}
+
+/* ── Builders: the add-your-project strip + the entry builder ─────────────── */
+.cta-strip{display:flex;flex-wrap:wrap;align-items:center;gap:14px 24px;border:1px solid var(--line-mid);background:var(--panel-2);padding:16px 22px;margin-top:-36px;font-family:var(--font-mono);font-size:12px;color:var(--ink-muted)}
+.cta-lede{color:var(--ink);font-family:var(--font-sans);font-size:14px;flex:1 1 320px}
+.cta-strip .btn-solid{margin-top:0;padding:8px 14px;font-size:12px}
+.cta-strip+section{margin-top:44px}
+.eb-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:start}
+.eb-field{margin-bottom:16px}
+.eb-label{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;color:var(--ink-muted);margin-bottom:6px}
+.eb-opt,.eb-count{color:var(--ink-faint);letter-spacing:0}
+.eb input,.eb textarea,.eb select{width:100%;font-family:var(--font-mono);font-size:12.5px;color:var(--ink);background:var(--panel);border:1px solid var(--line-mid);padding:8px 10px;border-radius:0}
+.eb input:focus,.eb textarea:focus,.eb select:focus{outline:1px solid var(--signal);outline-offset:0;border-color:var(--line-strong)}
+.eb textarea{resize:vertical;line-height:1.6}
+.eb select[multiple]{padding:4px}
+.eb select[multiple] option{padding:3px 6px}
+.eb-checks{display:flex;flex-wrap:wrap;gap:6px 18px;padding-top:4px}
+.eb-check{display:inline-flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:12px;color:var(--ink)}
+.eb .eb-check input{width:auto;accent-color:var(--signal)}
+.eb-hint{display:block;font-family:var(--font-mono);font-size:10px;color:var(--ink-faint);margin-top:5px}
+.eb-err{display:block;font-family:var(--font-mono);font-size:11px;line-height:1.6;color:var(--amber);margin-top:5px}
+.eb-err:empty{display:none}
+.eb-side{position:sticky;top:76px}
+.eb-file{font-family:var(--font-mono);font-size:11px;color:var(--ink-muted);margin-bottom:8px}
+.eb-file span{color:var(--ink)}
+.eb-json{font-family:var(--font-mono);font-size:12px;line-height:1.7;color:var(--ink);background:var(--panel);border:1px solid var(--line);padding:14px 16px;margin:0;white-space:pre-wrap;overflow-wrap:anywhere;min-height:200px}
+.eb-actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:16px}
+.eb-actions .btn-solid{margin-top:0}
+.btn-solid[aria-disabled="true"]{opacity:.45;cursor:not-allowed}
 
 /* ── Footer + 404 ─────────────────────────────────────────────────────────── */
 footer{border-top:1px solid var(--line);margin-top:100px;padding:28px 0 48px;display:flex;flex-wrap:wrap;gap:16px 28px;align-items:center;justify-content:space-between;font-family:var(--font-mono);font-size:12px;color:var(--ink-muted)}
@@ -397,8 +427,9 @@ footer a:hover{color:var(--ink-bright)}
 }
 @media (max-width:800px){
   .showcase{grid-template-columns:1fr;padding:28px}
-  .grid-3{grid-template-columns:1fr}
+  .grid-3,.eb-grid{grid-template-columns:1fr}
   .sexpand{margin-left:0;min-width:0}
+  .eb-side{position:static}
 }
 @media (max-width:640px){
   main{padding:150px 20px 0}

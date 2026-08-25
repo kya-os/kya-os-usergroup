@@ -9,8 +9,8 @@
  * and the certified check scans raw bytes, so a regression in a formatter
  * cannot make its own assertion pass. The CSP check recomputes the script
  * hash from the emitted page bytes for the same reason; the font, mark, and
- * ui-module checks re-read the committed files rather than trusting the copy
- * step; the prompt-parity check re-extracts button/fallback pairs from the
+ * ui-module checks (lib/module-checks.mjs) re-read the committed files
+ * rather than trusting the copy step; the copy-parity check re-extracts button/fallback pairs from the
  * page bytes and matches them against lib/constants.mjs and
  * lib/snippets.mjs. The theme, gating, copy-parity, migration-hook, and
  * suite-pin checks live in lib/checks.mjs (split to keep
@@ -19,7 +19,7 @@
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { SUITE, TEMPLATE_SLUG } from "./constants.mjs";
+import { REPO_URL, SUITE, TEMPLATE_SLUG } from "./constants.mjs";
 import { assertBadges } from "./badge.mjs";
 import { assertCredentialArtifacts } from "./credential-checks.mjs";
 import { withConformance } from "./data.mjs";
@@ -35,6 +35,7 @@ import {
   assertSuitePinAgreement,
   assertThemeIntegrity,
 } from "./checks.mjs";
+import { assertClientModules } from "./module-checks.mjs";
 import { THEME_COLORS } from "./theme.mjs";
 
 const PAGE_FILES = [
@@ -50,14 +51,13 @@ const FONT_FILES = ["fonts/space-grotesk-latin-wght.woff2", "fonts/jetbrains-mon
 const FONT_LICENSES = ["fonts/space-grotesk-OFL.txt", "fonts/jetbrains-mono-OFL.txt"];
 const MARK_FILES = ["img/kya-mark-white.svg", "img/kya-mark-black.svg"];
 const CSS_FILES = ["tokens.css", "hub.css"];
-const UI_FILES = ["copy-prompt.js", "page-fx.js"];
 
 /**
  * The script and style contract, per page: exactly ONE inline script (the
  * theme toggle + js-anim pre-paint gate + page-fx failsafe), byte-identical
  * across pages, whose sha256 is exactly the hash the _headers CSP allows -
  * recomputed from the page bytes, never trusted from the build's own
- * constants - plus the two module tags; all script tags in <head>,
+ * constants - plus the module tags (lib/module-checks.mjs); all script tags in <head>,
  * reduced-motion guard, js-anim gate, and failsafe intact. Styles are the
  * mirror image: style-src is 'self', so every page must link both
  * same-origin stylesheets and carry NO <style> block and NO style attribute
@@ -76,12 +76,6 @@ function assertPageScripts(name, html, themeHash, referenceScript) {
   assertBuild(scripts[0].includes("__pageFxInit"), `${name}: the theme script lost the 2.5s page-fx failsafe`);
   assertBuild(scripts[0].includes("data-theme"), `${name}: the theme script no longer drives data-theme`);
   assertBuild(html.includes('id="theme-toggle"'), `${name}: the theme toggle button is missing`);
-  for (const module of UI_FILES) {
-    assertBuild(
-      html.includes(`<script type="module" src="/ui/${module}"></script>`),
-      `${name}: the /ui/${module} module tag is missing`,
-    );
-  }
   for (const href of ["/tokens.css", "/hub.css"]) {
     assertBuild(html.includes(`<link rel="stylesheet" href="${href}" />`), `${name}: the ${href} stylesheet link is missing`);
   }
@@ -119,11 +113,13 @@ export function runRenderChecks({ distDir, rendered, interopSorted, probes, cred
     const committed = readFileSync(join(distDir, "..", "site", "assets", "css", name), "utf8");
     assertBuild(sheets[name] === stripCss(committed), `dist/${name} is not the comment-stripped copy of site/assets/css/${name}`);
   }
-  // Budget raised 25KB -> 32KB with the Builders Site design swap: six pages
-  // of layout (directory grid + CSS-only filter, rails diagrams, badge
-  // lockups) ship ~28KB; the ceiling still catches runaway growth.
+  // Budget raised 25KB -> 32KB with the Builders Site design swap (six pages
+  // of layout: directory grid + CSS-only filter, rails diagrams, badge
+  // lockups), then 32KB -> 40KB with the developer-conversion pass (the
+  // entry-builder form, the Before / After pair, the badge preview); the
+  // ceiling still catches runaway growth.
   const cssBytes = CSS_FILES.reduce((sum, name) => sum + Buffer.byteLength(sheets[name]), 0);
-  assertBuild(cssBytes <= 32 * 1024, `emitted CSS is ${cssBytes} bytes; the budget is 32KB total`);
+  assertBuild(cssBytes <= 40 * 1024, `emitted CSS is ${cssBytes} bytes; the budget is 40KB total`);
   assertThemeIntegrity(sheets);
   assertAnimGating(sheets);
 
@@ -146,30 +142,9 @@ export function runRenderChecks({ distDir, rendered, interopSorted, probes, cred
   assertCopyParity(pages);
   assertMigrateHook(pages["index.html"]);
 
-  // Client modules: dist/ui/*.js must be exact byte copies of the committed
-  // site/assets/ui/*.js (both directions - same file set), page-fx must keep
-  // its reduced-motion / js-anim guard and the failsafe handshake, and
-  // copy-prompt must keep the hidden-button reveal (the no-JS contract).
-  const uiSrcDir = join(distDir, "..", "site", "assets", "ui");
-  const uiCommitted = readdirSync(uiSrcDir, { recursive: true }).map(String).filter((n) => n.endsWith(".js")).sort();
-  const uiBuilt = readdirSync(join(distDir, "ui"), { recursive: true }).map(String).filter((n) => n.endsWith(".js")).sort();
-  assertBuild(uiBuilt.join(",") === UI_FILES.join(","), `dist/ui/ (${uiBuilt.join(", ")}) must hold exactly: ${UI_FILES.join(", ")}`);
-  assertBuild(uiCommitted.join(",") === UI_FILES.join(","), `site/assets/ui/ (${uiCommitted.join(", ")}) must hold exactly: ${UI_FILES.join(", ")}`);
-  for (const name of uiCommitted) {
-    const built = readFileSync(join(distDir, "ui", name));
-    assertBuild(built.equals(readFileSync(join(uiSrcDir, name))), `dist/ui/${name} is not a byte copy of site/assets/ui/${name}`);
-  }
-  const pageFx = readFileSync(join(distDir, "ui", "page-fx.js"), "utf8");
-  assertBuild(
-    pageFx.includes("prefers-reduced-motion") && pageFx.includes("js-anim"),
-    "page-fx.js lost its reduced-motion / js-anim guard",
-  );
-  assertBuild(pageFx.includes("__pageFxInit"), "page-fx.js lost the failsafe handshake (__pageFxInit)");
-  const copyPrompt = readFileSync(join(distDir, "ui", "copy-prompt.js"), "utf8");
-  assertBuild(
-    copyPrompt.includes("data-copy-target") && copyPrompt.includes("hidden = false"),
-    "copy-prompt.js lost the hidden-button reveal wiring",
-  );
+  // Client modules: byte copies, the generated vocabulary, the import graph,
+  // per-page module tags, and the no-JS guard lines (lib/module-checks.mjs).
+  assertClientModules({ distDir, pages, interopSorted, repoUrl: REPO_URL });
 
   // Fonts and marks: dist copies must be exact byte copies of the committed
   // sources, each font must really be woff2 (leading wOF2 magic), and the
