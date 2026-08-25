@@ -52,6 +52,7 @@ import {
   encodeStatusList,
   signCredential,
   verifyCredential,
+  verifyStatusListAgainstCommittedKey,
 } from "./lib/attest.mjs";
 import { decodePrivateKeyMultibase, encodePublicKeyMultibase, publicRawFromSeed } from "./lib/keys.mjs";
 import { validateRegistry } from "./validate.mjs";
@@ -191,7 +192,7 @@ for (const purpose of STATUS_PURPOSES) {
   let bytes;
   try {
     const existing = JSON.parse(readFileSync(path, "utf8"));
-    const { ok, reason } = verifyCredential(existing, statusKey.key.publicKeyMultibase);
+    const { ok, reason } = verifyStatusListAgainstCommittedKey(existing, programKeys);
     if (!ok) fail(`existing ${purpose} list proof does not verify (${reason}) - refusing to carry its bits forward`);
     bytes = decodeStatusList(existing.credentialSubject.encodedList);
   } catch (err) {

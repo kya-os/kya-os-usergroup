@@ -174,6 +174,25 @@ export function signingInput(unsecuredDocument, proofOptions) {
  * bytes. `created` defaults to the document's validFrom so committed
  * artifacts stay a pure function of their inputs.
  */
+/**
+ * Verify an EXISTING status list against the committed status key its own
+ * proof names - not against whichever key the current environment holds.
+ * This is what keeps the documented rotation path working: after a rotation
+ * the environment signs NEW lists with status-2 while the committed list on
+ * disk still carries a valid status-1 proof, and both must verify against
+ * registry/keys/program-keys.json (which retains rotated-out keys exactly
+ * for this). Fails closed on an unknown, non-status, or mismatched key.
+ */
+export function verifyStatusListAgainstCommittedKey(list, programKeys) {
+  const vm = list?.proof?.verificationMethod;
+  if (typeof vm !== "string" || !vm.includes("#")) return { ok: false, reason: "proof.verificationMethod missing or malformed" };
+  const fragment = vm.slice(vm.indexOf("#") + 1);
+  const key = (programKeys?.keys ?? []).find((candidate) => candidate.id === fragment);
+  if (key === undefined) return { ok: false, reason: `proof names uncommitted key "${fragment}"` };
+  if (key.purpose !== "status") return { ok: false, reason: `proof names a "${key.purpose}" key - status lists are signed by status keys only` };
+  return verifyCredential(list, key.publicKeyMultibase);
+}
+
 export function signCredential(document, privateKeyMultibaseOrSeed, verificationMethod, { created, proofPurpose = "assertionMethod" } = {}) {
   const seed =
     typeof privateKeyMultibaseOrSeed === "string" ? decodePrivateKeyMultibase(privateKeyMultibaseOrSeed) : privateKeyMultibaseOrSeed;

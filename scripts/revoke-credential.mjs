@@ -38,6 +38,7 @@ import {
   signCredential,
   statusBitAt,
   verifyCredential,
+  verifyStatusListAgainstCommittedKey,
 } from "./lib/attest.mjs";
 import { decodePrivateKeyMultibase, encodePublicKeyMultibase, publicRawFromSeed } from "./lib/keys.mjs";
 import { validateRegistry } from "./validate.mjs";
@@ -100,7 +101,7 @@ try {
   fail(`registry/credentials/status/${listPurpose}-1.json: ${err.message}`);
 }
 {
-  const { ok, reason } = verifyCredential(existing, statusKey.publicKeyMultibase);
+  const { ok, reason } = verifyStatusListAgainstCommittedKey(existing, programKeys);
   if (!ok) fail(`current ${listPurpose} list proof does not verify (${reason}) - refusing to rewrite unverified bits`);
 }
 const bytes = decodeStatusList(existing.credentialSubject.encodedList);
