@@ -10,7 +10,7 @@ export const BADGE_ALLOWLIST = {
   "hobbsidian": { name: "Hobbsidian", claim: null, status: null, credentialUrl: null },
   "knowthat-ai": { name: "KnowThat.ai", claim: null, status: null, credentialUrl: null },
   "kya-os-demo-server": { name: "KYA-OS Demo Server", claim: "L3 full", status: "in-verification", credentialUrl: null },
-  "kya-os-mcp": { name: "@kya-os/mcp (reference implementation)", claim: "L3 full", status: "in-verification", credentialUrl: null },
+  "kya-os-mcp": { name: "@kya-os/mcp (reference implementation)", claim: "L3 full", status: "verified", credentialUrl: "https://builders.kya-os.org/credentials/636af54c4ca34597c0a0460db3e1da14.json" },
   "kya-os-schema": { name: "KYA-OS Schema Registry", claim: null, status: null, credentialUrl: null },
   "mycelium-trails": { name: "Mycelium Trails", claim: "L1 subset (signed-proof)", status: "in-verification", credentialUrl: null },
   "revoked-demo": { name: "REVOKED", claim: null, status: null, credentialUrl: null },
