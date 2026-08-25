@@ -9,7 +9,8 @@
     "level": "L3",
     "scope": "full",
     "suiteVersion": "1.0.0",
-    "status": "in-verification",
+    "status": "verified",
+    "attestationUrl": "https://builders.kya-os.org/credentials/636af54c4ca34597c0a0460db3e1da14.json",
     "evidenceUrl": "https://github.com/kya-os/kya-os-usergroup/issues/6"
   },
   "listedAt": "2026-08-20"
