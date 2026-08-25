@@ -190,7 +190,7 @@ export class ScrollSkew {
     if (Math.abs(this.currentSkew) > 0.001) {
       this.options.elements.forEach((el) => { el.style.transform = `skewY(${this.currentSkew}deg)`; });
     }
-    requestAnimationFrame(this.update.bind(this));
+    this.rafId = requestAnimationFrame(this.update.bind(this));
   }
 }
 
@@ -222,7 +222,14 @@ export async function initPageFx() {
     if (el.children.length === 0) new GlitchText(el);
   });
   const main = document.querySelector("main");
-  if (main) new ScrollSkew({ elements: [main], skewAmount: 0.8 });
+  if (main) {
+    // 1:1 FEEL with kya-os.org, not just 1:1 math: skewY displaces edges in
+    // proportion to element width, and the reference skews an 800px spec
+    // column. Normalize so our wider main shears the same pixels at the
+    // same scroll velocity (capped at the reference amount on narrow views).
+    const skewAmount = Math.min(0.8, 0.8 * (800 / Math.max(main.clientWidth, 1)));
+    new ScrollSkew({ elements: [main], skewAmount });
+  }
 }
 
 // The inline theme script sets html.js-anim only when prefers-reduced-motion

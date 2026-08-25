@@ -179,6 +179,9 @@ summary.dgrid:hover{background:var(--panel-2)}
 .dmark{width:16px;height:16px;border:1px solid var(--line-mid);color:var(--ink-muted);font-family:var(--font-mono);font-size:9px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
 .dmark-logo{display:inline-flex;align-items:center;justify-content:center;background:transparent;border:none}
 .dmark-wide{width:auto}
+/* Wordmark logos keep their own aspect: the nav's .mark 16x18 lock is for
+   the square KYA mark only. */
+.dmark-wide .mark{width:auto;height:14px}
 .dtitle{font-family:var(--font-mono);font-size:13px;color:var(--ink-bright);white-space:nowrap}
 .live-dot{width:6px;height:6px;border-radius:50%;background:var(--signal);animation:liveDot 2.4s ease-in-out infinite;flex-shrink:0}
 /* Probe-classified live signals: open is muted (honest, not shamed),
