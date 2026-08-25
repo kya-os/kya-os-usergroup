@@ -68,9 +68,14 @@ A `conformance` block states what you proved against the [pinned vector suite](c
 ```
 
 - `scope: "subset"` requires `categories` - a subset never renders as a bare level.
-- `status` starts at `self-reported`; it becomes `in-verification` when your [submission issue](https://github.com/kya-os/kya-os-usergroup/issues/new?template=conformance_submission.yml) is open on this repo, and `verified` only when the program's re-run issues a credential - at which point `attestationUrl` (the credential's canonical URL) is required.
+- `status` starts at `self-reported`; it becomes `in-verification` when your [submission issue](https://github.com/kya-os/kya-os-usergroup/issues/new?template=conformance_submission.yml) is open on this repo.
   (Claims already in flight as issues on the spec repo remain valid `evidenceUrl` targets; new submission issues open here.)
-  The validator enforces both rules, and the site renders `verified` green only as a link to that credential.
+- **You never set `verified` yourself.**
+  After the program re-runs your suite and posts its verdict on your submission issue, a maintainer triggers the gated issuance workflow (approval-protected; see [conformance/README.md, "Issuance and custody (v1.5)"](conformance/README.md#issuance-and-custody-v15)).
+  It signs a W3C credential for exactly what the re-run observed, flips your entry to `verified` with the credential's canonical URL as `attestationUrl`, and opens the issuance PR; when that merges, the site build cryptographically re-verifies your credential on every deploy and renders your claim green and your badge `✓ <claim> verified`.
+  A hand-set `verified` cannot pass: the validator requires `attestationUrl` to point at a committed credential whose subject matches your entry, and the build refuses to render unless that credential's signature verifies and its status bits are clean.
+- `revoked` is the terminal post-verified status, set only by the program's revocation workflow; the entry keeps `attestationUrl` because the revoked credential and its status-list bit are the public record.
+  A suspension (a dispute under review) needs no entry change: the build reads the suspension bit and renders the claim as `under appeal` until it is resolved.
 - `evidenceUrl` (optional, strongly recommended) is the public record grounding a non-verified claim - your submission issue or verification thread.
   The site renders `self-reported` and `in-verification` chips as links to it, so put it on the entry as soon as the issue exists.
 - Run the suite first: the [conformance starter](conformance/starter/) takes you from an existing implementation to a submission-ready `claim.json` in under an hour.
