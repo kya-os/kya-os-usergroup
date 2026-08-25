@@ -1,10 +1,17 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "KYA-OS interop registry entry",
-  "description": "One standards-rail listing in the KYA-OS interop registry. Each entry lives at registry/interop/<slug>.json and the filename must equal the `slug` property. Entries state, with evidence, how KYA-OS relates to an external standard. Structural validation is enforced by scripts/validate.mjs; keep that script and this schema in sync. Honesty rule: `shipping` and `specified` require an evidence URL; a status is never listed above what the evidence shows.",
+  "description": "One standards-rail listing in the KYA-OS interop registry. Each entry lives at registry/interop/<slug>.json and the filename must equal the `slug` property. Entries state, with evidence, how KYA-OS relates to an external standard. Structural validation is enforced by scripts/validate.mjs; keep that script and this schema in sync. Honesty rule: `shipping` and `specified` require an evidence URL; a status is never listed above what the evidence shows. `implementation`, when present, points at the reference implementation's own file (kya-os-mcp on GitHub) or its npm package.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["standard", "slug", "category", "relationship", "status", "listedAt"],
+  "required": [
+    "standard",
+    "slug",
+    "category",
+    "relationship",
+    "status",
+    "listedAt"
+  ],
   "properties": {
     "standard": {
       "type": "string",
@@ -37,7 +44,13 @@
       "description": "One-line statement of how KYA-OS relates to the standard (200 characters max). Details and caveats go in `notes`."
     },
     "status": {
-      "enum": ["shipping", "specified", "planned", "exploring", "none"],
+      "enum": [
+        "shipping",
+        "specified",
+        "planned",
+        "exploring",
+        "none"
+      ],
       "description": "Integration maturity. shipping = code at the current release; specified = normative spec text without shipped code; planned = on the roadmap; exploring = under evaluation; none = explicitly no current relationship (listed so nobody has to guess). When maturity is mixed, list the conservative tier and explain in `notes`."
     },
     "evidence": {
@@ -45,6 +58,12 @@
       "format": "uri",
       "pattern": "^https://",
       "description": "URL of the code or spec text that proves the status. Required when status is shipping or specified."
+    },
+    "implementation": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://(github\\.com/decentralized-identity/kya-os-mcp/|(www\\.)?npmjs\\.com/)",
+      "description": "Where the reference implementation implements this: an https URL under github.com/decentralized-identity/kya-os-mcp (a blob path to the implementing file) or npmjs.com. Optional; expected on shipping rows."
     },
     "notes": {
       "type": "string",
@@ -59,10 +78,21 @@
     }
   },
   "if": {
-    "properties": { "status": { "enum": ["shipping", "specified"] } },
-    "required": ["status"]
+    "properties": {
+      "status": {
+        "enum": [
+          "shipping",
+          "specified"
+        ]
+      }
+    },
+    "required": [
+      "status"
+    ]
   },
   "then": {
-    "required": ["evidence"]
+    "required": [
+      "evidence"
+    ]
   }
 }

@@ -53,7 +53,15 @@ function standardsRow(entry) {
   const lockup = PROOF_BEARING.has(entry.slug)
     ? `\n            ${waveformLockup(`kya-os:${entry.slug}`, { label: "proof-bearing rail", bars: 14, trackHeight: 10, small: true })}`
     : "";
-  const evidence = entry.evidence ? `<a href="${esc(entry.evidence)}">evidence -&gt;</a>\n            ` : "";
+  // evidence grounds the status; implementation is where the reference
+  // implementation does it. When both name the same file, one link says so.
+  const links = [];
+  if (entry.evidence && entry.evidence === entry.implementation) links.push(`<a href="${esc(entry.evidence)}">evidence &middot; impl -&gt;</a>`);
+  else {
+    if (entry.evidence) links.push(`<a href="${esc(entry.evidence)}">evidence -&gt;</a>`);
+    if (entry.implementation) links.push(`<a href="${esc(entry.implementation)}">impl -&gt;</a>`);
+  }
+  const evidence = links.length ? `${links.join("\n            ")}\n            ` : "";
   const notes = entry.notes ? `\n            <p class="srow-notes">${esc(entry.notes)}</p>` : "";
   const name =
     // Never an anchor: the name sits inside the row's <summary>, and a link

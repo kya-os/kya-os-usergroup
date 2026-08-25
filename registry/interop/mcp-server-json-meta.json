@@ -5,6 +5,7 @@
   "relationship": "Projects the Entity Card, inline or by-ref, into the MCP Registry _meta extension point.",
   "status": "shipping",
   "evidence": "https://github.com/decentralized-identity/kya-os-mcp/blob/main/src/card/emit.ts",
+  "implementation": "https://github.com/decentralized-identity/kya-os-mcp/blob/main/src/card/emit.ts",
   "notes": "toServerCardMeta in src/card/emit.ts; SPEC-ENTITY-CARD section 6.1. SEP-2127 server-card is cited as an informative reference.",
   "listedAt": "2026-08-19"
 }

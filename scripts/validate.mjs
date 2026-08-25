@@ -44,6 +44,9 @@
  *   - relationship: string, 1-200 chars
  *   - status: shipping|specified|planned|exploring|none
  *   - evidence: https URL, REQUIRED when status is shipping or specified
+ *   - implementation: optional https URL under github.com/decentralized-
+ *     identity/kya-os-mcp or npmjs.com - where the reference implementation
+ *     implements the row
  *   - notes: optional string, 1-600 chars
  *   - listedAt: real calendar date, YYYY-MM-DD
  *
@@ -70,6 +73,9 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "..");
 const buildersDir = join(repoRoot, "registry", "builders");
 const interopDir = join(repoRoot, "registry", "interop");
+// Where a reference-implementation pointer may live: the kya-os-mcp tree on
+// GitHub or its npm package.
+const IMPLEMENTATION_RE = /^https:\/\/(github\.com\/decentralized-identity\/kya-os-mcp\/|(www\.)?npmjs\.com\/)/;
 
 function readDirEntries(dir, relDir, errors) {
   const parsed = [];
@@ -128,6 +134,9 @@ function checkInteropEntry(entry, file, fail) {
     fail(`"evidence" is required when status is "${entry.status}" (a status is never listed above what the evidence shows)`);
   }
   if (entry.evidence !== undefined && !isHttpsUrl(entry.evidence)) fail('"evidence" must be a valid https:// URL');
+  if (entry.implementation !== undefined && !(isHttpsUrl(entry.implementation) && IMPLEMENTATION_RE.test(entry.implementation))) {
+    fail('"implementation" must be an https:// URL under github.com/decentralized-identity/kya-os-mcp or npmjs.com (where the reference implementation implements this)');
+  }
   if (entry.notes !== undefined && !isBoundedString(entry.notes, 1, 600)) fail('"notes" must be a string of 1-600 characters');
   if (!isCalendarDate(entry.listedAt)) fail('"listedAt" is required: a real calendar date in YYYY-MM-DD form');
 }

@@ -5,6 +5,7 @@
   "relationship": "prepareCheqdDlrResource anchors JCS-hashed artifacts including whole signed StatusList2021 credentials; CheqdStatusListResolver does fail-closed on-chain revocation checks.",
   "status": "shipping",
   "evidence": "https://github.com/decentralized-identity/kya-os-mcp/blob/main/src/integrations/cheqd/statuslist-resolver.ts",
+  "implementation": "https://github.com/decentralized-identity/kya-os-mcp/blob/main/src/integrations/cheqd/dlr.ts",
   "notes": "NEW in 1.14.0 (CHANGELOG 2026-08-13). Issuer pinned and list proof verified against the on-chain DID document. Upstreamed from the DEF CON 34 'REVOKED' demo; also src/integrations/cheqd/dlr.ts.",
   "listedAt": "2026-08-19"
 }

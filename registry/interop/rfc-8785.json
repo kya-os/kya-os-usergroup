@@ -5,6 +5,7 @@
   "relationship": "Strict fail-closed canonicalization for every integrity-critical digest: requestHash, audit event bytes, DLR content addressing, VC canonicalization.",
   "status": "shipping",
   "evidence": "https://github.com/decentralized-identity/kya-os-mcp/blob/main/src/utils/canonical-json.ts",
+  "implementation": "https://github.com/decentralized-identity/kya-os-mcp/blob/main/src/utils/canonical-json.ts",
   "notes": "Normative reference [RFC8785] in the SPEC-ENTITY-CARD References.",
   "listedAt": "2026-08-19"
 }

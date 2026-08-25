@@ -218,6 +218,12 @@ export function runRenderChecks({ distDir, rendered, interopSorted, probes, cred
       standardsHtml.includes(`<span class="slisted">${esc(entry.listedAt)}</span>`),
       `dist/standards/index.html does not date standard "${entry.slug}" (${entry.listedAt})`,
     );
+    if (entry.implementation !== undefined) {
+      assertBuild(
+        standardsHtml.includes(`href="${esc(entry.implementation)}"`),
+        `dist/standards/index.html does not link the implementation of "${entry.slug}"`,
+      );
+    }
   }
 
   // Claim honesty on both pages that render claims (directory rows and the

@@ -5,6 +5,7 @@
   "relationship": "L1 on-ramp: client_id and did:web form a bijection, jwks_uri maps to DID keys; fail-closed verifyCimdBind; cardFromClientMetadata mints L1 client cards.",
   "status": "shipping",
   "evidence": "https://github.com/decentralized-identity/kya-os-mcp/blob/main/src/card/cimd.ts",
+  "implementation": "https://github.com/decentralized-identity/kya-os-mcp/blob/main/src/card/cimd.ts",
   "notes": "src/card/cimd.ts; SPEC-ENTITY-CARD section 7 is NORMATIVE [TAAWG-NORMATIVE]. verifyCimdBind enforces origin equality plus alsoKnownAs anti-substitution. Spec anchor: SPEC-ENTITY-CARD.md#7-cimd-on-ramp-normative-taawg-normative.",
   "listedAt": "2026-08-19"
 }
