@@ -21,8 +21,10 @@
  *   - standards: optional non-empty unique array of slugs, each of which MUST
  *     resolve to registry/interop/<slug>.json (cross-file check)
  *   - conformance: optional object; scope=subset requires categories;
- *     status=verified requires attestationUrl; optional evidenceUrl is the
- *     public claim/verification thread; suiteVersion is semver
+ *     status verified|revoked requires attestationUrl (and any other status
+ *     forbids it - a claim below the verified rung never links a credential);
+ *     optional evidenceUrl is the public claim/verification thread;
+ *     suiteVersion is semver
  *   - probeUrl: optional https URL of a live MCP endpoint for the daily
  *     enforcement probe; kinds service|implementation only
  *   - deploy: optional non-empty array of {platform, url(https)}
@@ -41,7 +43,10 @@
  *   - listedAt: real calendar date, YYYY-MM-DD
  *
  * registry/probes.json (the committed daily probe output) is validated by
- * scripts/validate-probes.mjs, called from validateRegistry() below.
+ * scripts/validate-probes.mjs, and the conformance program's committed
+ * credential artifacts (registry/keys/ + registry/credentials/) by
+ * scripts/validate-credentials.mjs - both called from validateRegistry()
+ * below, so every consumer sees one merged verdict.
  *
  * Run directly (node scripts/validate.mjs) for CI / local use: prints every
  * error per file and exits non-zero on any failure. The site build imports
@@ -51,6 +56,7 @@
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { validateCredentials } from "./validate-credentials.mjs";
 import { validateProbes } from "./validate-probes.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -62,7 +68,7 @@ export const KINDS = ["implementation", "service", "template", "example", "integ
 export const BUILDS_ON = ["kya-os-mcp", "kya-os-schema", "kya-os", "spec"];
 export const CONFORMANCE_LEVELS = ["L1", "L2", "L3"];
 export const CONFORMANCE_SCOPES = ["full", "subset"];
-export const CONFORMANCE_STATUSES = ["self-reported", "in-verification", "verified"];
+export const CONFORMANCE_STATUSES = ["self-reported", "in-verification", "verified", "revoked"];
 export const DEPLOY_PLATFORMS = ["vercel", "railway", "cloudflare", "docker", "other"];
 export const INTEROP_CATEGORIES = [
   "discovery-projection",
@@ -210,8 +216,11 @@ function checkConformance(conformance, fail) {
   if (!CONFORMANCE_STATUSES.includes(conformance.status)) {
     fail(`"conformance.status" is required: one of ${CONFORMANCE_STATUSES.join(", ")}`);
   }
-  if (conformance.status === "verified" && conformance.attestationUrl === undefined) {
-    fail('"conformance.attestationUrl" is required when status is "verified" (verified renders only with the credential link)');
+  if ((conformance.status === "verified" || conformance.status === "revoked") && conformance.attestationUrl === undefined) {
+    fail(`"conformance.attestationUrl" is required when status is "${conformance.status}" (the credential is the public record)`);
+  }
+  if (conformance.attestationUrl !== undefined && conformance.status !== "verified" && conformance.status !== "revoked") {
+    fail('"conformance.attestationUrl" is only allowed at status "verified" or "revoked" - a claim below the verified rung never links a credential');
   }
   if (conformance.attestationUrl !== undefined && !isHttpsUrl(conformance.attestationUrl)) {
     fail('"conformance.attestationUrl" must be a valid https:// URL');
@@ -341,7 +350,13 @@ export function validateRegistry() {
   const { probes, errors: probeErrors } = validateProbes(entries);
   errors.push(...probeErrors);
 
-  return { entries, interop, probes, errors };
+  // ── credential artifacts: keys, credentials, status lists, allocations ───
+  // (structural + cross-file; scripts/validate-credentials.mjs. The build
+  // adds cryptographic verification on top - site/lib/credentials.mjs.)
+  const { programKeys, credentials, statusLists, allocations, errors: credentialErrors } = validateCredentials(entries);
+  errors.push(...credentialErrors);
+
+  return { entries, interop, probes, programKeys, credentials, statusLists, allocations, errors };
 }
 
 // CLI entry point: report and gate.
