@@ -5,6 +5,10 @@
 // resolve by the fragment id they NAME, so rotated-out keys stay pinned
 // here until retired from the registry file. PROVISIONED false (the
 // pre-ceremony sentinel) fail-closes every badge to unverified.
-export const PROVISIONED = false;
-export const PINNED_ISSUER_KEYS = [];
-export const PINNED_STATUS_KEYS = [];
+export const PROVISIONED = true;
+export const PINNED_ISSUER_KEYS = [
+  { id: "conformance-issuer-1", publicKeyMultibase: "z6Mksq7RMbuY2H3G92f7DeVE5R4gq12CH7t3RRf6qmmHN9DZ" },
+];
+export const PINNED_STATUS_KEYS = [
+  { id: "conformance-status-1", publicKeyMultibase: "z6Mkj3ayFcQMqvnaQkU4CQd4cuwPTDiMUSkmbM28cNq5kLYp" },
+];
