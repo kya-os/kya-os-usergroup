@@ -4,12 +4,25 @@
  * artboards. The standards matrix renders every registry/interop/ row as an
  * expandable <details> row (no JS required); the rails hero diagram is a
  * static translation of the "Protocol Rails" artboard with build-time
- * waveforms; use-cases carries the REVOKED example and the recipe grid.
+ * waveforms and the four-projection code block (parity-asserted against
+ * lib/snippets.mjs); use-cases carries the REVOKED example and the recipe
+ * grid.
  */
 import { ENTITY_CARD_URL, MCP_REPO_URL, REPO_URL, REVOKED_TREE_URL } from "./constants.mjs";
 import { interopByCategory } from "./data.mjs";
+import { codeBlock } from "./highlight.mjs";
 import { esc, interopStatusChip, promptBlock } from "./html.mjs";
+import { CARD_PROJECTIONS } from "./snippets.mjs";
 import { waveformLockup } from "./waveform.mjs";
+
+// Where each projection is specified (SPEC-ENTITY-CARD section 6) and which
+// standards row grounds it - one link pair per export in the snippet.
+const PROJECTIONS = [
+  ["toServerCardMeta", "6.1 MCP server.json _meta", `${ENTITY_CARD_URL}#61-mcp-serverjson--catalogjson-_metaorgkya-oscard`, "mcp-server-json-meta"],
+  ["toCatalogEntry", "6.4 MCP catalog.json index entry", `${ENTITY_CARD_URL}#64-mcp-catalogjson-index-entry`, "mcp-catalog-entry"],
+  ["toA2AExtension", "6.2 A2A AgentExtension", `${ENTITY_CARD_URL}#62-a2a-agentextension`, "a2a-agentextension"],
+  ["toAgentFacts", "6.3 NANDA AgentFacts", `${ENTITY_CARD_URL}#63-nanda-agentfacts`, "nanda-agentfacts"],
+];
 
 const CATEGORY_LABELS = {
   "discovery-projection": "Discovery projections",
@@ -139,8 +152,16 @@ export function sectionsRails(interopSorted) {
   <section class="fx fxd-30">
     <h2>Write once, project everywhere</h2>
     <div class="rule"></div>
-    <p class="lede-lg">KYA-OS does not ask ecosystems to migrate. Write the Entity Card once - the single source of truth - and each downstream protocol gets a projection of it, emitted by the same code path and gated by the same proof posture. Update the card and every projection stays consistent.</p>
-    <p class="lede-muted">A peer that does not speak KYA-OS ignores the extra metadata and loses nothing; a compatible peer gains cryptographic certainty about who it is talking to. All four discovery projections carry that graceful-degradation contract.</p>
+    <p class="lede-lg">Do I have to rewrite my agent's identity for every registry? No. Define the Entity Card once and call one function per rail - the same code path emits every projection, gated by the same proof posture, so updating the card updates all of them. Think of it as a passport: one document, stamped for every border.</p>
+    ${codeBlock(CARD_PROJECTIONS)}
+    <div class="dlinks next-strip">
+      <span class="next-label">each projection, specified:</span>
+${PROJECTIONS.map(([fn, label, spec, slug]) => `      <span class="proj-link"><code>${fn}</code> <a href="${spec}">${esc(label)} -&gt;</a> <a class="quiet" href="/standards/#std-${slug}">row</a></span>`).join("\n")}
+    </div>
+    <details class="disclosure">
+      <summary>how the projections work</summary>
+      <p class="note">Every projection references the same canonical <code>card.json</code> on the entity's <code>did:web</code> DID document (the <code>KyaOsEntityCard</code> service entry anchors it), so a verifier always lands back on one source of truth. The MCP <code>_meta["org.kya-os/card"]</code> value is either an inline summary that carries the identity axes plus the trust-bearing pointers (<code>delegationRef</code>, <code>revocation</code>) or a by-ref <code>org.kya-os/cardRef</code>; the catalog index row is always by-ref so the index stays cheap. The A2A entry is an <code>AgentCard.capabilities.extensions[]</code> item with <code>required: false</code> - that flag is the graceful-degradation contract: an unaware peer ignores it instead of rejecting the card. The NANDA projection is JSON-LD: it populates NANDA's shipped <code>owner</code> slot from <code>responsibleParty</code> (never re-claiming it) and keeps the uniquely-ours axes under the <code>kya:</code> <code>@context</code> namespace, so unknown keys degrade the same way. The per-request holder-of-key proof is never projected - it rides per-request <code>_meta</code>, and a stripped <code>_meta</code> degrades to a fetch, never a failure.</p>
+    </details>
   </section>
   <section class="fx fxd-40 sec-70">
     <div class="grid-3">

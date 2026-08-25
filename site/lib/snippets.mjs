@@ -65,7 +65,34 @@ export const BADGE_EMBED = {
   text: `[![KYA-OS conformance](${ORIGIN}/badge/${BADGE_EMBED_SLUG}.svg)](${ORIGIN}/builders/#${BADGE_EMBED_SLUG})`,
 };
 
-export const SNIPPETS = [MIGRATE_BEFORE, MIGRATE_AFTER, ENTRY_PREVIEW, BADGE_EMBED];
+/**
+ * The four discovery projections of one Entity Card. Every export is real:
+ * src/card/emit.ts in the reference tree, published on the
+ * `@kya-os/mcp/card` subpath (package.json exports["./card"]); the minimal
+ * card is exactly what EntityCardSchema requires (id, entityType, name),
+ * and entityType 'agent' is the only type toA2AExtension accepts.
+ */
+export const CARD_PROJECTIONS = {
+  id: "card-projections",
+  lines: [
+    ["import {", false],
+    ["  toServerCardMeta, toCatalogEntry, toA2AExtension, toAgentFacts, type EntityCard,", false],
+    ["} from '@kya-os/mcp/card';", false],
+    ["", false],
+    ["const card: EntityCard = {", false],
+    ["  id: 'did:web:agents.example.com:my-agent',", false],
+    ["  entityType: 'agent',", false],
+    ["  name: 'my-agent',", false],
+    ["};", false],
+    ["", false],
+    ["toServerCardMeta(card); // MCP server.json _meta - inline summary or { byRef: true }", false],
+    ["toCatalogEntry(card);   // MCP catalog.json index row - always by-ref", false],
+    ["toA2AExtension(card);   // A2A AgentCard extensions[] entry - required: false", false],
+    ["toAgentFacts(card);     // NANDA AgentFacts JSON-LD - owner from responsibleParty", false],
+  ],
+};
+
+export const SNIPPETS = [MIGRATE_BEFORE, MIGRATE_AFTER, ENTRY_PREVIEW, BADGE_EMBED, CARD_PROJECTIONS];
 
 /** The plain-text bytes of a snippet: what the clipboard receives. */
 export function snippetText(snippet) {

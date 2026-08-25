@@ -110,7 +110,7 @@ export function renderRailsHtml({ interopSorted }) {
     path: "/rails/",
     hero: pageHero({
       title: "THE RAILS",
-      lede: "KYA-OS sits underneath the protocols you already speak. An agent proves who it is once - the same signed proof then projects onto every registry, transport, and credential format downstream.",
+      lede: "Define your agent's Entity Card once. KYA-OS projects it onto every discovery rail your agent needs, so the same identity shows up in MCP server.json, A2A agent cards, and NANDA AgentFacts without rewriting anything.",
     }),
     sections: [sectionsRails(interopSorted)],
   });
