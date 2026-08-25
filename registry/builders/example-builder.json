@@ -9,7 +9,8 @@
   "standards": ["rfc-8785"],
   "contact": {
     "github": "example",
-    "press-contact": "press_ATSYMBOL_example.com"
+    "email": "builder_ATSYMBOL_example.com",
+    "press-email": "press_ATSYMBOL_example.com"
   },
   "listedAt": "2026-08-14"
 }
