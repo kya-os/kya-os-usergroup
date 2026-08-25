@@ -161,23 +161,23 @@ function probeSignal(entry, probes) {
   // probe result on a declared probeUrl.
   if (!probe) {
     if (entry.kind !== "service") return { dot: "", line: "" };
-    return { dot: `<span class="live-dot" title="hosted service: an endpoint you can point at today"></span>`, line: "" };
+    return { dot: "", line: "" };
   }
   const checked = `checked ${esc(probes.probedAt)}`;
   if (probe.status === "enforcing") {
     return {
-      dot: `<span class="live-dot"></span>`,
+      dot: "",
       line: `<div class="dprobe tone-signal">&#9679; live &middot; enforcement verified &middot; ${checked}</div>`,
     };
   }
   if (probe.status === "open") {
     return {
-      dot: `<span class="live-dot dot-open"></span>`,
+      dot: "",
       line: `<div class="dprobe quiet">&#9679; live &middot; open (no proof required) &middot; ${checked}</div>`,
     };
   }
   return {
-    dot: `<span class="live-dot dot-off"></span>`,
+    dot: "",
     line: `<div class="dprobe tone-faint">&#9675; unreachable &middot; ${checked}</div>`,
   };
 }
