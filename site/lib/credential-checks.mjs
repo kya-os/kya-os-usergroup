@@ -16,13 +16,47 @@
  * credential is re-verified cryptographically from its dist bytes - proof
  * against the shipped did.json keys, status bits against the shipped lists -
  * so what actually deploys is what was proven.
+ *
+ * Both eras: the badge worker's generated key module
+ * (workers/badge/generated-keys.mjs) must be byte-fresh against the
+ * committed program keys and pin exactly the right ones for its era.
  */
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { decodeStatusList, statusBitAt, verifyCredential } from "../../scripts/lib/attest.mjs";
 import { assertBuild } from "./checks.mjs";
+import { renderGeneratedKeys } from "./data.mjs";
 
 const SCHEMA_REL = join("schema", "attestation-v1.json");
+
+/**
+ * The badge worker's generated key module must be byte-fresh against
+ * registry/keys/program-keys.json (regenerate-and-compare, the committed
+ * counterpart of the CI `git diff --exit-code` freshness gate), and its era
+ * semantics are re-derived here from the registry FILE bytes, never from the
+ * renderer: the sentinel pins nothing and exports PROVISIONED false; a
+ * provisioned build pins every committed issuer/status public and never the
+ * reserved log key. This is what makes the provisioning PR the arming step -
+ * the merge regenerates this module and nothing else has to change.
+ */
+function assertGeneratedKeys(repoRoot, programKeys) {
+  const rel = "workers/badge/generated-keys.mjs";
+  const emitted = readFileSync(join(repoRoot, "workers", "badge", "generated-keys.mjs"), "utf8");
+  assertBuild(emitted === renderGeneratedKeys(programKeys), `${rel} is stale against registry/keys/program-keys.json - rerun the build and commit it`);
+  if (!programKeys.provisioned) {
+    assertBuild(emitted.includes("export const PROVISIONED = false;"), `${rel}: the sentinel era must export PROVISIONED false`);
+    assertBuild(!emitted.includes("publicKeyMultibase:"), `${rel}: the sentinel era must pin no key material`);
+    return;
+  }
+  assertBuild(emitted.includes("export const PROVISIONED = true;"), `${rel}: a provisioned build must export PROVISIONED true`);
+  const committed = JSON.parse(readFileSync(join(repoRoot, "registry", "keys", "program-keys.json"), "utf8")).keys;
+  for (const key of committed) {
+    assertBuild(
+      emitted.includes(JSON.stringify(key.publicKeyMultibase)) === (key.purpose !== "log"),
+      `${rel}: committed ${key.purpose} key "${key.id}" must ${key.purpose === "log" ? "never be pinned (reserved for Phase C)" : "be pinned"}`,
+    );
+  }
+}
 
 function assertByteCopy(distDir, repoRoot, relFromCredentials, label) {
   const built = readFileSync(join(distDir, "credentials", relFromCredentials));
@@ -33,6 +67,9 @@ function assertByteCopy(distDir, repoRoot, relFromCredentials, label) {
 export function assertCredentialArtifacts({ distDir, rendered, credentialData, verdicts }) {
   const repoRoot = join(distDir, "..");
   const { programKeys, credentials, statusLists } = credentialData;
+
+  // Both eras: the worker's generated key pins are fresh and era-correct.
+  assertGeneratedKeys(repoRoot, programKeys);
 
   // The published schema ships in both eras, byte-identical, with the proof
   // type and cryptosuite pinned as literal consts.

@@ -88,6 +88,19 @@ test("e2e: ceremony -> issue -> verify -> suspend -> unsuspend -> revoke -> muta
   assert.ok(existsSync(tempPath("dist", ".well-known", "did.json")), "provisioned build emits did.json");
   assert.ok(!read("dist", "badge", `${SLUG}.svg`).includes("verified"), "no credential yet, no verified badge");
 
+  // The merge arms the worker: committing the ceremony publics makes the
+  // next build regenerate the worker's pinned-key module with zero hand
+  // edits - issuer and status publics pinned, the reserved log key never.
+  const generatedKeys = read("workers", "badge", "generated-keys.mjs");
+  assert.ok(generatedKeys.includes("export const PROVISIONED = true;"), "the ceremony build must arm the worker's generated keys");
+  for (const key of keysFile.keys) {
+    assert.equal(
+      generatedKeys.includes(key.publicKeyMultibase),
+      key.purpose !== "log",
+      `generated-keys.mjs must pin the ${key.purpose} key ${key.purpose === "log" ? "never (reserved)" : "(committed public)"}`,
+    );
+  }
+
   // A rerun of the ceremony must refuse to overwrite provisioned keys.
   const rerun = run([tempPath("scripts", "generate-program-keys.mjs")]);
   assert.equal(rerun.status, 1);
