@@ -184,7 +184,9 @@ function probeSignal(entry, probes) {
 
 // Row marks: first-party entries carry the KYA-OS mark, partner entries their
 // own brand asset (both theme-paired like the nav logo); everything else
-// keeps the first-letter box. Presentation-only - no registry field.
+// keeps the first-letter box. Every mark shares one cap height (the 16px
+// .dmark box) so no brand reads shorter than another; width follows the
+// asset's own aspect. Presentation-only - no registry field.
 const KYA_MARK_SLUGS = new Set(["kya-os-mcp", "kya-os-demo-server", "kya-os-schema"]);
 const BRAND_LOGOS = { "knowthat-ai": { onDark: "/img/knowthat-mark-ondark.png", onLight: "/img/knowthat-mark-onlight.png" } };
 function rowMark(entry) {
@@ -193,7 +195,7 @@ function rowMark(entry) {
   }
   const brand = BRAND_LOGOS[entry.slug];
   if (brand) {
-    return `<span class="dmark dmark-logo dmark-wide" aria-hidden="true"><img class="mark mark-white" src="${brand.onDark}" alt="" height="14" /><img class="mark mark-black" src="${brand.onLight}" alt="" height="14" /></span>`;
+    return `<span class="dmark dmark-logo dmark-wide" aria-hidden="true"><img class="mark mark-white" src="${brand.onDark}" alt="" height="16" /><img class="mark mark-black" src="${brand.onLight}" alt="" height="16" /></span>`;
   }
   return `<span class="dmark" aria-hidden="true">${esc(entry.name.charAt(0))}</span>`;
 }
