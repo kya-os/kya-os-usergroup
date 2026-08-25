@@ -210,8 +210,7 @@ export function assertProbeHonesty(pages, rendered, probes) {
 }
 
 /**
- * Profile rows, per directory row: every expanded row carries its copy-ready
- * badge embed. (The founding-builder tag was retired by owner direction; its
+ * Profile rows, per directory row. (The badge embed line and the founding-builder tag was retired by owner direction; its
  * absence is asserted so it cannot quietly return without a decision.)
  */
 export function assertFoundingCohort(buildersHtml, rendered) {
@@ -219,7 +218,6 @@ export function assertFoundingCohort(buildersHtml, rendered) {
     const start = buildersHtml.indexOf(`id="${entry.slug}"`);
     assertBuild(start !== -1, `no directory row found for "${entry.slug}"`);
     const row = buildersHtml.slice(start, buildersHtml.indexOf("</details>", start));
-    assertBuild(row.includes(`/badge/${entry.slug}.svg`), `the expanded row for "${entry.slug}" must carry its badge embed snippet`);
   }
   assertBuild(!buildersHtml.includes("founding builder"), "the retired founding-builder tag rendered");
 }

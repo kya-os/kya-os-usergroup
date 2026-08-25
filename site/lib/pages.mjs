@@ -63,7 +63,7 @@ export function renderBuildersHtml({ rendered, probes, verdicts }) {
     path: "/builders/",
     hero: pageHero({
       title: "BUILDERS",
-      lede: "Everyone building on KYA-OS, in one registry — ordered by how much has been proven. Conformance here is measured against the pinned vector suite, never self-asserted.",
+      lede: "Everyone building on KYA-OS, in one registry - ordered by how much has been proven. Conformance here is measured against the pinned vector suite, never self-asserted.",
     }),
     sections: [sectionDirectory(rendered, probes, verdicts), sectionStartHere(), sectionSubmit()],
   });
@@ -105,13 +105,13 @@ export function renderRailsHtml({ interopSorted }) {
     path: "/rails/",
     hero: pageHero({
       title: "THE RAILS",
-      lede: "KYA-OS sits underneath the protocols you already speak. An agent proves who it is once — the same signed proof then projects onto every registry, transport, and credential format downstream.",
+      lede: "KYA-OS sits underneath the protocols you already speak. An agent proves who it is once - the same signed proof then projects onto every registry, transport, and credential format downstream.",
     }),
     sections: [sectionsRails(interopSorted)],
   });
 }
 
-/** Use-cases: the REVOKED flagship and the recipe grid. */
+/** Use-cases: the REVOKED example and the recipe grid. */
 export function renderUseCasesHtml() {
   return contentPage({
     title: `Use-cases · ${TITLE}`,
@@ -119,7 +119,7 @@ export function renderUseCasesHtml() {
     path: "/use-cases/",
     hero: pageHero({
       title: "USE-CASES",
-      lede: "What the primitives are for. One shipping flagship, and the recipes waiting for a builder — each maps directly onto primitives you can run today.",
+      lede: "What the primitives are for. One shipping example, and the recipes waiting for a builder - each maps directly onto primitives you can run today.",
     }),
     sections: [sectionsUseCases()],
   });

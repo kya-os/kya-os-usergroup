@@ -323,7 +323,7 @@ a.pc-title{display:inline-block}
 .rails-caption{font-family:var(--font-mono);font-size:12px;color:var(--ink-muted);margin:16px 0 0;text-align:center}
 
 /* ── Use-cases ────────────────────────────────────────────────────────────── */
-.flagship{border:1px solid var(--line-mid);background:var(--panel-2);padding:40px;display:grid;grid-template-columns:1.2fr 1fr;gap:40px;align-items:center}
+.showcase{border:1px solid var(--line-mid);background:var(--panel-2);padding:40px;display:grid;grid-template-columns:1.2fr 1fr;gap:40px;align-items:center}
 .flag-title{font-family:var(--font-mono);font-size:24px;font-weight:700;color:var(--ink-bright);margin-bottom:14px}
 .flag-lede{font-size:15px;line-height:1.8;color:var(--ink);margin:0 0 16px}
 .flag-sub{font-size:14px;line-height:1.7;color:var(--ink-muted);margin:0 0 22px}
@@ -390,7 +390,7 @@ footer a:hover{color:var(--ink-bright)}
   .home-cards{grid-template-columns:1fr}
 }
 @media (max-width:800px){
-  .flagship{grid-template-columns:1fr;padding:28px}
+  .showcase{grid-template-columns:1fr;padding:28px}
   .grid-3{grid-template-columns:1fr}
   .sexpand{margin-left:0;min-width:0}
 }
@@ -445,5 +445,5 @@ html.js-anim .fade-overlay.active{opacity:1;pointer-events:all}
 }
 
 @media (forced-colors: active){
-  .panel-card,.dtable,.stable,.itable,.rails-panel,.rails-diagram,.flagship{border-color:CanvasText}
+  .panel-card,.dtable,.stable,.itable,.rails-panel,.rails-diagram,.showcase{border-color:CanvasText}
 }
