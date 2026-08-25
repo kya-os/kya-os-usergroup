@@ -78,7 +78,7 @@ export function sectionsConformance(rendered, verdicts) {
     <div class="badge-copy">
       <p class="lede-lg">The payoff of the pipeline. A badge is not a logo you paste — it resolves to the signed credential behind it, so anyone can verify your claim without trusting this site. The waveform is the credential's signature fingerprint: the same credential always draws the same wave, and a re-issued one redraws it completely.</p>
       <p class="note">It renders <span class="tone-signal">verified</span> only while the claim links its credential; revoke the credential and every embedded badge downgrades itself. Amber means the program is still re-running your suite.</p>
-      <p class="note">Embed it the day you are listed: every tier builds with the site — grey <span class="tone-faint">listed</span> and <span class="tone-faint">self-reported</span>, amber <span class="tone-amber">in verification</span>, and <span class="tone-signal">verified</span> only after the build has cryptographically verified your credential against the program keys and its signed status lists (v1.5: build-time verification of in-repo state). The badge upgrades itself as your status climbs the ladder; the Phase B worker upgrades the same URLs to request-time verification.</p>
+      <p class="note">Embed it the day you are listed: every tier builds with the site — grey <span class="tone-faint">listed</span> and <span class="tone-faint">self-reported</span>, amber <span class="tone-amber">in verification</span>, and <span class="tone-signal">verified</span> only after the build has cryptographically verified your credential against the program keys and its signed status lists (build-time verification of in-repo state). The badge upgrades itself as your status climbs the ladder.</p>
       <div class="embed-snippet">[![KYA-OS conformance](${ORIGIN}/badge/<span class="hl">your-slug</span>.svg)](${ORIGIN}/builders/#<span class="hl">your-slug</span>)</div>
       <div class="badge-row">
         <span class="badge-lockup bl-verified">
@@ -98,7 +98,7 @@ export function sectionsConformance(rendered, verdicts) {
           <span class="bl-state">&middot; no claim</span>
         </span>
       </div>
-      <p class="micro">badges build with the site at /badge/&lt;slug&gt;.svg &middot; verified renders only from build-time credential verification &middot; Phase B makes the same paths request-time — states shown are the real state machine</p>
+      <p class="micro">badges build with the site at /badge/&lt;slug&gt;.svg &middot; verified renders only from build-time credential verification</p>
     </div>
   </section>
   <section id="levels" class="fx fxd-30">
@@ -142,7 +142,7 @@ export function sectionsConformance(rendered, verdicts) {
         </div>
       </div>
     </div>
-    <p class="dnote">The badge tiers at <code>/badge/&lt;slug&gt;.svg</code> mirror these chips. The <span class="tone-signal">verified</span> tier renders only when this site's build has cryptographically verified the credential and its signed status lists (a suspension renders <span class="tone-amber">under appeal</span>, a revocation renders dark); Phase B upgrades the same paths to request-time verification.</p>
+    <p class="dnote">The badge tiers at <code>/badge/&lt;slug&gt;.svg</code> mirror these chips. The <span class="tone-signal">verified</span> tier renders only when this site's build has cryptographically verified the credential and its signed status lists (a suspension renders <span class="tone-amber">under appeal</span>, a revocation renders dark).</p>
   </section>
   <section class="fx fxd-50">
     <h2>Implementations</h2>

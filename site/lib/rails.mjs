@@ -4,7 +4,7 @@
  * artboards. The standards matrix renders every registry/interop/ row as an
  * expandable <details> row (no JS required); the rails hero diagram is a
  * static translation of the "Protocol Rails" artboard with build-time
- * waveforms; use-cases carries the REVOKED flagship and the recipe grid.
+ * waveforms; use-cases carries the REVOKED example and the recipe grid.
  */
 import { ENTITY_CARD_URL, MCP_REPO_URL, REPO_URL, REVOKED_TREE_URL } from "./constants.mjs";
 import { interopByCategory } from "./data.mjs";
@@ -168,8 +168,8 @@ export function sectionsUseCases() {
         <div class="tag-row">${tags.map((tag) => `<span class="tag">${esc(tag)}</span>`).join("")}</div>
       </div>`;
   return `  <section class="fx fxd-15">
-    <div class="scat-label">FLAGSHIP <span class="chip st-shipping">shipping</span></div>
-    <div class="flagship">
+    <div class="scat-label">USE CASE <span class="chip st-shipping">shipping</span></div>
+    <div class="showcase">
       <div>
         <div class="flag-title">REVOKED</div>
         <p class="flag-lede">An on-chain kill switch for AI agents with wallet access. Agents spend under scoped, verifiable delegations - and that authority is revocable on a public chain (cheqd testnet), where every verifier reads the same refusal.</p>
