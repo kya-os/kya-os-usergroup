@@ -26,6 +26,10 @@
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+// The worker's OWN renderer, imported read-only for the parity assertion at
+// the bottom of this file - the check may look at both sides; the worker
+// itself never imports site/ or scripts/ code (deliberate redundancy rule).
+import { renderJson as workerRenderJson, renderSvg as workerRenderSvg } from "../../workers/badge/worker.mjs";
 import { assertBuild } from "./checks.mjs";
 import { conformanceLabel } from "./data.mjs";
 import { esc } from "./html.mjs";
@@ -185,5 +189,50 @@ export function assertBadges(distDir, rendered, verdicts) {
     if (c?.scope === "subset" && shields.message.includes(c.level)) {
       assertBuild(shields.message.includes(`${c.level} subset (`), `subset badge for "${entry.slug}" must name its categories, never a bare level`);
     }
+
+    // Static/worker seam: at deploy the worker takes over these exact paths,
+    // so its renderer must reproduce the SHIPPED bytes for the same state.
+    assertBuild(
+      workerRenderSvg({ message, color }) === svg,
+      `dist/badge/${entry.slug}.svg differs from the worker renderer's bytes for the same state - the /badge/ handover would flicker`,
+    );
+    assertBuild(
+      workerRenderJson({ message, color }) === readFileSync(join(badgeDir, `${entry.slug}.json`), "utf8"),
+      `dist/badge/${entry.slug}.json differs from the worker renderer's bytes for the same state`,
+    );
+  }
+  assertWorkerRenderParity();
+}
+
+/**
+ * Renderer parity across the WHOLE state space, not just the states the
+ * registry happens to occupy today: the worker's self-contained renderer
+ * (workers/badge/worker.mjs) must emit byte-identical SVG and shields JSON
+ * to this module's for every badge state either tier can produce. This is
+ * the blessed form of "single source of truth" under the deliberate
+ * redundancy rule: a parity assertion instead of shared code, so the worker
+ * stays importable by Cloudflare with no site/ dependency while the two
+ * renderers provably cannot drift apart.
+ */
+function assertWorkerRenderParity() {
+  const states = [
+    { message: "· listed", color: "999999" },
+    { message: "· L2 full self-reported", color: "999999" },
+    { message: "◌ L1 subset (signed-proof, status-list) in verification", color: "ffb340" },
+    { message: "✓ L3 full verified", color: "00c86e" },
+    { message: "✓ L1 subset (signed-proof) verified", color: "00c86e" },
+    { message: "◌ under appeal", color: "ffb340" },
+    { message: "revoked", color: "6e7681" },
+    { message: `escaping & <edge> "case" 'too'`, color: "999999" },
+  ];
+  for (const state of states) {
+    assertBuild(
+      workerRenderSvg(state) === renderBadgeSvg(state),
+      `worker and static SVG renderers diverged for "${state.message}" - the /badge/ handover would change bytes`,
+    );
+    assertBuild(
+      workerRenderJson(state) === renderBadgeJson(state),
+      `worker and static shields JSON renderers diverged for "${state.message}"`,
+    );
   }
 }

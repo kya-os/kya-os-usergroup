@@ -1,159 +1,178 @@
 /**
- * KYA-OS conformance badge worker (Phase B scaffold).
- *
- * NOT DEPLOYABLE until Phase A of the conformance program issues real
- * credentials and the Cloudflare project exists - see README.md. The pinned
- * issuer keys and manifest URL below are clearly marked placeholders.
+ * KYA-OS conformance badge worker (Phase B): request-time verification of
+ * the Phase A credentials, on the same /badge/ paths the static tier serves.
  *
  * Routes (GET only):
  *   /badge/<slug>.svg    flat SVG badge
  *   /badge/<slug>.json   shields.io endpoint JSON
  *
- * Pipeline, fail-closed at every step (any failure renders "unverified"):
- *   1. slug must be in the generated allowlist (emitted by
- *      site/build-pages.mjs from the rendered registry entries) - else 404
- *   2. fetch the claim credential from its canonical URL
- *   3. verify its Ed25519 eddsa-jcs-2022 DataIntegrityProof (JCS of the
- *      credential minus proof, per the W3C DI cryptosuite; Workers and Node
- *      20+ both support Ed25519 in crypto.subtle) against the PINNED issuer
- *      keys - never against keys the credential brings along
- *   4. schema + temporal checks, all fail-closed: proof.proofPurpose must be
- *      "assertionMethod"; validFrom must exist and not sit in the future
- *      beyond a 300s clock skew; an unexpected validUntil is a schema
- *      violation - the credential design deliberately has no expiry
- *      (freshness lives in suite supersession, recorded in the credential's
- *      termsOfUse), so there is no "expired" state to invent
- *   5. check the revocation / suspension / withdrawal Bitstring status lists,
- *      each a signed credential verified against the PINNED status keys (a
- *      key set separate from the issuer keys) before any bit is read
- *   6. compare the credential's suite pin against the signed suite manifest
- *   7. render one of six states:
- *        verified    green   proof valid, no status bit set, suite current
- *        superseded  blue    proof valid but the suite pin is no longer the
- *                            manifest's current suite
- *        contested   amber   suspension bit set
- *        withdrawn   grey    withdrawal bit set
- *        revoked     red     revocation bit set
- *        unknown     grey    no credential yet, or any verification failure
- *                            (badge text: "unverified")
+ * TRUST ROOT: the pinned program public keys in generated-keys.mjs, which
+ * the site build emits from registry/keys/program-keys.json. On the
+ * pre-ceremony sentinel that module exports PROVISIONED false and empty key
+ * arrays, and this worker fail-closes EVERY badge request to the grey
+ * "unverified" rendering (never a 500, never anything green). When the
+ * provisioning PR commits real publics, the next build regenerates the
+ * module - the merge arms the worker with zero hand edits.
  *
- * State precedence: revoked > withdrawn > contested > superseded > verified.
- * The withdrawal-purpose status list is scaffold semantics; final badge
- * semantics belong to the working group (see GOVERNANCE.md - anything that
- * changes what a listing MEANS goes there first).
+ * Pipeline for a credential-backed entry (status verified/revoked in the
+ * allowlist), fail-closed at every step:
+ *   1. slug must be in the generated allowlist - else 404
+ *   2. fetch the credential from its canonical URL
+ *      (https://builders.kya-os.org/credentials/<id32>.json, carried by the
+ *      allowlist from the entry's attestationUrl)
+ *   3. verify its Ed25519 eddsa-jcs-2022 DataIntegrityProof against the
+ *      pinned issuer key its proof NAMES (did:web fragment -> pinned id;
+ *      rotation-aware, purpose-restricted: issuer proofs resolve only in
+ *      PINNED_ISSUER_KEYS) - never against keys the credential brings along
+ *   4. schema + binding checks: proofPurpose must be assertionMethod;
+ *      validFrom must exist and not sit in the future beyond 300s skew; any
+ *      validUntil is a schema violation (the credential design has no
+ *      expiry - currency lives in suite supersession, per its termsOfUse);
+ *      the credential id must recompute from the fetched URL's id32; the
+ *      subject's claim must reproduce the allowlist's honest label (a
+ *      subset never renders as a bare level)
+ *   5. read the revocation and suspension bits: both Bitstring status lists
+ *      (https://builders.kya-os.org/credentials/status/{purpose}-1.json,
+ *      which the credential's own status entries must name) are signed
+ *      credentials, each verified against the pinned STATUS key its proof
+ *      names - a key set separate from the issuer keys, so a stolen issuer
+ *      key can never clear its own revocation bits - before any bit is read
+ *   6. render: revoked > suspended ("under appeal") > verified
  *
- * Honesty rules carried through: the label is always "KYA-OS conformance",
- * a subset claim never renders as a bare level (the allowlist ships the
- * full claim label, e.g. "L1 subset (signed-proof)"), and the word
- * "certified" appears nowhere.
+ * Entries below the credential rungs (listed / self-reported /
+ * in-verification) render straight from the allowlist with no fetch at all.
+ * Every rendering is byte-identical to the static tier's dist/badge/ files
+ * (site/lib/badge.mjs) for the same state - asserted by the build's render
+ * checks, which compare this module's renderer against the shipped bytes.
  *
- * Caching: path-only cache key (query string stripped), s-maxage 300.
+ * DELIBERATE REDUNDANCY RULE: this worker never imports scripts/ or site/
+ * code (it must stay self-contained for Cloudflare bundling); the scripts
+ * side implements the same cryptosuite independently. parity.test.mjs is
+ * where the two implementations cross-prove, and the build's render checks
+ * import THIS module's renderer read-only to assert badge-byte parity.
+ *
+ * Caching: path-only cache key (query string stripped), s-maxage 300;
+ * failure responses cache 60s so an outage cannot pin a stale answer.
  */
 import { verifyEddsaJcs2022, ed25519KeyFromMultibase, bitstringStatusAt } from "./verify.mjs";
 import { BADGE_ALLOWLIST } from "./generated-allowlist.mjs";
+import { PINNED_ISSUER_KEYS, PINNED_STATUS_KEYS, PROVISIONED } from "./generated-keys.mjs";
 
-// ── PLACEHOLDERS - Phase A does not exist yet ───────────────────────────────
-// The conformance program's issuer keys. THESE KEYS DO NOT EXIST YET; the
-// values below are syntactically valid multibase placeholders that verify
-// nothing. Replace with the real pinned keys at Phase A key ceremony.
-export const PINNED_ISSUER_KEYS = [
-  // PLACEHOLDER: all-zero Ed25519 key. Verifies nothing by construction.
-  "z6MkeTG3bFFSLYVU7VqhgZxqr6YzpaGrQtFMh1uvqGy1vDnP",
-];
-// The conformance program's status-list keys. THREE-KEY DESIGN, ON PURPOSE:
-// K-issuer signs credentials, K-status signs status lists, so a stolen
-// issuer key can never clear (or set) its own revocation bits. These MUST
-// stay a separate key set from PINNED_ISSUER_KEYS at the Phase A ceremony.
-export const PINNED_STATUS_KEYS = [
-  // PLACEHOLDER: Ed25519 key 0x01 then 31 zero bytes. Verifies nothing by construction.
-  "z6MkeXATEjyXENzBXBxgC5EHk2JE5aqd7qMGGtDpLUH1e2Sj",
-];
-// The signed suite manifest published per Phase A release. DOES NOT EXIST
-// YET; the URL is the planned canonical location.
-export const SUITE_MANIFEST_URL =
-  "https://raw.githubusercontent.com/decentralized-identity/kya-os-mcp/main/conformance/SUITE-MANIFEST.json";
-// ────────────────────────────────────────────────────────────────────────────
-
-const LABEL = "KYA-OS conformance";
+// Program identity and canonical URLs, self-contained on purpose (the
+// deliberate redundancy rule); parity.test.mjs asserts these equal the
+// scripts side's constants so neither copy can drift alone.
+export const ISSUER_DID = "did:web:builders.kya-os.org";
+export const CREDENTIALS_BASE = "https://builders.kya-os.org/credentials";
+export const STATUS_LIST_URLS = {
+  revocation: `${CREDENTIALS_BASE}/status/revocation-1.json`,
+  suspension: `${CREDENTIALS_BASE}/status/suspension-1.json`,
+};
+const CREDENTIAL_URL_RE = /^https:\/\/builders\.kya-os\.org\/credentials\/([0-9a-f]{32})\.json$/;
 
 /** Allowed clock skew for validFrom: 300s, mirroring the protocol's skew rules. */
 const CLOCK_SKEW_MS = 300_000;
 
-const STATE_STYLE = {
-  verified: { color: "#3fb950" },
-  superseded: { color: "#58a6ff" },
-  contested: { color: "#d29922" },
-  withdrawn: { color: "#6e7681" },
-  revoked: { color: "#f85149" },
-  unknown: { color: "#6e7681" },
-};
+// ── rendering: byte-identical to site/lib/badge.mjs (build-asserted) ────────
 
-/** Badge message per state. The claim label already encodes subset honesty. */
-function stateMessage(state, claim) {
-  if (state === "verified") return claim ? `${claim} verified` : "verified";
-  if (state === "unknown") return "unverified";
-  return claim ? `${claim} ${state}` : state;
-}
+const LABEL = "KYA-OS";
+const FONT = "JetBrains Mono,SFMono-Regular,Consolas,monospace";
+const CELL_LABEL = "#0a0a0a";
+const CELL_MESSAGE = "#1a1a1a";
+const TEXT_LABEL = "#ffffff";
 
-// ── SVG rendering (deterministic, no font metrics service) ─────────────────
+const esc = (value) => String(value).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const num = (value) => value.toFixed(1).replace(/\.0$/, "");
+const cellWidth = (text) => [...text].length * 6.6 + 18;
 
-function textWidth(text) {
-  // Verdana-ish 11px approximation: good enough for a flat badge.
-  let width = 0;
-  for (const char of text) width += /[mwMW]/.test(char) ? 10 : /[ijlt.,:;'()\[\]|!1]/.test(char) ? 4 : 7;
-  return width + 10;
-}
-
-function renderSvg(state, claim) {
-  const message = stateMessage(state, claim);
-  const { color } = STATE_STYLE[state];
-  const lw = textWidth(LABEL);
-  const mw = textWidth(message);
-  const w = lw + mw;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="20" role="img" aria-label="${LABEL}: ${message}">
-  <title>${LABEL}: ${message}</title>
-  <rect width="${lw}" height="20" fill="#24292f"/>
-  <rect x="${lw}" width="${mw}" height="20" fill="${color}"/>
-  <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">
-    <text x="${lw / 2}" y="14">${LABEL}</text>
-    <text x="${lw + mw / 2}" y="14">${message}</text>
+export function renderSvg({ message, color }) {
+  const lw = cellWidth(LABEL);
+  const mw = cellWidth(message);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${num(lw + mw)}" height="20" role="img" aria-label="${LABEL}: ${esc(message)}">
+  <title>${LABEL}: ${esc(message)}</title>
+  <rect width="${num(lw)}" height="20" fill="${CELL_LABEL}"/>
+  <rect x="${num(lw)}" width="${num(mw)}" height="20" fill="${CELL_MESSAGE}"/>
+  <g font-family="${FONT}" font-size="11" text-anchor="middle">
+    <text x="${num(lw / 2)}" y="14" fill="${TEXT_LABEL}">${LABEL}</text>
+    <text x="${num(lw + mw / 2)}" y="14" fill="#${color}">${esc(message)}</text>
   </g>
 </svg>
 `;
 }
 
-function renderShieldsJson(state, claim) {
-  return JSON.stringify({
-    schemaVersion: 1,
-    label: LABEL,
-    message: stateMessage(state, claim),
-    color: STATE_STYLE[state].color.slice(1),
-    isError: state !== "verified",
-  });
+export function renderJson({ message, color }) {
+  return JSON.stringify({ schemaVersion: 1, label: LABEL, message, color }) + "\n";
+}
+
+// The badge states, in the static tier's exact grammar (site/lib/badge.mjs).
+// "unverified" is the one worker-only state: the static build REFUSES on any
+// verification failure, while this worker must answer the request - grey,
+// claim-free, fail-closed.
+const UNVERIFIED = { message: "unverified", color: "999999" };
+const STATE = {
+  listed: () => ({ message: "· listed", color: "999999" }),
+  "self-reported": (claim) => ({ message: `· ${claim} self-reported`, color: "999999" }),
+  "in-verification": (claim) => ({ message: `◌ ${claim} in verification`, color: "ffb340" }),
+  verified: (claim) => ({ message: `✓ ${claim} verified`, color: "00c86e" }),
+  suspended: () => ({ message: "◌ under appeal", color: "ffb340" }),
+  revoked: () => ({ message: "revoked", color: "6e7681" }),
+};
+
+// ── pinned key resolution (rotation-aware, purpose-restricted) ──────────────
+
+/**
+ * The pinned key a proof's verificationMethod NAMES: did:web fragment ->
+ * {id, publicKeyMultibase} within ONE purpose's pinned set. Rotation-aware
+ * the same way as the scripts side: after a rotation both conformance-x-1
+ * and conformance-x-2 sit in the set, and each document verifies against
+ * exactly the key its own proof names - never try-every-key, so a proof
+ * naming key 1 but signed by key 2 fails. Purpose restriction is the set
+ * itself: issuer proofs resolve only in PINNED_ISSUER_KEYS, status proofs
+ * only in PINNED_STATUS_KEYS. Throws on anything else - callers fail closed.
+ */
+function pinnedKeyBytes(document, pinnedKeys) {
+  const method = document?.proof?.verificationMethod;
+  const prefix = `${ISSUER_DID}#`;
+  if (typeof method !== "string" || !method.startsWith(prefix)) {
+    throw new Error(`proof.verificationMethod is not a ${ISSUER_DID} key`);
+  }
+  const fragment = method.slice(prefix.length);
+  const key = pinnedKeys.find((candidate) => candidate.id === fragment);
+  if (key === undefined) throw new Error(`proof names unpinned key "${fragment}"`);
+  return ed25519KeyFromMultibase(key.publicKeyMultibase);
+}
+
+async function verifyAgainstPinned(document, pinnedKeys, what) {
+  const { ok, reason } = await verifyEddsaJcs2022(document, pinnedKeyBytes(document, pinnedKeys));
+  if (!ok) throw new Error(`${what} proof did not verify against the pinned key it names (${reason})`);
+  if (document.proof.proofPurpose !== "assertionMethod") {
+    throw new Error(`${what} proof purpose must be assertionMethod, got ${document.proof.proofPurpose}`);
+  }
 }
 
 // ── state resolution ────────────────────────────────────────────────────────
 
-async function statusBitSet(credential, purpose, fetchImpl, statusKeys) {
+async function fetchJson(url, fetchImpl, what) {
+  const response = await fetchImpl(url);
+  if (!response.ok) throw new Error(`${what} fetch ${response.status}`);
+  return response.json();
+}
+
+async function statusBit(credential, purpose, fetchImpl, statusKeys) {
+  // Phase A credentials carry BOTH purposes, pinned to the canonical list
+  // URLs; a missing or repointed entry is malformed, never "nothing
+  // asserted" - bits that cannot be read fail closed.
   const statuses = [credential.credentialStatus ?? []].flat();
   const entry = statuses.find((status) => status?.statusPurpose === purpose);
-  if (!entry) return false; // no list for this purpose = nothing asserted
-  const response = await fetchImpl(entry.statusListCredential);
-  if (!response.ok) throw new Error(`status list fetch ${response.status}`);
-  const list = await response.json();
-  // The status list is a signed credential in its own right. Verify its
-  // proof against the PINNED status keys - a key set deliberately separate
-  // from the issuer keys - BEFORE reading any bit, so neither the list host
-  // nor a stolen issuer key can clear (or set) revocation bits.
-  let listProofOk = false;
-  for (const multibase of statusKeys) {
-    const { ok } = await verifyEddsaJcs2022(list, ed25519KeyFromMultibase(multibase));
-    if (ok) {
-      listProofOk = true;
-      break;
-    }
+  if (!entry) throw new Error(`credential carries no ${purpose} status entry`);
+  if (entry.statusListCredential !== STATUS_LIST_URLS[purpose]) {
+    throw new Error(`${purpose} status entry does not name the canonical list URL`);
   }
-  if (!listProofOk) throw new Error("status list proof did not verify against any pinned status key");
+  const list = await fetchJson(STATUS_LIST_URLS[purpose], fetchImpl, `${purpose} list`);
+  // The status list is a signed credential in its own right, verified
+  // against the pinned STATUS key its proof names BEFORE any bit is read,
+  // so neither the list host nor a stolen issuer key can clear (or set)
+  // revocation bits.
+  await verifyAgainstPinned(list, statusKeys, `${purpose} list`);
   const subject = list.credentialSubject ?? {};
   if (subject.statusPurpose !== purpose) throw new Error("status list purpose mismatch");
   return bitstringStatusAt(subject.encodedList, entry.statusListIndex);
@@ -161,68 +180,72 @@ async function statusBitSet(credential, purpose, fetchImpl, statusKeys) {
 
 /**
  * Resolve the badge state for one allowlist entry. Throws on anything
- * unexpected; the caller maps every throw to "unknown" (fail-closed).
+ * unexpected; the caller maps every throw to "unverified" (fail-closed).
  */
-export async function resolveBadgeState(slug, entry, { fetchImpl, issuerKeys, statusKeys, manifestUrl }) {
-  if (!entry.credentialUrl) return "unknown"; // no credential issued yet
-
-  const credentialResponse = await fetchImpl(entry.credentialUrl);
-  if (!credentialResponse.ok) throw new Error(`credential fetch ${credentialResponse.status}`);
-  const credential = await credentialResponse.json();
-
-  // Verify against the PINNED issuer keys only.
-  let proofOk = false;
-  for (const multibase of issuerKeys) {
-    const { ok } = await verifyEddsaJcs2022(credential, ed25519KeyFromMultibase(multibase));
-    if (ok) {
-      proofOk = true;
-      break;
-    }
+export async function resolveBadgeState(entry, { fetchImpl, issuerKeys, statusKeys, provisioned }) {
+  // Unprovisioned program keys fail-close EVERY badge - even the rungs that
+  // need no crypto. An unprovisioned deployment is a misconfiguration (the
+  // deploy workflow refuses it); nothing may look normal on top of it.
+  if (!provisioned || issuerKeys.length === 0 || statusKeys.length === 0) {
+    throw new Error("program keys unprovisioned - every badge fails closed to unverified");
   }
-  if (!proofOk) throw new Error("credential proof did not verify against any pinned issuer key");
 
-  // Schema + temporal checks, fail closed. The proof must be an assertion,
-  // not a proof minted for some other purpose; the credential must not claim
-  // to be from the future beyond clock skew; and validUntil must not exist -
-  // the credential design deliberately has no expiry (freshness lives in
-  // suite supersession, recorded in the credential's termsOfUse), so an
-  // unexpected validUntil is a schema violation, never an "expired" state.
-  if (credential.proof.proofPurpose !== "assertionMethod") {
-    throw new Error(`proof purpose must be assertionMethod, got ${credential.proof.proofPurpose}`);
+  // The non-credential rungs render straight from the committed allowlist,
+  // exactly as the static tier does - no fetch, nothing to verify.
+  const status = entry.status ?? null;
+  if (status === null) return STATE.listed();
+  if (status === "self-reported" || status === "in-verification") {
+    if (typeof entry.claim !== "string") throw new Error(`allowlist entry at status ${status} carries no claim label`);
+    return STATE[status](entry.claim);
   }
+  if (status !== "verified" && status !== "revoked") throw new Error(`unknown allowlist status ${status}`);
+
+  // Credential-backed rungs: request-time verification.
+  const urlMatch = CREDENTIAL_URL_RE.exec(entry.credentialUrl ?? "");
+  if (urlMatch === null) throw new Error("allowlist credentialUrl is not a canonical credential URL");
+  const credential = await fetchJson(entry.credentialUrl, fetchImpl, "credential");
+  await verifyAgainstPinned(credential, issuerKeys, "credential");
+
+  // Schema + temporal checks, fail closed. The credential must not claim to
+  // be from the future beyond clock skew, and validUntil must not exist -
+  // the design deliberately has no expiry (currency lives in suite
+  // supersession, recorded in termsOfUse), so an unexpected validUntil is a
+  // schema violation, never an "expired" state.
   const validFrom = Date.parse(credential.validFrom);
   if (!Number.isFinite(validFrom)) throw new Error("credential validFrom is missing or malformed");
   if (validFrom > Date.now() + CLOCK_SKEW_MS) throw new Error("credential validFrom is in the future beyond clock skew");
-  if (credential.validUntil !== undefined) {
-    throw new Error("unexpected validUntil: the credential design has no expiry");
-  }
+  if (credential.validUntil !== undefined) throw new Error("unexpected validUntil: the credential design has no expiry");
 
-  // The credential must be about this registry slug.
+  // Binding: the served document must BE the credential the allowlist names
+  // (deterministic id = the URL's id32), and its subject must reproduce the
+  // allowlist's honest claim label - a subset never renders as a bare level,
+  // and a credential for some other claim cannot ride this slug.
+  if (credential.id !== `urn:kya:conf:${urlMatch[1]}`) throw new Error("credential id does not match its canonical URL");
   const subject = credential.credentialSubject ?? {};
-  if (subject.registrySlug !== slug) throw new Error("credential subject slug mismatch");
-
-  if (await statusBitSet(credential, "revocation", fetchImpl, statusKeys)) return "revoked";
-  if (await statusBitSet(credential, "withdrawal", fetchImpl, statusKeys)) return "withdrawn";
-  if (await statusBitSet(credential, "suspension", fetchImpl, statusKeys)) return "contested";
-
-  // Suite currency: compare the credential's suite pin to the signed manifest.
-  const manifestResponse = await fetchImpl(manifestUrl);
-  if (!manifestResponse.ok) throw new Error(`suite manifest fetch ${manifestResponse.status}`);
-  const manifest = await manifestResponse.json();
-  const suite = subject.suite ?? {};
-  if (suite.suiteVersion !== manifest.suiteVersion || suite.vectorSetHash !== manifest.vectorSetHash) {
-    return "superseded";
+  let label;
+  if (subject.scope === "subset") {
+    if (!Array.isArray(subject.categories) || subject.categories.length === 0) {
+      throw new Error("subset credential carries no categories - a subset never renders as a bare level");
+    }
+    label = `${subject.level} subset (${subject.categories.join(", ")})`;
+  } else if (subject.scope === "full") {
+    label = `${subject.level} full`;
+  } else {
+    throw new Error(`credential scope must be full or subset, got ${subject.scope}`);
   }
+  if (label !== entry.claim) throw new Error(`credential claim "${label}" does not match the registry claim "${entry.claim}"`);
 
-  return "verified";
+  if (await statusBit(credential, "revocation", fetchImpl, statusKeys)) return STATE.revoked();
+  if (await statusBit(credential, "suspension", fetchImpl, statusKeys)) return STATE.suspended();
+  return STATE.verified(entry.claim);
 }
 
 // ── HTTP handler ────────────────────────────────────────────────────────────
 
 const ROUTE_RE = /^\/badge\/([a-z0-9-]{2,40})\.(svg|json)$/;
 
-function badgeResponse(state, claim, format, maxAge = 300) {
-  const body = format === "svg" ? renderSvg(state, claim) : renderShieldsJson(state, claim);
+function badgeResponse(state, format, maxAge = 300) {
+  const body = format === "svg" ? renderSvg(state) : renderJson(state);
   return new Response(body, {
     headers: {
       "content-type": format === "svg" ? "image/svg+xml; charset=utf-8" : "application/json; charset=utf-8",
@@ -234,13 +257,14 @@ function badgeResponse(state, claim, format, maxAge = 300) {
 
 /**
  * Build the fetch handler with injectable dependencies (tests inject their
- * own allowlist, keys, fetch, and cache; production uses the real ones).
+ * own allowlist, keys, fetch, and cache; production uses the generated
+ * modules and the real fetch/cache).
  */
 export function createBadgeHandler({
   allowlist = BADGE_ALLOWLIST,
   issuerKeys = PINNED_ISSUER_KEYS,
   statusKeys = PINNED_STATUS_KEYS,
-  manifestUrl = SUITE_MANIFEST_URL,
+  provisioned = PROVISIONED,
   fetchImpl = fetch,
   cache = null,
 } = {}) {
@@ -264,12 +288,12 @@ export function createBadgeHandler({
 
     let response;
     try {
-      const state = await resolveBadgeState(slug, entry, { fetchImpl, issuerKeys, statusKeys, manifestUrl });
-      response = badgeResponse(state, entry.claim, format);
+      const state = await resolveBadgeState(entry, { fetchImpl, issuerKeys, statusKeys, provisioned });
+      response = badgeResponse(state, format);
     } catch {
       // Fail closed: any failure anywhere renders the unverified badge,
       // cached briefly so an outage cannot pin a stale answer for long.
-      response = badgeResponse("unknown", entry.claim, format, 60);
+      response = badgeResponse(UNVERIFIED, format, 60);
     }
 
     if (cache) await cache.put(cacheKey, response.clone());
@@ -278,7 +302,7 @@ export function createBadgeHandler({
 }
 
 export default {
-  async fetch(request, env, ctx) {
+  async fetch(request) {
     const handler = createBadgeHandler({ cache: caches.default });
     return handler(request);
   },

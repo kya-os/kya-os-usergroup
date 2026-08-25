@@ -97,7 +97,7 @@ import { fileURLToPath } from "node:url";
 import { runRenderChecks } from "./lib/assertions.mjs";
 import { renderBadgeFiles } from "./lib/badge.mjs";
 import { renderDidJson, verifyCredentialArtifacts } from "./lib/credentials.mjs";
-import { loadSiteData, renderBadgeAllowlist, renderBuildersJson, renderInteropJson } from "./lib/data.mjs";
+import { loadSiteData, renderBadgeAllowlist, renderBuildersJson, renderGeneratedKeys, renderInteropJson } from "./lib/data.mjs";
 import { render404Html } from "./lib/html.mjs";
 import {
   renderBuildersHtml,
@@ -263,11 +263,17 @@ for (const entry of readdirSync(uiSrcDir, { recursive: true }).map(String).sort(
   if (entry.endsWith(".js")) copyFileSync(join(uiSrcDir, entry), join(distDir, "ui", entry));
 }
 
-// The badge worker's slug allowlist is committed, not a dist/ artifact: the
-// worker deploy must never depend on a site build having run.
+// The badge worker's generated modules are committed, not dist/ artifacts:
+// the worker deploy must never depend on a site build having run. The slug
+// allowlist comes from the rendered entries; the pinned program keys come
+// from registry/keys/program-keys.json (sentinel era: PROVISIONED false and
+// empty key arrays, so the worker fail-closes everything to unverified;
+// once the provisioning PR commits real publics, this regeneration arms the
+// worker with zero hand edits).
 const badgeDir = join(repoRoot, "workers", "badge");
 mkdirSync(badgeDir, { recursive: true });
 writeFileSync(join(badgeDir, "generated-allowlist.mjs"), renderBadgeAllowlist(rendered));
+writeFileSync(join(badgeDir, "generated-keys.mjs"), renderGeneratedKeys(credentialData.programKeys));
 
 // ── render check: assert the artifact is complete and honest ────────────────
 

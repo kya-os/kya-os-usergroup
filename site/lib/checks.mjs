@@ -236,10 +236,11 @@ export function assertFoundingCohort(buildersHtml, rendered) {
 /**
  * Suite pin agreement: the suite pin (version, vector count, vector-set
  * hash) is committed in several places that deliberately cannot import each
- * other - the starter must stay standalone-copyable and the badge fixtures
- * are committed artifacts. The build is the one place that sees them all, so
- * it reads every OTHER copy as bytes and asserts agreement with SUITE in
- * lib/constants.mjs; a drifted copy fails the build naming its file.
+ * other - the starter must stay standalone-copyable and the badge worker's
+ * fixture mint never imports site/ code. The build is the one place that
+ * sees them all, so it reads every OTHER copy as bytes and asserts agreement
+ * with SUITE in lib/constants.mjs; a drifted copy fails the build naming its
+ * file.
  */
 export function assertSuitePinAgreement(repoRoot) {
   const read = (path) => readFileSync(join(repoRoot, path), "utf8");
@@ -270,15 +271,8 @@ export function assertSuitePinAgreement(repoRoot) {
     `${starterReadme}: the vector count does not match SUITE.vectors (${SUITE.vectors})`,
   );
 
-  const generatorPath = "workers/badge/fixtures/generate-fixtures.mjs";
-  const generator = read(generatorPath);
-  assertBuild(generator.includes(`suiteVersion: "${SUITE.version}"`), `${generatorPath}: suiteVersion does not match SUITE.version (${SUITE.version})`);
-  assertBuild(generator.includes(`vectorSetHash: "${SUITE.vectorSetHash}"`), `${generatorPath}: vectorSetHash does not match SUITE.vectorSetHash`);
-
-  for (const path of ["workers/badge/fixtures/dev-manifest.json", "workers/badge/fixtures/dev-credential.json"]) {
-    const parsed = JSON.parse(read(path));
-    const pin = parsed.credentialSubject?.suite ?? parsed;
-    assertBuild(pin.suiteVersion === SUITE.version, `${path}: suiteVersion (${pin.suiteVersion}) does not match SUITE.version (${SUITE.version})`);
-    assertBuild(pin.vectorSetHash === SUITE.vectorSetHash, `${path}: vectorSetHash (${pin.vectorSetHash}) does not match SUITE.vectorSetHash`);
-  }
+  const mintPath = "workers/badge/fixtures/mint.mjs";
+  const mint = read(mintPath);
+  assertBuild(mint.includes(`suiteVersion: "${SUITE.version}"`), `${mintPath}: suiteVersion does not match SUITE.version (${SUITE.version})`);
+  assertBuild(mint.includes(`vectorSetHash: "${SUITE.vectorSetHash}"`), `${mintPath}: vectorSetHash does not match SUITE.vectorSetHash`);
 }

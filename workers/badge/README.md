@@ -7,66 +7,101 @@ GET /badge/<slug>.svg     flat SVG badge
 GET /badge/<slug>.json    shields.io endpoint JSON
 ```
 
-Until this worker deploys, the site build emits every badge tier on the same `/badge/<slug>.{svg,json}` path space (`site/lib/badge.mjs`) - including, since program v1.5, the `verified` tier.
-The boundary is honest but different from live verification: a static `verified` badge is backed by **build-time cryptographic verification of in-repo state** - the build (`site/lib/credentials.mjs`) verifies each committed credential's `eddsa-jcs-2022` proof against the committed program keys and reads its bits off the signed status lists, refusing the whole build on any failure - and the badge then goes stale-able until the next deploy (a revocation updates it when its PR merges, not the moment the bit flips).
+Until this worker deploys, the site build emits every badge tier on the same `/badge/<slug>.{svg,json}` path space (`site/lib/badge.mjs`), including the `verified` tier.
+That static boundary is honest but different from live verification: a static `verified` badge is backed by **build-time cryptographic verification of in-repo state** (`site/lib/credentials.mjs` refuses the whole build on any failure), and then goes stale-able until the next deploy - a revocation updates it when its PR merges, not the moment the bit flips.
 This worker is the Phase B upgrade: the same URLs move to **request-time** verification, so a revocation propagates in one cache TTL instead of one deploy.
 
-Independence note (deliberate redundancy rule): this worker's `verify.mjs` and the issuance/build side's `scripts/lib/*` implement the same cryptosuite independently and never import each other; `parity.test.mjs` is where they cross-prove.
+The two tiers render **byte-identical badges for the same state** - the build asserts the worker's renderer against the shipped `dist/badge/` bytes and against the static renderer across the whole state space (`site/lib/badge.mjs`), so the handover changes freshness, never pixels.
 
-## NOT DEPLOYABLE YET - read this first
+## The trust root: generated-keys.mjs
 
-This is a scaffold, committed so the pipeline, semantics, and tests exist before the program does.
-It must not be deployed until all three are true:
+The worker's pinned program keys live in `generated-keys.mjs`, which `site/build-pages.mjs` emits from `registry/keys/program-keys.json` (the same contract as `generated-allowlist.mjs`: generated, committed, freshness-gated by CI and by the build's own regenerate-and-compare assertion).
+It exports `PINNED_ISSUER_KEYS` and `PINNED_STATUS_KEYS` (arrays of `{id, publicKeyMultibase}`) plus `PROVISIONED`.
 
-1. **Phase A issues real credentials, and this worker is reconciled with the v1.5 credential shape.**
-   The pinned issuer and status keys in `worker.mjs` are placeholders (degenerate Ed25519 keys that verify nothing by construction - proven, not assumed, by `parity.test.mjs`), and the signed suite manifest URL points at a file that does not exist yet.
-   Reconciliation needed at Phase B: the v1.5 credential binds to its registry entry through the allocation ledger and `attestationUrl` (its subject carries no `registrySlug`), it carries exactly two status entries (revocation, suspension - no withdrawal list), and the pinned key replacement should read from `registry/keys/program-keys.json`.
-2. **The Cloudflare project exists.**
-   There is no `kya-os-badge` worker or route today; the route in `wrangler.jsonc` is commented out.
-3. **The working group has signed off on the badge semantics.**
-   Per GOVERNANCE.md, anything that changes what a listing means belongs to the working group; the state machine below is scaffold semantics, proposed not decided.
+Two eras:
 
-One-time setup, in order, when Phase B starts: run the Phase A key ceremony and replace `PINNED_ISSUER_KEYS` and `PINNED_STATUS_KEYS` (two SEPARATE key sets - the issuer key signs credentials, the status key signs status lists, so a stolen issuer key can never clear its own revocation bits); publish the signed suite manifest and fix `SUITE_MANIFEST_URL`; create the Cloudflare Worker and the custom domain; uncomment the route in `wrangler.jsonc`; `wrangler deploy` from this directory.
+- **Sentinel era** (now): `registry/keys/program-keys.json` is the pre-ceremony unprovisioned sentinel, so the module exports `PROVISIONED = false` and empty key arrays, and the worker fail-closes **every** badge request to the grey `unverified` rendering - never a 500, never anything green.
+  The deploy workflow refuses to deploy in this era at all.
+- **Provisioned era**: the maintainer runs the key ceremony (`scripts/generate-program-keys.mjs`) and opens the provisioning PR committing the public keys.
+  When the maintainer's provisioning PR merges, the next build regenerates this module automatically - **the merge arms the worker with zero hand edits**.
+  Issuer and status publics are pinned as separate sets (so a stolen issuer key can never clear its own revocation bits); the reserved Phase C log key is never pinned.
+
+Key resolution is rotation-aware and purpose-restricted, the same rule as the scripts side: a proof verifies against exactly the pinned key its `verificationMethod` fragment **names** (`did:web:builders.kya-os.org#conformance-issuer-1` and successors), never by trying every key, and issuer proofs resolve only in the issuer set, status proofs only in the status set.
 
 ## How a badge is computed
 
-Fail-closed at every step - any failure renders the grey "unverified" badge, never a green one:
+The slug must be in `generated-allowlist.mjs` (emitted by the build from the rendered registry entries); an unlisted slug is a 404.
+The allowlist carries each entry's honest claim label, registry status, and credential URL.
 
-1. The slug must be in `generated-allowlist.mjs`, which `site/build-pages.mjs` generates from the rendered registry entries (commit it with registry changes). Unlisted slug = 404.
-2. Fetch the claim credential from its canonical URL (the registry entry's `attestationUrl`).
-3. Verify the credential's Ed25519 `DataIntegrityProof` / `eddsa-jcs-2022` proof with `crypto.subtle` (JCS-canonicalize the credential minus proof per the W3C DI cryptosuite) against the PINNED issuer keys only - keys the credential carries are never trusted. Workers and Node 20+ both support Ed25519 in WebCrypto.
-4. Schema + temporal checks: `proof.proofPurpose` must be `assertionMethod`; `validFrom` must exist and not sit in the future beyond a 300s clock skew; an unexpected `validUntil` is a schema violation - the credential design deliberately has no expiry (freshness lives in suite supersession, recorded in the credential's `termsOfUse`), so no "expired" state exists.
-5. Check the revocation, suspension, and withdrawal Bitstring Status List entries (gzip + multibase, MSB-first bits, purpose asserted). Each status list is a signed credential whose proof is verified against the PINNED status keys - a key set separate from the issuer keys - before any bit is read.
-6. Compare the credential's suite pin (`suiteVersion` + `vectorSetHash`) against the signed suite manifest.
+Entries below the credential rungs render straight from the allowlist, with no fetch at all, exactly as the static tier renders them: `· listed`, `· <claim> self-reported`, `◌ <claim> in verification`.
 
-Six states, precedence top to bottom:
+For an entry at status `verified` or `revoked`, the worker re-verifies at request time, fail-closed at every step (any failure renders `unverified`, never a green badge):
+
+1. Fetch the credential from its canonical URL, `https://builders.kya-os.org/credentials/<id32>.json` (the entry's `attestationUrl`, carried by the allowlist).
+2. Verify its Ed25519 `DataIntegrityProof` / `eddsa-jcs-2022` proof with `crypto.subtle` against the pinned issuer key its proof names - keys the credential brings along are never trusted.
+3. Schema and temporal checks: `proof.proofPurpose` must be `assertionMethod`; `validFrom` must exist and not sit in the future beyond a 300s clock skew; **any** `validUntil` is a schema violation - the credential design deliberately has no expiry (currency lives in suite supersession, recorded in its `termsOfUse`), so no "expired" state exists.
+4. Binding checks: the credential `id` must recompute from the URL's `<id32>`, and the subject's claim must reproduce the allowlist's honest label - a subset never renders as a bare level, and a credential for some other claim cannot ride this slug.
+5. Read the revocation and suspension bits from the two Bitstring status lists at `https://builders.kya-os.org/credentials/status/{revocation,suspension}-1.json` (which the credential's own status entries must name).
+   Each list is a signed credential verified against the pinned **status** key its proof names before any bit is read; gzip inflation is capped mid-stream.
+
+States, precedence top to bottom, in the static tier's exact rendering grammar:
 
 | state | color | meaning |
 | --- | --- | --- |
-| `revoked` | red | revocation bit set |
-| `withdrawn` | grey | withdrawal bit set (scaffold semantics, see above) |
-| `contested` | amber | suspension bit set |
-| `superseded` | blue | proof valid, but the suite pin is no longer the manifest's current suite |
-| `verified` | green | proof valid, no status bit, suite current |
-| `unknown` | grey | no credential yet, or any failure anywhere (badge text: "unverified") |
+| `revoked` | dark grey | revocation bit set - terminal |
+| `◌ under appeal` | amber | suspension bit set - contested, not withdrawn |
+| `✓ <claim> verified` | green | proof valid, both bits clear |
+| `unverified` | grey | unprovisioned keys, or any failure anywhere (worker-only: the static build refuses instead of rendering it) |
 
-Working-group semantics note: whether a future charter wants an explicit expired display state is an open question for the working group; today the credential design deliberately has no expiry (an unexpected `validUntil` fails closed to `unverified`).
-
-Honesty rules: the label is always `KYA-OS conformance`; a subset claim renders its categories ("L1 subset (signed-proof)") and never a bare level - the allowlist ships the precomputed honest label so the worker cannot get this wrong.
+Honesty rules: the label cell is always `KYA-OS`; a subset claim renders its categories (`L1 subset (signed-proof)`) and never a bare level - the allowlist ships the precomputed honest label and the worker cross-checks the credential against it.
 
 Caching: the cache key is the path only (query string stripped), `s-maxage=300`; failure responses cache for 60s so an outage cannot pin a stale answer.
+
+## Deploy runbook
+
+Deployment is a `workflow_dispatch` of `.github/workflows/deploy-worker.yml` - never automatic.
+The workflow refuses while the program keys are unprovisioned, refuses stale generated modules, and refuses on any test failure, so the order below cannot be run out of order by accident.
+
+1. **Provision the program keys** (once, Phase A ceremony): run `node scripts/generate-program-keys.mjs`, paste the private halves into the `conformance-issuance` environment secrets, and open the provisioning PR committing `registry/keys/program-keys.json` plus the regenerated `workers/badge/generated-keys.mjs` (run `npm test` before pushing; the build regenerates the module and CI gates its freshness).
+   The merge arms the worker with zero hand edits.
+2. **Create the deploy token** (at deploy time, not before): in the DIF Cloudflare account, My Profile -> API Tokens -> Create Token -> Custom token, with exactly two permissions: `Account > Workers Scripts > Edit` and `Zone > Workers Routes > Edit`, zone-scoped to `kya-os.org`.
+   This is a separate token from the Pages deploy token on purpose - each token can do only its own tier's job.
+3. **Set the repository secrets**: `CLOUDFLARE_API_TOKEN_WORKER` (the token above) and `CLOUDFLARE_ACCOUNT_ID` (already set for the Pages deploy).
+4. **Run the workflow**: Actions -> "Deploy badge worker" -> Run workflow (from `main`).
+   It builds, freshness-checks the generated modules, verifies `PROVISIONED`, runs the full test suite, then `npx --yes wrangler@4 deploy` from `workers/badge/` onto the `builders.kya-os.org/badge/*` zone route.
+5. **Verify the first deploy**:
+
+   ```bash
+   curl -sI https://builders.kya-os.org/badge/kya-os-mcp.svg
+   ```
+
+   Confirm the worker serves it: the `CF-Worker` header where Cloudflare emits it, and definitively the worker's own header signature - `cache-control: public, s-maxage=300` with `x-content-type-options: nosniff` (the static Pages tier serves its own cache headers on these paths).
+   Then fetch the body and confirm it is byte-identical to `dist/badge/kya-os-mcp.svg` from a local build of the same commit - the parity assertion guarantees it, the curl proves it live.
+6. **Rollback**: `npx --yes wrangler@4 delete` from `workers/badge/` (same env vars) removes the worker and its route, and Cloudflare Pages serves the static badge tier on the same paths again, instantly.
+   No embed ever changes in either direction.
 
 ## Layout
 
 ```text
-worker.mjs                    routes, state machine, SVG/JSON rendering
-verify.mjs                    JCS, base58btc/base64url, eddsa-jcs-2022 verify, bitstring decode
-generated-allowlist.mjs       GENERATED by site/build-pages.mjs - do not edit
-fixtures/generate-fixtures.mjs  regenerates the dev fixtures (throwaway key)
-fixtures/*.json               NON-PRODUCTION fixtures for the offline tests
-worker.test.mjs               node --test coverage: verify accept/reject, all six states, allowlist rejection
-parity.test.mjs               cross-implementation parity vs scripts/lib/* (the deliberate redundancy rule's enforcement)
+worker.mjs               routes, state resolution, rendering (byte-identical
+                         to site/lib/badge.mjs - build-asserted)
+verify.mjs               JCS, base58btc/base64url, eddsa-jcs-2022 verify,
+                         bitstring decode with capped inflation
+generated-allowlist.mjs  GENERATED by site/build-pages.mjs - do not edit
+generated-keys.mjs       GENERATED by site/build-pages.mjs - do not edit
+fixtures/mint.mjs        in-test fixture mint: throwaway keys and Phase A
+                         shaped documents, minted fresh per run, never
+                         committed, never trusted
+worker.test.mjs          node --test coverage: verify accept/reject, every
+                         render state, rotation, purpose separation,
+                         fail-close, routing
+parity.test.mjs          cross-implementation parity vs scripts/lib/* (the
+                         deliberate redundancy rule's enforcement) incl. the
+                         scripts-mint -> worker-handler e2e
 ```
+
+Independence note (deliberate redundancy rule): this worker never imports `scripts/` or `site/` code - it must stay self-contained for Cloudflare bundling, and the repo's house style is independent implementations cross-proving each other.
+`parity.test.mjs` is where the two crypto implementations meet, and the build's render checks import this worker's renderer read-only to assert badge-byte parity with the static tier.
 
 ## Tests
 
@@ -74,4 +109,4 @@ parity.test.mjs               cross-implementation parity vs scripts/lib/* (the 
 node --test workers/badge/*.test.mjs
 ```
 
-Runs fully offline: fetch, cache, and issuer keys are injected, and the committed fixtures were signed by a throwaway key that is not (and will never be) a pinned production key.
+Runs fully offline: fetch, cache, and keys are injected, and every signed fixture is minted in-test by `fixtures/mint.mjs` under throwaway keys that are not (and can never become) pinned production keys.

@@ -35,7 +35,7 @@ Machine-readable mirrors ship next to the pages: [`/builders.json`](https://buil
 - `registry/builders/*.json` - one file per project building on KYA-OS (`registry/schema/builder.schema.json`).
 - `registry/interop/*.json` - one file per standards rail, with grounded status and evidence (`registry/schema/interop.schema.json`).
 - `conformance/` - the conformance program docs and the [starter template](conformance/starter/) (fold-in of the former conformance-starter repo).
-- `workers/badge/` - the Phase B badge worker scaffold, taking over `builders.kya-os.org/badge/*` from the static tiers (not deployable yet; see its README).
+- `workers/badge/` - the Phase B badge worker, taking over `builders.kya-os.org/badge/*` from the static tiers with request-time verification (deployment staged behind key provisioning; see its README for the runbook).
 - `site/build-pages.mjs` - renders both registries into the static site. Zero npm dependencies, deterministic output.
 - `scripts/validate.mjs` - dependency-free structural validation of both registries, run by CI and by the build.
 

@@ -1,24 +1,23 @@
 // KYA-OS conformance badge worker - Cloudflare configuration.
 //
-// NOT DEPLOYABLE YET. Phase A of the conformance program has not issued any
-// real credentials, the pinned issuer keys in worker.mjs are placeholders,
-// and the Cloudflare project does not exist. The route below stays commented
-// out until all three are true - see README.md for the one-time setup.
+// DEPLOYMENT IS GATED BY THE WORKFLOW, NOT BY THIS FILE: the route below is
+// live configuration, and .github/workflows/deploy-worker.yml (the only
+// deploy path, workflow_dispatch only) refuses to run it while the program
+// keys are the unprovisioned sentinel - "keys unprovisioned - merge the
+// provisioning PR first". Merging that PR regenerates generated-keys.mjs
+// and arms the worker; nothing in this file changes for that.
 {
   "name": "kya-os-badge",
   "main": "worker.mjs",
   "compatibility_date": "2026-08-01",
-  "workers_dev": false
+  "workers_dev": false,
 
-  // One-time setup (Phase B): create the Cloudflare Worker project, replace
-  // the placeholder issuer keys and the suite-manifest URL in worker.mjs with
-  // the Phase A values, then uncomment the route below. It is a ZONE route
-  // (not a custom domain), so the worker takes over /badge/* on the builders
-  // host while Cloudflare Pages keeps serving every other path - the static
-  // badge tiers hand the same URLs to the worker with no embed churn. Zone
+  // A ZONE route (not a custom domain), so the worker takes over /badge/*
+  // on the builders host while Cloudflare Pages keeps serving every other
+  // path - the static badge tiers hand the same URLs to the worker with no
+  // embed churn, and `wrangler delete` hands them straight back. Zone
   // routes require zone_name (the kya-os.org zone in the DIF account).
-  //
-  // "routes": [
-  //   { "pattern": "builders.kya-os.org/badge/*", "zone_name": "kya-os.org" }
-  // ]
+  "routes": [
+    { "pattern": "builders.kya-os.org/badge/*", "zone_name": "kya-os.org" }
+  ]
 }

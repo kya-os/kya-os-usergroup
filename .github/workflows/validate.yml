@@ -29,5 +29,5 @@ jobs:
         run: node --test workers/badge/*.test.mjs
       - name: Conformance program tests (attestation core + issuance e2e dry run)
         run: node --test scripts/__tests__/*.test.mjs
-      - name: Generated allowlist is committed and current
-        run: git diff --exit-code workers/badge/generated-allowlist.mjs
+      - name: Generated worker modules are committed and current
+        run: git diff --exit-code workers/badge/generated-allowlist.mjs workers/badge/generated-keys.mjs
