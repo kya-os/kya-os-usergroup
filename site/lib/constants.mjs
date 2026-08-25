@@ -26,6 +26,9 @@ export const REVOKED_TREE_URL = `${MCP_REPO_URL}/tree/main/examples/revoked`;
 // home hero shows - the README's own pointer.
 export const CONTEXT7_EXAMPLE_URL = `${MCP_REPO_URL}/tree/main/examples/context7-with-kya-os`;
 export const PLAYGROUND_URL = `${SITE_URL}/mcp/playground`;
+// The live proof console on the protocol site: try a signed request against
+// the demo server without running anything.
+export const PLAYGROUND_PROOF_URL = `${PLAYGROUND_URL}/proof`;
 export const DEMO_MCP_URL = "https://demo-mcp.kya-os.ai/mcp";
 // 2026-08-20: the live standalone starter repo. Repoint to
 // `${REPO_URL}/tree/main/conformance/starter` after PR #1 merges and the

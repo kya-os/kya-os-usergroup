@@ -350,6 +350,11 @@ a.pc-title{display:inline-block}
 .fc-hr{height:1px;background:var(--line);margin:10px 0}
 .kill-dot{width:6px;height:6px;flex-shrink:0;background:var(--signal);box-shadow:0 0 8px color-mix(in srgb,var(--signal) 80%,transparent);animation:killFlash 6s linear infinite}
 .tag-row{display:flex;flex-wrap:wrap;gap:8px;font-family:var(--font-mono);font-size:10px;color:var(--ink-muted);margin-top:16px}
+.recipe{display:flex;flex-direction:column}
+.recipe .tag-row{margin-top:auto;padding-top:16px}
+.pc-actions{gap:10px 18px;margin-top:4px}
+.recipe .micro{margin-top:8px}
+.recipes-try{margin:-20px 0 28px}
 .tag{border:1px solid var(--line);padding:2px 8px}
 .scat-label .chip{margin-left:6px;font-size:10px;padding:1px 8px;text-transform:none;letter-spacing:.02em}
 

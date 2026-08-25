@@ -11,7 +11,8 @@
 import { DESCRIPTION, ORIGIN, TITLE } from "./constants.mjs";
 import { esc, pageShell } from "./html.mjs";
 import { sectionsConformance } from "./program.mjs";
-import { sectionsRails, sectionsStandards, sectionsUseCases } from "./rails.mjs";
+import { sectionsRails, sectionsStandards } from "./rails.mjs";
+import { sectionsUseCases } from "./use-cases.mjs";
 import { sectionEntryBuilder } from "./entry-builder.mjs";
 import { sectionsHome } from "./home.mjs";
 import { sectionAddCta, sectionDirectory, sectionStartHere, sectionSubmit } from "./sections.mjs";
@@ -124,7 +125,7 @@ export function renderUseCasesHtml() {
     path: "/use-cases/",
     hero: pageHero({
       title: "USE-CASES",
-      lede: "What the primitives are for. One shipping example, and the recipes waiting for a builder - each maps directly onto primitives you can run today.",
+      lede: "What the primitives are for. One shipping example, and six recipes - each with the runnable example in the reference repository that demonstrates it, and a live server to try a proof against before you build.",
     }),
     sections: [sectionsUseCases()],
   });

@@ -83,7 +83,9 @@
  *   lib/sections.mjs    the directory page bodies
  *   lib/entry-builder.mjs  the builders page's entry-builder form markup
  *   lib/program.mjs     the conformance page body
- *   lib/rails.mjs       the standards, rails, and use-cases page bodies
+ *   lib/rails.mjs       the standards and rails page bodies
+ *   lib/use-cases.mjs   the use-cases page body (REVOKED + recipes with
+ *                       their reference examples)
  *   lib/pages.mjs       page assembly: hero + sections per page, per-page meta
  *   lib/theme.mjs       the inline-only pieces: THEME_SCRIPT (theme toggle +
  *                       js-anim gate + page-fx failsafe) and the theme-color
