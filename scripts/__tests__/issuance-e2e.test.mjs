@@ -22,7 +22,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -35,6 +35,34 @@ const GIT_COMMIT = "c0ffee0ddba11ad5c0ffee0ddba11ad5c0ffee0d";
 const temp = mkdtempSync(join(tmpdir(), "kya-issuance-e2e-"));
 const EXCLUDE = new Set([".git", "dist", "node_modules"]);
 cpSync(repoRoot, temp, { recursive: true, filter: (source) => !EXCLUDE.has(basename(source)) });
+
+// ── era normalization: the fixture starts from the canonical PRE-PROVISIONING
+// state no matter what era the live repo is in. Without this, the first real
+// provisioning turned the copied key file provisioned and the ceremony below
+// correctly refused to overwrite it - the test was asserting an era, not a
+// behavior. Reset: sentinel keys, empty credential store, and every entry
+// claim walked back below "verified" so validation holds with no credentials.
+writeFileSync(
+  join(temp, "registry", "keys", "program-keys.json"),
+  JSON.stringify({ version: 1, keys: [{ purpose: "issuer", status: "unprovisioned" }] }, null, 2) + "\n",
+);
+rmSync(join(temp, "registry", "credentials", "status"), { recursive: true, force: true });
+for (const name of readdirSync(join(temp, "registry", "credentials"))) {
+  if (/^[0-9a-f]{32}\.json$/.test(name)) rmSync(join(temp, "registry", "credentials", name));
+}
+writeFileSync(
+  join(temp, "registry", "credentials", "allocations.json"),
+  JSON.stringify({ nextIndex: 0, allocations: [] }, null, 2) + "\n",
+);
+for (const name of readdirSync(join(temp, "registry", "builders"))) {
+  const path = join(temp, "registry", "builders", name);
+  const entry = JSON.parse(readFileSync(path, "utf8"));
+  const c = entry.conformance;
+  if (c === undefined || (c.status !== "verified" && c.status !== "revoked")) continue;
+  c.status = typeof c.evidenceUrl === "string" ? "in-verification" : "self-reported";
+  delete c.attestationUrl;
+  writeFileSync(path, JSON.stringify(entry, null, 2) + "\n");
+}
 
 const run = (args, env = {}) =>
   spawnSync(process.execPath, args, { cwd: temp, env: { ...process.env, ...env }, encoding: "utf8" });
