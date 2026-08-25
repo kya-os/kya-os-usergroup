@@ -8,7 +8,8 @@
   "buildsOn": ["kya-os-mcp"],
   "standards": ["rfc-8785"],
   "contact": {
-    "github": "example"
+    "github": "example",
+    "press-contact": "press_ATSYMBOL_example.com"
   },
   "listedAt": "2026-08-14"
 }
