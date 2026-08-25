@@ -169,7 +169,7 @@ export function sectionsUseCases() {
       </div>`;
   return `  <section class="fx fxd-15">
     <div class="scat-label">USE CASE <span class="chip st-shipping">shipping</span></div>
-    <div class="flagship">
+    <div class="showcase">
       <div>
         <div class="flag-title">REVOKED</div>
         <p class="flag-lede">An on-chain kill switch for AI agents with wallet access. Agents spend under scoped, verifiable delegations - and that authority is revocable on a public chain (cheqd testnet), where every verifier reads the same refusal.</p>
