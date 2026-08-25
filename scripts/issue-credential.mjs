@@ -124,6 +124,14 @@ if (claim === undefined) fail(`registry/builders/${slug}.json carries no conform
 if (claim.status !== "in-verification") {
   fail(`entry status is "${claim.status}" - issuance requires "in-verification" (the open submission is the claim being verified)`);
 }
+// Identity binding at the source: the credential is ABOUT this entry's
+// project, so its subject id must be an identity URL the entry declares.
+// The validator re-proves this on every build; refusing here keeps a
+// mis-keyed workflow input from ever reaching the signer.
+const entryIdentities = [entry.homepage, entry.repo].filter((u) => typeof u === "string");
+if (!entryIdentities.includes(args["subject-id"])) {
+  fail(`--subject-id must be the entry's homepage or repo (${entryIdentities.join(" or ")}), got ${JSON.stringify(args["subject-id"])}`);
+}
 const categories = args.categories === undefined || args.categories === "" ? undefined : args.categories.split(",").map((c) => c.trim()).filter(Boolean);
 if (claim.level !== args.level) fail(`input level ${args.level} does not match the entry's claim (${claim.level})`);
 if (claim.scope !== args.scope) fail(`input scope ${args.scope} does not match the entry's claim (${claim.scope})`);

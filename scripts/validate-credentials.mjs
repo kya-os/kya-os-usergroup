@@ -218,6 +218,14 @@ export function validateCredentials(entries, rootDir = defaultRoot) {
       continue;
     }
     const subject = record.credential.credentialSubject ?? {};
+    // Identity binding: the credential must be ABOUT this entry's project -
+    // its subject id must be one of the identity URLs the entry itself
+    // declares. Without this, a credential about a different subject could
+    // render green on this row while every other cross-check still passes.
+    const entryIdentities = [entry.homepage, entry.repo].filter((u) => typeof u === "string");
+    if (!entryIdentities.includes(subject.id)) {
+      errors.push(`${rel}: credential subject ${JSON.stringify(subject.id)} is not this entry's homepage or repo`);
+    }
     if (subject.level !== c.level) errors.push(`${rel}: credential level ${subject.level} does not match the entry claim ${c.level}`);
     if (subject.scope !== c.scope) errors.push(`${rel}: credential scope ${subject.scope} does not match the entry claim ${c.scope}`);
     const entryCategories = [...(c.categories ?? [])].sort().join(",");

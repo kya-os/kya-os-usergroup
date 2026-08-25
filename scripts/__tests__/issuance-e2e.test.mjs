@@ -103,6 +103,15 @@ test("e2e: ceremony -> issue -> verify -> suspend -> unsuspend -> revoke -> muta
   assert.equal(mismatch.status, 1);
   assert.match(mismatch.stderr, /does not match the entry's claim/);
 
+  // A credential about a DIFFERENT subject is refused (identity binding):
+  // every other input matches the entry's claim, only the subject id lies.
+  const foreignSubject = run(
+    issueArgs.map((arg) => (arg === "https://kya-os.org" ? "https://attacker.example" : arg)),
+    { K_ISSUER_PRIVATE: secrets.K_ISSUER_PRIVATE, K_STATUS_PRIVATE: secrets.K_STATUS_PRIVATE },
+  );
+  assert.equal(foreignSubject.status, 1, "a subject id the entry does not declare must be refused");
+  assert.match(foreignSubject.stderr, /subject-id must be the entry's homepage or repo/);
+
   // The real issuance.
   const issue = run(issueArgs, { K_ISSUER_PRIVATE: secrets.K_ISSUER_PRIVATE, K_STATUS_PRIVATE: secrets.K_STATUS_PRIVATE });
   assert.equal(issue.status, 0, issue.stderr);
