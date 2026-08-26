@@ -3,7 +3,11 @@
  * lib LOC cap): the rails page's rail-by-rail cards name each rail's real
  * emit.ts exports and link a standards row that exists; the conformance
  * page's levels section names L1, L2, and L3 with their CONFORMANCE.md
- * anchors and says what a level is; the use-cases page's REVOKED section
+ * anchors and heading names and says what a level is; the conformance page
+ * keeps its badge-first section order, its badge preview and embed ahead of
+ * the levels, the ops detail out of the page and in docs/BADGE-WORKER.md
+ * (read here), and one implementations-table row per claim plus the CTA
+ * row; the use-cases page's REVOKED section
  * carries the README's own numbers and commands, every recipe card has its
  * Target and Reference lines and its "Open the example" button, the consent
  * card's authorization-methods row names exactly the requirement types
@@ -14,7 +18,9 @@
  * on none of the three pages. Expected strings are reconstructed here,
  * never taken from the renderers, so a regression cannot pass its own check.
  */
-import { CONFORMANCE_MD_URL, MCP_REPO_URL } from "./constants.mjs";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { BADGE_WORKER_DOC_URL, CONFORMANCE_MD_URL, MCP_REPO_URL } from "./constants.mjs";
 import { assertBuild, BANNED_COPY } from "./checks.mjs";
 
 // The export each rail card must name, per src/card/emit.ts in the reference tree.
@@ -26,6 +32,18 @@ const RAIL_EXPORTS = {
 // CONFORMANCE.md heading anchors, one per level (the GitHub slug of each
 // "Level N - ..." heading).
 const LEVEL_ANCHORS = { L1: "level-1--core-crypto", L2: "level-2--full-session", L3: "level-3--full-delegation" };
+// The three level names exactly as CONFORMANCE.md heads them (plain dash,
+// house style; GitHub slugs the heading to the anchors above).
+const LEVEL_NAMES = { L1: "Level 1 - Core Crypto", L2: "Level 2 - Full Session", L3: "Level 3 - Full Delegation" };
+// The conformance page, badge first: its h2s in exactly this order.
+const CONFORMANCE_H2S = ["The badge", "What a verified claim gives you", "How verification works", "Levels", "Implementations"];
+// Vocabulary that never belongs on the conformance page, beyond BANNED_COPY.
+const CONFORMANCE_BANNED = /\b(leaderboard|prestige|trophy|mathematically|guarantees|gamify|pulse)\b/i;
+// The badge ops detail lives in docs/BADGE-WORKER.md, not on the page: the
+// facts the doc must keep (the worker's cache bound, the failure cache, the
+// manual deploy, the key provisioning) and the marker that must not return.
+const BADGE_WORKER_DOC = "docs/BADGE-WORKER.md";
+const BADGE_WORKER_FACTS = ["s-maxage=300", "60 seconds", "workflow_dispatch", "PROVISIONED"];
 
 function sectionById(html, id, name) {
   const start = html.indexOf(`id="${id}"`);
@@ -55,6 +73,7 @@ export function assertCopyFacts(pages) {
   const levels = sectionById(pages["conformance/index.html"], "levels", "dist/conformance/index.html");
   for (const [level, anchor] of Object.entries(LEVEL_ANCHORS)) {
     assertBuild(levels.includes(`href="${CONFORMANCE_MD_URL}#${anchor}">${level} `), `the levels section must render ${level} linked to its CONFORMANCE.md anchor`);
+    assertBuild(levels.includes(`>${level} <span class="pc-tag">${LEVEL_NAMES[level]}</span>`), `the ${level} card must carry its CONFORMANCE.md heading name "${LEVEL_NAMES[level]}"`);
   }
   assertBuild(levels.includes("capability tiers"), 'the levels section must say levels are "capability tiers"');
 
@@ -64,6 +83,50 @@ export function assertCopyFacts(pages) {
     const banned = pages[name].match(BANNED_COPY);
     assertBuild(banned === null, `banned vocabulary "${banned?.[0]}" leaked into dist/${name}`);
   }
+}
+
+/**
+ * The conformance page's structure, on the dist bytes: the h2s in the
+ * badge-first order; the badge section (linked from the home path) ahead of
+ * the pipeline, its preview form and embed ahead of the levels, and its
+ * pointer to the ops doc; the ops marker absent from the page and every
+ * ops fact present in docs/BADGE-WORKER.md (read from the repo, dashes
+ * plain); the page's extra banned vocabulary absent; and the
+ * implementations table one body row per claim plus exactly one CTA row.
+ */
+export function assertConformanceStructure({ html, repoRoot, conformanceEntries }) {
+  const name = "dist/conformance/index.html";
+  const h2s = [...html.matchAll(/<h2>([^<]+)<\/h2>/g)].map((m) => m[1]);
+  assertBuild(h2s.join("|") === CONFORMANCE_H2S.join("|"), `${name}: h2 order must be exactly [${CONFORMANCE_H2S.join(", ")}], found [${h2s.join(", ")}]`);
+  const at = (marker) => {
+    const index = html.indexOf(marker);
+    assertBuild(index !== -1, `${name}: lost ${marker}`);
+    return index;
+  };
+  assertBuild(at('id="the-badge"') < at('id="how-verification-works"'), `${name}: the badge section must precede the pipeline`);
+  assertBuild(at('id="badge-preview"') < at('id="levels"'), `${name}: the badge preview must precede the levels section`);
+  const badge = sectionById(html, "the-badge", name);
+  for (const id of ["badge-preview", "badge-embed"]) {
+    assertBuild(badge.includes(`id="${id}"`), `${name}: the badge section lost its ${id} block`);
+  }
+  assertBuild(badge.includes(`href="${BADGE_WORKER_DOC_URL}">how the badge worker serves this -&gt;</a>`), `${name}: the badge section must link ${BADGE_WORKER_DOC}`);
+  assertBuild(!html.includes("s-maxage"), `${name}: badge ops detail (s-maxage) belongs in ${BADGE_WORKER_DOC}, not on the page`);
+  const doc = readFileSync(join(repoRoot, BADGE_WORKER_DOC), "utf8");
+  for (const fact of BADGE_WORKER_FACTS) {
+    assertBuild(doc.includes(fact), `${BADGE_WORKER_DOC} lost the ops fact "${fact}"`);
+  }
+  assertBuild(!doc.includes("\u2014"), `${BADGE_WORKER_DOC} carries an em dash`);
+  const banned = html.match(CONFORMANCE_BANNED);
+  assertBuild(banned === null, `banned vocabulary "${banned?.[0]}" leaked into ${name}`);
+
+  const table = sectionById(html, "implementations", name).match(/<table class="impl">([\s\S]*?)<\/table>/)?.[1];
+  assertBuild(table !== undefined, `${name}: the implementations section lost its table`);
+  const rows = (table.match(/<tbody>([\s\S]*?)<\/tbody>/)?.[1].match(/<tr>/g) ?? []).length;
+  assertBuild(rows === conformanceEntries.length, `${name}: the implementations table renders ${rows} rows, expected one per claim (${conformanceEntries.length})`);
+  assertBuild(
+    (table.match(/<tfoot>/g) ?? []).length === 1 && /<tfoot><tr><td colspan="5" class="ifoot">[^<]* - <a href="\/builders\/#submit">claim conformance -&gt;<\/a><\/td><\/tr><\/tfoot>/.test(table),
+    `${name}: the implementations table must end in exactly one claim-conformance CTA row`,
+  );
 }
 
 // Every path the use-cases page links inside decentralized-identity/

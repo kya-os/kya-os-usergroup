@@ -37,7 +37,7 @@ import {
   assertSuitePinAgreement,
   assertThemeIntegrity,
 } from "./checks.mjs";
-import { assertCopyFacts } from "./copy-checks.mjs";
+import { assertConformanceStructure, assertCopyFacts } from "./copy-checks.mjs";
 import { assertClientModules } from "./module-checks.mjs";
 import { THEME_COLORS } from "./theme.mjs";
 
@@ -149,6 +149,7 @@ export function runRenderChecks({ distDir, rendered, interopSorted, probes, cred
   assertMigrateHook(pages["index.html"]);
   assertHomePolish(pages);
   assertCopyFacts(pages);
+  assertConformanceStructure({ html: pages["conformance/index.html"], repoRoot: join(distDir, ".."), conformanceEntries });
   assertNoEmDashes(pages);
 
   // Client modules: byte copies, the generated vocabulary, the import graph,
@@ -177,10 +178,9 @@ export function runRenderChecks({ distDir, rendered, interopSorted, probes, cred
   // and neither is "tamper-proof" ("tamper-evident" is the honest phrase).
   for (const [name, html] of Object.entries(pages)) {
     assertBuild(!/certified|certification|tamper-proof/i.test(html), `a banned term (certified/certification/tamper-proof) leaked into ${name}`);
-    // A green "verified" chip exists only as a credential link (the .demo
-    // state-machine samples on the conformance page are the one labeled
-    // exception): every non-demo st-verified chip must sit inside a
-    // .chip-link anchor.
+    // A green "verified" chip exists only as a credential link (the
+    // builders page's ladder rung, labeled .demo, is the one exception):
+    // every non-demo st-verified chip must sit inside a .chip-link anchor.
     for (const match of html.matchAll(/<(a|span)[^>]*class="[^"]*\bst-verified\b[^"]*"[^>]*>/g)) {
       if (match[0].includes("demo")) continue;
       // Directory summaries deliberately render chips unlinked - an anchor
@@ -264,8 +264,9 @@ export function runRenderChecks({ distDir, rendered, interopSorted, probes, cred
   // Readout truth: every count the pages show must be the live registry
   // number (recomputed here from the shaped data, never from a formatter) -
   // the home stats strip, the directory filter counts, the rails page's
-  // matrix pointer, and the suite pin strip. No tables anywhere: the design
-  // renders rows as grids.
+  // matrix pointer, and the suite pin strip. No tables on the landing page:
+  // the design renders its rows as grids (the conformance implementations
+  // table is the site's one real table, checked in lib/copy-checks.mjs).
   const landingHtml = pages["index.html"];
   assertBuild(landingHtml.includes(`<b>${rendered.length}</b> projects listed`), "the home stats strip must show the live entry count");
   assertBuild(landingHtml.includes(`<b>${interopSorted.length}</b> standards mapped`), "the home stats strip must show the live rails count");

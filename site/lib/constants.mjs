@@ -21,6 +21,9 @@ export const DOCS_QUICKSTART_URL = `${SITE_URL}/mcp/docs/getting-started/quickst
 // registry - via .github/ISSUE_TEMPLATE/conformance_submission.yml. Claims
 // already in flight on the spec repo remain valid; see conformance/README.md.
 export const SUBMISSION_ISSUE_URL = `${REPO_URL}/issues/new?template=conformance_submission.yml`;
+// The badge's operating detail (tiers, cache bound, deploy status), kept off
+// the conformance page and linked from its badge section.
+export const BADGE_WORKER_DOC_URL = `${REPO_URL}/blob/main/docs/BADGE-WORKER.md`;
 export const REVOKED_TREE_URL = `${MCP_REPO_URL}/tree/main/examples/revoked`;
 export const REVOKED_README_URL = `${MCP_REPO_URL}/blob/main/examples/revoked/README.md`;
 // The README's own 3-minute video link (examples/revoked/README.md line 9).

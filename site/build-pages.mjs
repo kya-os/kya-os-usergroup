@@ -11,8 +11,9 @@
  *                              panel, explore (stats strip + five cards)
  *   - builders/index.html      the directory: filterable registry rows, the
  *                              on-ramps, and the three submission paths
- *   - conformance/index.html   the program: suite pin, pipeline, badge
- *                              anatomy, levels, states, implementations
+ *   - conformance/index.html   the program, badge first: suite pin, the
+ *                              badge preview, what a verified claim gives
+ *                              you, pipeline, levels, implementations
  *   - standards/index.html     the rails matrix grouped by category
  *   - rails/index.html         the protocol rails diagram page
  *   - use-cases/index.html     the REVOKED flagship and the recipe grid

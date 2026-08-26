@@ -74,7 +74,7 @@ export function renderBuildersHtml({ rendered, interopSorted, probes, verdicts }
   });
 }
 
-/** The program: suite pin, pipeline, badge anatomy, levels, states, implementations. */
+/** The program, badge first: suite pin, the badge preview, what a verified claim gives you, the pipeline, levels, implementations. */
 export function renderConformanceHtml({ rendered, verdicts }) {
   return contentPage({
     title: `Conformance · ${TITLE}`,
