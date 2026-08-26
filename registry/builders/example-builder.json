@@ -5,12 +5,16 @@
   "homepage": "https://example.com",
   "repo": "https://github.com/example/example-builder",
   "kind": "example",
-  "buildsOn": ["kya-os-mcp"],
-  "standards": ["rfc-8785"],
+  "buildsOn": [
+    "kya-os-mcp"
+  ],
+  "standards": [
+    "rfc-8785"
+  ],
   "contact": {
     "github": "example",
-    "email": "builder_ATSYMBOL_example.com",
-    "press-email": "press_ATSYMBOL_example.com"
+    "email": "builder@example.com",
+    "press-email": "press@example.com"
   },
   "listedAt": "2026-08-14"
 }

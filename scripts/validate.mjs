@@ -161,12 +161,15 @@ function checkContact(contact, fail) {
     return;
   }
   const keys = Object.keys(contact);
-  if (keys.length === 0) fail('"contact" must have at least one of "email" or "github"');
+  if (keys.length === 0) fail('"contact" must have at least one of "email", "github", or "press-email"');
   for (const key of keys) {
     if (!CONTACT_KEYS.includes(key)) fail(`unexpected contact property "${key}" (allowed: ${CONTACT_KEYS.join(", ")})`);
   }
   if (contact.email !== undefined && (typeof contact.email !== "string" || !EMAIL_RE.test(contact.email))) {
     fail('"contact.email" must be a valid email address');
+  }
+  if (contact["press-email"] !== undefined && (typeof contact["press-email"] !== "string" || !EMAIL_RE.test(contact["press-email"]))) {
+    fail('"contact.press-email" must be a valid email address');
   }
   if (contact.github !== undefined && (typeof contact.github !== "string" || !GITHUB_USER_RE.test(contact.github))) {
     fail('"contact.github" must be a GitHub username (letters, digits, dashes, max 39 chars, no @)');
