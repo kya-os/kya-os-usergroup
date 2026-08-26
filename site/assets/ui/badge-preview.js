@@ -28,8 +28,10 @@ function init(form) {
     const seed = claimWaveSeed(slug, { level: form.elements.namedItem("level").value, scope: "full" });
     // The waveform module emits an SVG string of numbers only (the seed is
     // hashed, never printed), parsed as a document rather than assigned as
-    // markup.
-    const svg = new DOMParser().parseFromString(waveformSvg(seed, CLAIM_WAVE), "image/svg+xml").documentElement;
+    // markup. Parsed as HTML on purpose: the string carries no xmlns (it is
+    // written for the HTML parser at build time), so parsing it as XML
+    // yields a namespace-less root that renders nothing.
+    const svg = new DOMParser().parseFromString(waveformSvg(seed, CLAIM_WAVE), "text/html").body.firstElementChild;
     wave.replaceChildren(document.adoptNode(svg));
     seedOut.textContent = seed;
     for (const span of embedSlugs) span.textContent = slug;
