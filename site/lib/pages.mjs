@@ -97,7 +97,7 @@ export function renderStandardsHtml({ interopSorted }) {
     path: "/standards/",
     hero: pageHero({
       title: "STANDARDS RAILS",
-      lede: "What KYA-OS provides, carries, and projects onto — every row grounded and dated. A status is never listed above what its evidence shows.",
+      lede: "What KYA-OS provides, carries, and projects onto: every row grounded and dated. A status is never listed above what its evidence shows.",
     }),
     sections: [sectionsStandards(interopSorted)],
   });
