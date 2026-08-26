@@ -165,7 +165,7 @@ export function assertMigrateHook(landingHtml) {
  * vocabulary appears nowhere on the page.
  */
 const HOME_KEYPHRASES = [
-  "Verifiable identity. Signed receipts. Revocable authority.",
+  "Verifiable identity, delegated authority, and signed proofs for AI agents.",
   "<strong>verifiable cryptographic identity</strong>",
   "<strong>signed receipt for every tool call</strong>",
   "<strong>no logs to trust, nothing to impersonate.</strong>",
