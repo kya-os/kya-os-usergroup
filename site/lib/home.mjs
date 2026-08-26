@@ -8,7 +8,7 @@
  */
 import {
   ADD_PROJECT_URL,
-  CONTEXT7_EXAMPLE_URL,
+  CONTEXT7_EXAMPLE_URL, CONSENT_GUIDE_URL,
   DOCS_QUICKSTART_URL,
   MIGRATE_README_URL,
   STARTER_URL,
@@ -29,7 +29,7 @@ function heroMigrate() {
   return `  <header class="hero fx">
     <div class="kicker">BUILDERS.KYA-OS.ORG</div>
     <h1 class="h1-home"><span data-title-reveal>BUILD ON KYA-OS</span><span class="cursor" aria-hidden="true">_</span></h1>
-    <p class="lede">Give any MCP server a verifiable identity and signed responses in two lines. Then get listed, prove conformance against the pinned suite, and ship on the rails that carry the standards you already speak.</p>
+    <p class="lede"><strong>Two lines give your MCP server a cryptographic identity and a signed receipt for every tool call.</strong> The identity is a <code>did:key</code> generated in your process and never shared. The receipt binds each request to its response, so anyone can verify what your server did: no logs to trust, nothing to impersonate.</p>
     <div class="diff-pair">
       <div>
         <div class="diff-label">before &middot; a standard MCP server, no identity or proofs</div>
@@ -41,7 +41,9 @@ function heroMigrate() {
       </div>
     </div>
     <p class="note">That&#39;s it. <code>withKyaOs</code> auto-generates an Ed25519 identity, registers the <code>_kyaos</code> protocol tool, and wraps the transport so every tool response includes a detached JWS proof in <code>_meta</code>. Invisible to the LLM, verifiable by anyone.</p>
+    <p class="note"><strong>From there, one wrapper at a time:</strong> gate any tool behind human consent and scoped, revocable authority (<a href="${CONSENT_GUIDE_URL}"><code>wrapWithDelegation</code></a>), and publish an <a href="/rails/">Entity Card</a> so MCP <code>server.json</code>, A2A, and NANDA all carry the same identity.</p>
     <p class="note"><a href="${CONTEXT7_EXAMPLE_URL}">See a real server migrated with exactly 2 lines: examples/context7-with-kya-os -&gt;</a></p>
+    <p class="note">Then get listed here, prove conformance against the pinned suite, and ship on the rails that carry the standards you already speak.</p>
     <div class="dlinks next-strip">
       <span class="next-label">what next:</span>
       <a href="${STARTER_URL}">run the suite against it -&gt;</a>

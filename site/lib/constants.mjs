@@ -25,6 +25,8 @@ export const REVOKED_TREE_URL = `${MCP_REPO_URL}/tree/main/examples/revoked`;
 // The real MCP server (Context7) migrated with exactly the two lines the
 // home hero shows - the README's own pointer.
 export const CONTEXT7_EXAMPLE_URL = `${MCP_REPO_URL}/tree/main/examples/context7-with-kya-os`;
+// The README's next step after the two lines: per-tool consent gating.
+export const CONSENT_GUIDE_URL = "https://github.com/decentralized-identity/kya-os-mcp#protect-tools-with-human-consent";
 export const PLAYGROUND_URL = `${SITE_URL}/mcp/playground`;
 // The live proof console on the protocol site: try a signed request against
 // the demo server without running anything.
