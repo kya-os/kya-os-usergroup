@@ -92,11 +92,25 @@ const VERIFIED_MCP_PATHS = [
 // lines 18-20, 29, 69, 71): the cap, the verify run's elapsedMs, the
 // zero-config command, the hardware kill, and the append-only status list.
 const REVOKED_FACTS = ["10 CHEQ", "828", "npm run verify:once", "FIDO2", "append-only"];
+// The before / after walkthrough: both state headings, and the facts the
+// two states carry (README lines 69, 71, 33, and the verify run's
+// elapsedMs at line 29).
+const WALKTHROUGH_HEADINGS = ["The agent spends, safely", "After the kill"];
+const WALKTHROUGH_FACTS = ["10 CHEQ", "holderBinding", "828", "append-only", "That refusal is the product."];
 
 function assertUseCasesFacts(html) {
   const revoked = sectionById(html, "revoked", "dist/use-cases/index.html");
   for (const fact of REVOKED_FACTS) {
     assertBuild(revoked.includes(fact), `the REVOKED section lost the README fact "${fact}"`);
+  }
+  const walkStart = revoked.indexOf('id="revoked-walkthrough"');
+  assertBuild(walkStart !== -1, "the REVOKED section lost its before / after walkthrough");
+  const walkthrough = revoked.slice(walkStart, revoked.indexOf('<div class="uc-block">', walkStart));
+  for (const heading of WALKTHROUGH_HEADINGS) {
+    assertBuild(walkthrough.includes(`<h3 class="walk-title">${heading}</h3>`), `the walkthrough lost its state heading "${heading}"`);
+  }
+  for (const fact of WALKTHROUGH_FACTS) {
+    assertBuild(walkthrough.includes(fact), `the walkthrough lost the README fact "${fact}"`);
   }
   assertBuild(revoked.includes('data-copy-target="revoked-verify"'), "the REVOKED section must carry the copy button for the 60-second verify commands");
 

@@ -1,7 +1,8 @@
 /**
  * The use-cases page body: REVOKED step by step (the shipping example as a
- * runnable blueprint: the beats, the participants strip, the 60-second
- * verify path with its copyable commands, the tiered full demo) and the
+ * runnable blueprint: the before / after walkthrough of the participants
+ * strip from lib/revoked-walkthrough.mjs, the beats, the 60-second verify
+ * path with its copyable commands, the tiered full demo) and the
  * recipe grid, each recipe with a target, an "Open the example" action into
  * the real example in kya-os-mcp/examples, and a reference line naming the
  * exact file or npm subpath it comes from (they are examples to read and
@@ -17,6 +18,7 @@
 import { CONSENT_GUIDE_URL, MCP_REPO_URL, PLAYGROUND_PROOF_URL, REVOKED_README_URL, REVOKED_TREE_URL, REVOKED_VIDEO_URL } from "./constants.mjs";
 import { codeBlock } from "./highlight.mjs";
 import { esc, promptBlock } from "./html.mjs";
+import { revokedWalkthrough } from "./revoked-walkthrough.mjs";
 import { CONSENT_GATE, REVOKED_VERDICT, REVOKED_VERIFY } from "./snippets.mjs";
 import { waveformLockup } from "./waveform.mjs";
 
@@ -25,17 +27,6 @@ const source = (path) => `${MCP_REPO_URL}/blob/main/${path}`;
 const ref = (label, href) => `<a href="${href}"><code>${esc(label)}</code></a>`;
 
 // ── REVOKED ─────────────────────────────────────────────────────────────────
-
-// The README's sequence-diagram participants (lines 43-49), boxes only, in
-// wire order. The server-held wallet is omitted: the strip is the authority
-// path, not the funds path.
-const PARTICIPANTS = [
-  ["Operator / Issuer", "did:cheqd + FIDO2 key"],
-  ["Claude Desktop", "the brain, no keys"],
-  ["kya-wallet gateway", "agent key + VC"],
-  ["Protected MCP server", "withKyaOs, the verifier"],
-  ["cheqd resolver", "Cosmos testnet"],
-];
 
 // The beats, README lines 69-72, in the README's order and words.
 const BEATS = [
@@ -86,9 +77,6 @@ const TIERS = [
 ];
 
 function sectionRevoked() {
-  const strip = PARTICIPANTS.map(([name, cap]) => `<div class="flow-box">${esc(name)}<span class="flow-cap">${esc(cap)}</span></div>`).join(
-    '<div class="wire"><span class="wire-dot"></span></div>',
-  );
   const beats = BEATS.map(([title, body]) => `      <li><div class="path-body"><strong>${title}</strong> ${body}</div></li>`).join("\n");
   const tiers = TIERS.map(
     ({ n, title, lines }) => `      <div class="panel-card step tier">
@@ -122,10 +110,7 @@ function sectionRevoked() {
         <div class="fc-line">verify:once <span class="tone-alert">elapsedMs: 828</span></div>
       </div>
     </div>
-    <div class="flow-wrap" role="group" aria-label="The participants, in wire order: operator with a FIDO2 key, Claude Desktop, the kya-wallet gateway, the protected MCP server, the cheqd resolver.">
-      <div class="flow-strip">${strip}</div>
-      <p class="flow-legend">spend: Claude Desktop asks the gateway to pay; the gateway sends <code>wallet_send</code> + VC + holder proof; the server verifies the issuer signature against the on-chain DID document and the status bit; bit 0 means <b class="tone-signal">ALLOWED</b>, a tx hash, and a signed receipt (detached JWS).<br />kill: the operator touches the FIDO2 key (a WebAuthn assertion bound to the revocation intent); a new status-list version publishes as an append-only DLR; the next call's fresh lookup reads bit 1 and returns <b class="tone-alert">DENIED (CREDENTIAL_REVOKED)</b>, handler never entered.</p>
-    </div>
+    ${revokedWalkthrough()}
     <div class="uc-block">
       <div class="scat-label">the beats</div>
       <ol class="path">

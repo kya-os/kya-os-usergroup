@@ -381,16 +381,42 @@ a.pc-title{display:inline-block}
 .recipe .micro{margin-top:8px}
 .recipes-try{margin:-20px 0 28px}
 .tag{border:1px solid var(--line);padding:2px 8px}
-/* REVOKED, step by step: the participants strip (the README's sequence
-   diagram, boxes only), the mono sub-captions, the beats as a .path list,
-   and the tiered-demo cards. The strip scrolls inside its own panel. */
+/* REVOKED, step by step: the before / after walkthrough (two states of the
+   README's participants strip; the segmented control ships hidden and
+   /ui/revoked-walkthrough.js reveals it - no JS, both states stack under
+   their headings), the beats as a .path list, and the tiered-demo cards.
+   Each strip scrolls inside its own row; the boxes share the row's width
+   and the wires take the rest. Tones: .on is the authority path, .kill the
+   revocation path, .cut the broken authority path (dashed, muted). The
+   highlight transition is js-anim gated; there are no pulses here. */
 .uc-block{margin-top:44px}
-.flow-wrap{border:1px solid var(--line);background:var(--panel);padding:28px 32px 22px;overflow-x:auto;margin-top:28px}
-.flow-strip{display:flex;align-items:center;min-width:840px}
-.flow-box{flex:0 0 auto;border:1px solid var(--line-mid);padding:11px 14px;font-family:var(--font-mono);font-size:12px;color:var(--ink-bright);text-align:center}
+.walk{border:1px solid var(--line);background:var(--panel);padding:28px 32px 26px;margin-top:28px}
+.walk-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 24px;margin-bottom:24px}
+.walk-switch{display:flex;flex-wrap:wrap;gap:8px}
+.walk-btn{font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;color:var(--ink-muted);background:transparent;border:1px solid var(--line-mid);padding:7px 12px;cursor:pointer}
+.walk-btn:hover{color:var(--ink);border-color:var(--line-strong)}
+.walk-btn[aria-pressed="true"]{color:var(--on-accent);background:var(--accent);border-color:var(--accent)}
+.walk-note{font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);margin:0}
+.walk-state+.walk-state{margin-top:30px;padding-top:26px;border-top:1px solid var(--line)}
+.walk-title{font-family:var(--font-sans);font-size:16px;font-weight:600;color:var(--ink-bright);margin:0 0 16px}
+.walk-row{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 8px}
+.walk-row-verdict{margin-top:18px}
+.walk-scroll{overflow-x:auto;margin-bottom:18px}
+.flow-strip{display:flex;align-items:center;min-width:860px}
+.flow-box{flex:3 1 0;min-width:0;max-width:220px;border:1px solid var(--line-mid);padding:11px 14px;font-family:var(--font-mono);font-size:12px;color:var(--ink-bright);text-align:center}
 .flow-cap{display:block;font-size:9px;letter-spacing:.1em;color:var(--ink-faint);margin-top:5px}
-.flow-strip .wire{flex:1 1 32px;background:var(--line-mid)}
-.flow-legend{font-family:var(--font-mono);font-size:11px;line-height:1.9;color:var(--ink-muted);margin:18px 0 0}
+.flow-line{display:block;font-size:10px;line-height:1.5;color:var(--ink-dim);margin-top:7px}
+.flow-line b{display:block;margin-top:4px;font-size:10px}
+.flow-strip .wire{flex:1 0 36px;background:var(--line-mid)}
+.flow-box.on{border-color:var(--signal);background:color-mix(in srgb,var(--signal) 5%,transparent)}
+.flow-box.kill{border-color:var(--alert);background:color-mix(in srgb,var(--alert) 5%,transparent)}
+.flow-box.cut{border-style:dashed;border-color:var(--line-quiet);color:var(--ink-muted)}
+.flow-box.cut .flow-line{color:var(--ink-muted)}
+.flow-strip .wire.on{background:var(--signal)}
+.flow-strip .wire.kill{background:var(--alert)}
+.flow-strip .wire.cut{height:0;background:none;border-top:1px dashed var(--line-quiet)}
+.walk-cap{font-size:14px;line-height:1.7;color:var(--ink-muted);max-width:760px;margin:0}
+.walk-line{font-family:var(--font-mono);font-size:13px;color:var(--ink);margin:14px 0 0}
 .try-note{font-size:14px;line-height:1.7;color:var(--ink-muted);max-width:760px;margin:16px 0}
 .tier p code{white-space:nowrap}
 /* Recipe cards: the target and reference lines, and the one wide card that
@@ -524,6 +550,7 @@ html.js-anim .fxd-50{animation-delay:.5s}
 html.js-anim [data-title-reveal]{visibility:hidden}
 html.js-anim .fade-overlay{position:fixed;inset:0;background:var(--canvas);z-index:9999;pointer-events:none;opacity:0;transition:opacity .4s ease-out}
 html.js-anim .fade-overlay.active{opacity:1;pointer-events:all}
+html.js-anim .flow-box,html.js-anim .flow-strip .wire{transition:border-color .35s ease-out,background-color .35s ease-out,color .35s ease-out}
 /* Reference parity (kya-os.org main.css): letters carry a 0.3s opacity and
    transform transition so they bloom in during the glitch phase instead of
    snapping; the homepage reveal is glow-only (letterRevealHome), inner pages

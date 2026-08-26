@@ -16,7 +16,11 @@ import { assertBuild } from "./checks.mjs";
 
 // The module map, restated independently of lib/html.mjs and lib/pages.mjs.
 export const SHELL_MODULES = ["page-fx.js", "copy-prompt.js"];
-export const PAGE_MODULES = { "builders/index.html": ["entry-builder.js"], "conformance/index.html": ["badge-preview.js"] };
+export const PAGE_MODULES = {
+  "builders/index.html": ["entry-builder.js"],
+  "conformance/index.html": ["badge-preview.js"],
+  "use-cases/index.html": ["revoked-walkthrough.js"],
+};
 export const COPIED_MODULES = { "builder-entry.js": "scripts/lib/builder-entry.mjs", "waveform.js": "site/lib/waveform.mjs" };
 export const GENERATED_MODULES = ["registry-enums.js"];
 
@@ -92,7 +96,8 @@ export function assertClientModules({ distDir, pages, interopSorted, repoUrl }) 
 
   // Guard lines: page-fx keeps its reduced-motion / js-anim guard and the
   // failsafe handshake; copy-prompt keeps the hidden-button reveal; the
-  // entry builder reveals its hidden form the same way.
+  // entry builder, the badge preview, and the REVOKED walkthrough reveal
+  // their hidden controls the same way.
   const pageFx = readFileSync(join(distUi, "page-fx.js"), "utf8");
   assertBuild(pageFx.includes("prefers-reduced-motion") && pageFx.includes("js-anim"), "page-fx.js lost its reduced-motion / js-anim guard");
   assertBuild(pageFx.includes("__pageFxInit"), "page-fx.js lost the failsafe handshake (__pageFxInit)");
@@ -103,6 +108,9 @@ export function assertClientModules({ distDir, pages, interopSorted, repoUrl }) 
   const badgePreview = readFileSync(join(distUi, "badge-preview.js"), "utf8");
   assertBuild(badgePreview.includes("form.hidden = false") && badgePreview.includes("claimWaveSeed("), "badge-preview.js lost the hidden-form reveal or the shared seed derivation");
   assertBuild(/<form id="badge-preview"[^>]*\bhidden\b/.test(pages["conformance/index.html"]), "the badge-preview form must ship hidden (no JS, the build-time lockup stands)");
+  const walkthrough = readFileSync(join(distUi, "revoked-walkthrough.js"), "utf8");
+  assertBuild(walkthrough.includes("switcher.hidden = false") && walkthrough.includes("data-walk-state"), "revoked-walkthrough.js lost the hidden-switch reveal or the state wiring");
+  assertBuild(/<div class="walk-switch"[^>]*\bhidden\b/.test(pages["use-cases/index.html"]), "the walkthrough switch must ship hidden (no JS, both states stand stacked)");
   const buildersHtml = pages["builders/index.html"];
   assertBuild(/<form id="entry-builder"[^>]*\bhidden\b/.test(buildersHtml), "the entry-builder form must ship hidden (no JS, no dead form)");
   assertBuild(buildersHtml.includes('<details class="disclosure">') && buildersHtml.includes('data-snippet="entry-preview"'), "the entry builder must keep its no-JS template fallback");
