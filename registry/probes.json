@@ -1,9 +1,9 @@
 {
-  "probedAt": "2026-08-25",
+  "probedAt": "2026-08-26",
   "results": {
     "kya-os-demo-server": {
       "status": "open",
-      "provenanceVersion": "1.12.0"
+      "provenanceVersion": "1.14.2"
     }
   }
 }
