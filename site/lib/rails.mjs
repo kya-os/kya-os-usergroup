@@ -159,7 +159,7 @@ export function sectionsRails(interopSorted) {
   <section class="fx fxd-30">
     <h2>Write once, project everywhere</h2>
     <div class="rule"></div>
-    <p class="lede-lg">Do I have to rewrite my agent's identity for every registry? No. Define the Entity Card once and call one function per rail - the same code path emits every projection, gated by the same proof posture, so updating the card updates all of them. Think of it as a passport: one document, stamped for every border.</p>
+    <p class="lede-lg">Do I have to rewrite my agent's identity for every registry? No. Define the Entity Card once and call one function per rail - the same code path emits every projection, gated by the same proof posture, so updating the card updates all of them. Think of it as a passport: one document, stamped for every border. KYA-OS does not ask the ecosystems you already speak to migrate: it projects your identity onto them.</p>
     ${codeBlock(CARD_PROJECTIONS)}
     <div class="dlinks next-strip">
       <span class="next-label">each projection, specified:</span>

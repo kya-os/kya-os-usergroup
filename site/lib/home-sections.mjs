@@ -75,7 +75,7 @@ export function sectionDefineOnce() {
   return `  <section class="fx fxd-20">
     <h2>Define once, project anywhere</h2>
     <div class="rule"></div>
-    <p class="lede-lg">Your Entity Card is written once. KYA-OS projects it onto every discovery rail your agent needs, so the same identity appears wherever it is looked up.</p>
+    <p class="lede-lg">Your Entity Card is written once. KYA-OS projects it onto every discovery rail your agent needs, so the same identity appears wherever it is looked up. It does not ask the ecosystems you already speak to migrate: it projects your identity onto them.</p>
     <div class="chip-row">
 ${[chip("MCP server.json / catalog"), chip("A2A AgentCard extension"), chip("NANDA AgentFacts")].join("\n")}
     </div>
@@ -122,7 +122,7 @@ ${[
     card(
       "/standards/",
       "standards rails",
-      `Every standard KYA-OS provides, carries, or projects: ${interopSorted.length} rows with evidence, and an impl link into the reference implementation for everything shipping.`,
+      `Every standard KYA-OS provides, carries, or projects: ${interopSorted.length} rows with evidence, and an impl link into the reference implementation for everything shipping. Each row is dated, grounded in a W3C or IETF specification, and open to correction.`,
     ),
     card(
       "/use-cases/",

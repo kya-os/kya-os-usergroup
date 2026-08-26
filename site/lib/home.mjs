@@ -23,7 +23,7 @@ function heroMigrate() {
   return `  <header class="hero fx">
     <div class="kicker">BUILDERS.KYA-OS.ORG</div>
     <h1 class="h1-home"><span data-title-reveal>BUILD ON KYA-OS</span><span class="cursor" aria-hidden="true">_</span></h1>
-    <p class="sub">Verifiable identity. Signed receipts. Revocable authority.</p>
+    <p class="sub">Verifiable identity, delegated authority, and signed proofs for AI agents.</p>
     <p class="lede">Two lines of code give your MCP server a <strong>verifiable cryptographic identity</strong> and a <strong>signed receipt for every tool call</strong>. The identity is a <code>did:key</code> generated in-process and never shared. The receipt binds each request to its response, so any client or auditor can verify what your server did: <strong>no logs to trust, nothing to impersonate.</strong></p>
     <div class="diff-pair">
       <div>
@@ -49,7 +49,7 @@ function sectionHowItWorks() {
     <p class="lede-lg">That&#39;s it. <code>withKyaOs</code> auto-generates an Ed25519 identity, registers the <code>_kyaos</code> protocol tool, and wraps the transport so every tool response includes a detached JWS proof in <code>_meta</code>. Invisible to the LLM, verifiable by anyone.</p>
     <p class="lede-muted">From there, one wrapper at a time:</p>
     <ul class="bullets">
-      <li><strong>Gate tools</strong> behind explicit human consent and scoped, revocable authority (<a href="${CONSENT_GUIDE_URL}"><code>wrapWithDelegation</code></a>).</li>
+      <li><strong>Gate tools</strong> behind explicit human consent and scoped, revocable authority carried as W3C Verifiable Credentials (<a href="${CONSENT_GUIDE_URL}"><code>wrapWithDelegation</code></a>).</li>
       <li><strong>Publish an Entity Card</strong> so MCP <code>server.json</code>, A2A AgentCards, and NANDA AgentFacts all project the same verifiable identity (<a href="/rails/">the rails</a>).</li>
     </ul>
     <div class="dlinks next-strip">
