@@ -223,12 +223,10 @@ export async function initPageFx() {
   });
   const main = document.querySelector("main");
   if (main) {
-    // 1:1 FEEL with kya-os.org, not just 1:1 math: skewY displaces edges in
-    // proportion to element width, and the reference skews an 800px spec
-    // column. Normalize so our wider main shears the same pixels at the
-    // same scroll velocity (capped at the reference amount on narrow views).
-    const skewAmount = Math.min(0.8, 0.8 * (800 / Math.max(main.clientWidth, 1)));
-    new ScrollSkew({ elements: [main], skewAmount });
+    // 1:1 with kya-os.org's PageInit.js: the same class, the same flat
+    // skewAmount of 0.8, no width normalization. The reference is the single
+    // source of truth for how scroll skew feels; tuning it here is drift.
+    new ScrollSkew({ elements: [main], skewAmount: 0.8 });
   }
 }
 
