@@ -18,7 +18,7 @@ import { waveformLockup } from "./waveform.mjs";
  */
 export function sectionPath() {
   const step = (title, sentence, href, label) =>
-    `      <li><strong>${title}</strong> ${sentence} <a href="${href}">${label} -&gt;</a></li>`;
+    `      <li><div class="path-body"><strong>${title}</strong> ${sentence} <a href="${href}">${label} -&gt;</a></div></li>`;
   return `  <section class="fx fxd-15">
     <h2>Your path, in order</h2>
     <div class="rule"></div>

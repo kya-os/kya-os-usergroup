@@ -117,6 +117,7 @@ h2{font-family:var(--font-sans);font-size:22px;font-weight:600;color:var(--ink);
 .path li{counter-increment:step;display:grid;grid-template-columns:28px 1fr;gap:0 14px;padding:16px 0;border-top:1px solid var(--line-hair);font-size:14px;line-height:1.7;color:var(--ink-muted)}
 .path li:last-child{border-bottom:1px solid var(--line-hair)}
 .path li::before{content:"0" counter(step);font-family:var(--font-mono);font-size:11px;color:var(--ink-muted);padding-top:5px}
+.path .path-body{min-width:0}
 .path strong{display:block;font-weight:600;color:var(--ink-bright);margin-bottom:2px}
 .path a{font-family:var(--font-mono);font-size:12px;white-space:nowrap}
 /* Rail chips: a nav affordance onto the rails page, not an honesty tone. */
