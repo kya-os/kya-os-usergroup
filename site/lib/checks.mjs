@@ -2,7 +2,8 @@
  * Standalone build checks, split from lib/assertions.mjs to keep both files
  * under the lib LOC cap: theme integrity and motion gating (on the emitted
  * stylesheets), copy parity (button vs source vs constant, prompts and code
- * snippets alike), the home hero's migration hook, and the
+ * snippets alike), the home hero's migration hook, the home page polish
+ * (keyphrases, anchored path, banned vocabulary), and the
  * suite pin agreement across every committed copy of the pin. Same
  * philosophy as lib/assertions.mjs: read the finished bytes back, never
  * trust the renderers.
@@ -100,7 +101,7 @@ function visibleSnippetText(block) {
   // Split on line spans first (token spans nest inside them), then strip
   // every remaining tag per line - reconstruction beats fragile pairing. A
   // plain block (no line spans) is one line of stripped text.
-  const lines = block.includes('<span class="cl') ? block.split(/<span class="cl(?: hl)?">/).slice(1) : [block];
+  const lines = block.includes('<span class="cl') ? block.split(/<span class="cl(?: hl)?(?: hl-add)?">/).slice(1) : [block];
   return unescapeHtml(lines.map((chunk) => chunk.replace(/<[^>]+>/g, "")).join("\n"));
 }
 
@@ -153,6 +154,44 @@ export function assertMigrateHook(landingHtml) {
     assertBuild(after.includes(symbol), `the home hero After snippet lost "${symbol}" - README parity drifted`);
   }
   assertBuild(landingHtml.includes(`href="${CONTEXT7_EXAMPLE_URL}"`), "the home hero must link the context7 example migrated with exactly two lines");
+}
+
+/**
+ * The home page polish, on the dist bytes: the hero keeps the keyphrases the
+ * pitch rests on; the path renders exactly three anchored steps, and every
+ * in-site anchor link on the page (the path's three included) resolves to a
+ * real id in the built target page - parsed from that page's bytes, so a
+ * renamed section elsewhere fails the build here; and the owner's banned
+ * vocabulary appears nowhere on the page.
+ */
+const HOME_KEYPHRASES = [
+  "Verifiable identity. Signed receipts. Revocable authority.",
+  "<strong>verifiable cryptographic identity</strong>",
+  "<strong>signed receipt for every tool call</strong>",
+  "<strong>no logs to trust, nothing to impersonate.</strong>",
+];
+const HOME_BANNED = /\b(certified|pinky|edge|live|compliance framework|trust matrix|validation engine|generate your badge)\b/i;
+
+export function assertHomePolish(pages) {
+  const landing = pages["index.html"];
+  for (const phrase of HOME_KEYPHRASES) {
+    assertBuild(landing.includes(phrase), `the home hero lost its keyphrase "${phrase}"`);
+  }
+  const resolves = (href) => {
+    const [, page, id] = href.match(/^\/([a-z-]+)\/#(.+)$/) ?? [];
+    return page !== undefined && (pages[`${page}/index.html`] ?? "").includes(`id="${id}"`);
+  };
+  const path = landing.match(/<ol class="path">([\s\S]*?)<\/ol>/)?.[1] ?? "";
+  const steps = path.split("</li>").filter((chunk) => chunk.includes("<li>")).map((chunk) => chunk.match(/href="([^"]+)"/)?.[1] ?? "");
+  assertBuild(steps.length === 3, `the home path must render exactly three steps, found ${steps.length}`);
+  for (const href of steps) {
+    assertBuild(resolves(href), `home path step links "${href}", which is not a real anchor in its target page`);
+  }
+  for (const [, href] of landing.matchAll(/href="(\/[a-z-]+\/#[^"]+)"/g)) {
+    assertBuild(resolves(href), `the home page links "${href}", which is not a real anchor in its target page`);
+  }
+  const banned = landing.match(HOME_BANNED);
+  assertBuild(banned === null, `banned home vocabulary "${banned?.[0]}" leaked into dist/index.html`);
 }
 
 /**

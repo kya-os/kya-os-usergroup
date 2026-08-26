@@ -6,8 +6,9 @@
  *
  * Validates both registries first (via the shared core in scripts/validate.mjs;
  * refuses to render on any error), then emits to dist/ (gitignored):
- *   - index.html               the overview: hero, live stats strip, THE
- *                              RAILS panel, four nav cards
+ *   - index.html               the overview: the two-line hook, how it
+ *                              works, the path, define-once + THE RAILS
+ *                              panel, explore (stats strip + five cards)
  *   - builders/index.html      the directory: filterable registry rows, the
  *                              on-ramps, and the three submission paths
  *   - conformance/index.html   the program: suite pin, pipeline, badge
@@ -79,7 +80,10 @@
  *   lib/highlight.mjs   build-time TypeScript highlighting + the copyable
  *                       code block
  *   lib/waveform.mjs    build-time seeded proof waveforms as static SVG
- *   lib/home.mjs        the overview page body (the two-line hook hero)
+ *   lib/home.mjs        the overview page body (the two-line hook hero +
+ *                       how it works)
+ *   lib/home-sections.mjs  the overview's path, define-once, and explore
+ *                       sections
  *   lib/sections.mjs    the directory page bodies
  *   lib/entry-builder.mjs  the builders page's entry-builder form markup
  *   lib/program.mjs     the conformance page body

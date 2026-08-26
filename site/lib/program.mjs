@@ -86,7 +86,7 @@ export function sectionsConformance(rendered, verdicts) {
     <span><b>${SUITE.vectors}</b> vectors</span>
     <span class="pin-hash">pinned <span class="hash">${esc(SUITE.vectorSetHash)}</span></span>
   </div>
-  <section class="fx fxd-20">
+  <section id="how-verification-works" class="fx fxd-20">
     <h2>How verification works</h2>
     <div class="rule"></div>
     <p class="section-lede lede-lg">Requirements live in <a href="${CONFORMANCE_MD_URL}">CONFORMANCE.md</a>. Any language that can read JSON and do Ed25519 + SHA-256 can play. A level is claimed in full or as a named subset of vector categories — a subset claim covers exactly the categories it names and never rounds up to the bare level.</p>
@@ -118,7 +118,7 @@ export function sectionsConformance(rendered, verdicts) {
     <p class="note">Services: add a <code>probeUrl</code> to your registry entry and the daily probe verifies your deployment enforces, independent of any claim - a bare request on the wire, answered by the protocol&#39;s own refusal.</p>
     ${promptBlock("prompt-prove-conformance")}
   </section>
-  <section class="fx fxd-25">
+  <section id="the-badge" class="fx fxd-25">
     <h2>The badge</h2>
     <div class="rule"></div>
     <div class="badge-copy">

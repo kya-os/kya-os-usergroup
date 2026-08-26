@@ -29,6 +29,7 @@ import {
   assertBuild,
   assertCopyParity,
   assertFoundingCohort,
+  assertHomePolish,
   assertLadderReadout,
   assertMigrateHook,
   assertProbeHonesty,
@@ -141,6 +142,7 @@ export function runRenderChecks({ distDir, rendered, interopSorted, probes, cred
   }
   assertCopyParity(pages);
   assertMigrateHook(pages["index.html"]);
+  assertHomePolish(pages);
 
   // Client modules: byte copies, the generated vocabulary, the import graph,
   // per-page module tags, and the no-JS guard lines (lib/module-checks.mjs).
@@ -263,7 +265,7 @@ export function runRenderChecks({ distDir, rendered, interopSorted, probes, cred
   assertBuild(landingHtml.includes(`suite <b>${esc(SUITE.version)}</b>`), "the home stats strip must show the pinned suite version");
   assertBuild(landingHtml.includes(`<b>${SUITE.vectors}</b> vectors`), "the home stats strip must show the pinned vector count");
   assertBuild(
-    landingHtml.includes(`${interopSorted.length} rows, each grounded in evidence and dated`),
+    landingHtml.includes(`${interopSorted.length} rows with evidence`),
     "the home standards card must carry the live rails count",
   );
   assertBuild(!landingHtml.includes("<table"), "no tables on the landing page");

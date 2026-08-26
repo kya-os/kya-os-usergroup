@@ -43,20 +43,34 @@ export function highlightTs(line) {
 }
 
 /**
+/**
+ * The README's own marker for the lines that ARE the migration. A line
+ * carrying it renders with the hl-add emphasis (accent tint + accent bar,
+ * CSS only): the emitted text and the copied bytes are untouched.
+ */
+const ADDED_MARKER = "// +1 line";
+
+/** The class list of one visible code line: diff gutter for added lines, emphasis for the marked ones. */
+function lineClass(text, added) {
+  return ["cl", added ? "hl" : "", text.includes(ADDED_MARKER) ? "hl-add" : ""].filter(Boolean).join(" ");
+}
+
+/**
  * A code block from a lib/snippets.mjs snippet: one source, two renders. The
- * visible block carries build-time token highlighting and diff gutters
- * (added lines) and is the no-JS fallback (select it by hand); with `copy`,
- * a hidden raw <pre> carrying the plain code sits beside it and the copy
- * button (shipped hidden - /ui/copy-prompt.js reveals it) reads from THAT,
+ * visible block carries build-time token highlighting, diff gutters (added
+ * lines), and the hl-add emphasis (marked lines), and is the no-JS fallback
+ * (select it by hand); with `copy`, a hidden raw <pre> carrying the plain
+ * code sits beside it and the copy button (shipped hidden -
+ * /ui/copy-prompt.js reveals it; `copyLabel` is its text) reads from THAT,
  * so clipboard text is always the plain code. lib/checks.mjs asserts the
  * visible block, the raw <pre>, and the snippet constant agree.
  */
-export function codeBlock(snippet, { copy = true } = {}) {
+export function codeBlock(snippet, { copy = true, copyLabel = "[ copy ]" } = {}) {
   const code = snippet.lines
-    .map(([text, added]) => `<span class="cl${added ? " hl" : ""}">${highlightTs(text)}</span>`)
+    .map(([text, added]) => `<span class="${lineClass(text, added)}">${highlightTs(text)}</span>`)
     .join("");
   const copyPair = copy
-    ? `\n      <pre id="${snippet.id}" hidden aria-hidden="true">${esc(snippetText(snippet))}</pre>\n      <button type="button" class="copy-code" data-copy-target="${snippet.id}" hidden>[ copy ]</button>`
+    ? `\n      <pre id="${snippet.id}" hidden aria-hidden="true">${esc(snippetText(snippet))}</pre>\n      <button type="button" class="copy-code" data-copy-target="${snippet.id}" hidden>${copyLabel}</button>`
     : "";
   return `<div class="code-wrap">
       <pre class="code-block" data-snippet="${snippet.id}"><code>${code}</code></pre>${copyPair}

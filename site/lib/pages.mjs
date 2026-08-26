@@ -49,7 +49,7 @@ function contentPage({ title, description, path, hero, sections, modules }) {
   });
 }
 
-/** The overview: hero, live stats strip, THE RAILS panel, four nav cards. */
+/** The overview: the two-line hook, how it works, the path, define-once + THE RAILS panel, explore (stats strip + five cards). */
 export function renderLandingHtml({ rendered, interopSorted }) {
   return pageShell({
     title: TITLE,
