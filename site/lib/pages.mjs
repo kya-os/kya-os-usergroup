@@ -117,7 +117,7 @@ export function renderRailsHtml({ interopSorted }) {
   });
 }
 
-/** Use-cases: the REVOKED example and the recipe grid. */
+/** Use-cases: REVOKED step by step (the runnable blueprint) and the recipe grid. */
 export function renderUseCasesHtml() {
   return contentPage({
     title: `Use-cases · ${TITLE}`,
@@ -125,7 +125,7 @@ export function renderUseCasesHtml() {
     path: "/use-cases/",
     hero: pageHero({
       title: "USE-CASES",
-      lede: "What the primitives are for. One shipping example, and six recipes - each with the runnable example in the reference repository that demonstrates it, and a live server to try a proof against before you build.",
+      lede: "What the primitives are for. One shipping example, step by step, and six recipes - each with a target, the runnable example in the reference repository that demonstrates it, and the exact file or subpath it comes from - plus the demo server to try a proof against before you build.",
     }),
     sections: [sectionsUseCases()],
   });

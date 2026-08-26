@@ -22,6 +22,9 @@ export const DOCS_QUICKSTART_URL = `${SITE_URL}/mcp/docs/getting-started/quickst
 // already in flight on the spec repo remain valid; see conformance/README.md.
 export const SUBMISSION_ISSUE_URL = `${REPO_URL}/issues/new?template=conformance_submission.yml`;
 export const REVOKED_TREE_URL = `${MCP_REPO_URL}/tree/main/examples/revoked`;
+export const REVOKED_README_URL = `${MCP_REPO_URL}/blob/main/examples/revoked/README.md`;
+// The README's own 3-minute video link (examples/revoked/README.md line 9).
+export const REVOKED_VIDEO_URL = "https://www.loom.com/share/f32b82a292f14a6c952dba3a0a246e45";
 // The real MCP server (Context7) migrated with exactly the two lines the
 // home hero shows - the README's own pointer.
 export const CONTEXT7_EXAMPLE_URL = `${MCP_REPO_URL}/tree/main/examples/context7-with-kya-os`;

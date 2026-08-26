@@ -92,7 +92,50 @@ export const CARD_PROJECTIONS = {
   ],
 };
 
-export const SNIPPETS = [MIGRATE_BEFORE, MIGRATE_AFTER, ENTRY_PREVIEW, BADGE_EMBED, CARD_PROJECTIONS];
+/**
+ * REVOKED, the 60-second path: the three commands verbatim from
+ * examples/revoked/README.md lines 18-20 ("Try it in 60 seconds"), and the
+ * expected output the README prints at lines 26-30 (rendered, never copied:
+ * the number is the README's own elapsedMs, not a promise).
+ */
+export const REVOKED_VERIFY = {
+  id: "revoked-verify",
+  lines: [
+    ["cd examples/revoked", false],
+    ["npm install", false],
+    ["npm run verify:once", false],
+  ],
+};
+export const REVOKED_VERDICT = {
+  id: "revoked-verdict",
+  lines: [
+    ["{", false],
+    ['  "verdict": "CREDENTIAL_REVOKED",', false],
+    ['  "checks": { "basicValid": true, "signatureValid": true, "statusValid": false },', false],
+    ['  "elapsedMs": 828', false],
+    ["}", false],
+  ],
+};
+
+/**
+ * The consent gate, verbatim from the reference README section "Protect
+ * tools with human consent" (README.md lines 96-102): wrapWithDelegation and
+ * wrapWithProof come from the root `@kya-os/mcp` package, not a subpath.
+ */
+export const CONSENT_GATE = {
+  id: "consent-gate",
+  lines: [
+    ["const checkout = kyaos.wrapWithDelegation(", false],
+    ["  'checkout',", false],
+    ["  { scopeId: 'cart:write', consentUrl: 'https://example.com/consent' },", false],
+    ["  kyaos.wrapWithProof('checkout', async (args) => ({", false],
+    ["    content: [{ type: 'text', text: `Order placed: ${args.item}` }],", false],
+    ["  })),", false],
+    [");", false],
+  ],
+};
+
+export const SNIPPETS = [MIGRATE_BEFORE, MIGRATE_AFTER, ENTRY_PREVIEW, BADGE_EMBED, CARD_PROJECTIONS, REVOKED_VERIFY, REVOKED_VERDICT, CONSENT_GATE];
 
 /** The plain-text bytes of a snippet: what the clipboard receives. */
 export function snippetText(snippet) {

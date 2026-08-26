@@ -381,6 +381,26 @@ a.pc-title{display:inline-block}
 .recipe .micro{margin-top:8px}
 .recipes-try{margin:-20px 0 28px}
 .tag{border:1px solid var(--line);padding:2px 8px}
+/* REVOKED, step by step: the participants strip (the README's sequence
+   diagram, boxes only), the mono sub-captions, the beats as a .path list,
+   and the tiered-demo cards. The strip scrolls inside its own panel. */
+.uc-block{margin-top:44px}
+.flow-wrap{border:1px solid var(--line);background:var(--panel);padding:28px 32px 22px;overflow-x:auto;margin-top:28px}
+.flow-strip{display:flex;align-items:center;min-width:840px}
+.flow-box{flex:0 0 auto;border:1px solid var(--line-mid);padding:11px 14px;font-family:var(--font-mono);font-size:12px;color:var(--ink-bright);text-align:center}
+.flow-cap{display:block;font-size:9px;letter-spacing:.1em;color:var(--ink-faint);margin-top:5px}
+.flow-strip .wire{flex:1 1 32px;background:var(--line-mid)}
+.flow-legend{font-family:var(--font-mono);font-size:11px;line-height:1.9;color:var(--ink-muted);margin:18px 0 0}
+.try-note{font-size:14px;line-height:1.7;color:var(--ink-muted);max-width:760px;margin:16px 0}
+.tier p code{white-space:nowrap}
+/* Recipe cards: the target and reference lines, and the one wide card that
+   carries its code sample beside the copy (the consent gate). */
+.recipe-kv{font-size:13px}
+.recipe-kv strong{font-weight:600;color:var(--ink);margin-right:6px}
+.recipe-kv code{font-size:12px}
+.recipe-kv a{display:inline-block}
+.recipe-wide{grid-column:1/-1;display:grid;grid-template-columns:1fr 1.25fr;gap:28px;align-items:start}
+.recipe-wide .code-wrap{max-width:none}
 .scat-label .chip{margin-left:6px;font-size:10px;padding:1px 8px;text-transform:none;letter-spacing:.02em}
 
 /* ── The ladder (submit section): one trust ladder, four rungs ────────────── */
@@ -467,6 +487,7 @@ footer a:hover{color:var(--ink-bright)}
 }
 @media (max-width:800px){
   .showcase{grid-template-columns:1fr;padding:28px}
+  .recipe-wide{grid-template-columns:1fr}
   .grid-3,.eb-grid{grid-template-columns:1fr}
   .sexpand{margin-left:0;min-width:0}
   .eb-side{position:static}
