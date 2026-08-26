@@ -383,16 +383,17 @@ a.pc-title{display:inline-block}
 .recipe .micro{margin-top:8px}
 .recipes-try{margin:-20px 0 28px}
 .tag{border:1px solid var(--line);padding:2px 8px}
-/* REVOKED, step by step: the before / after walkthrough (two states of the
-   README's participants strip behind a CSS-only switch: two visually-hidden
+/* REVOKED, step by step: the before / after walkthrough (one participants
+   strip shown in two states behind a CSS-only switch: two visually-hidden
    radios first inside .walk, their labels as the segmented control, and
    general-sibling rules that hide the unchecked state - the directory
    filter's mechanism, no module; without CSS both states stack under their
    headings), the beats as a .path list, and the tiered-demo cards. The
    walk sits tight under the showcase so card, switch, and state read as one
-   block. Each strip scrolls inside its own row; the boxes share the row's
-   width and the wires take the rest. Tones: .on is the authority path,
-   .kill the revocation path, .cut the broken authority path (dashed,
+   block. The strip scrolls inside its own row; the five boxes share the
+   row's width equally and stretch to one height, and the wires stay
+   centered between them. Tones: .on is the authority path (box and wire),
+   .kill where the revocation lands (box), .cut a broken wire (dashed,
    muted). There are no pulses here. */
 .uc-block{margin-top:44px}
 .walk{border:1px solid var(--line);background:var(--panel);padding:24px 32px 26px;margin-top:10px}
@@ -406,22 +407,16 @@ a.pc-title{display:inline-block}
 #walk-pick-before:checked~#walk-after,#walk-pick-after:checked~#walk-before{display:none}
 .walk-note{font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);margin:0}
 .walk-title{font-family:var(--font-sans);font-size:16px;font-weight:600;color:var(--ink-bright);margin:0 0 16px}
-.walk-row{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 8px}
-.walk-row-verdict{margin-top:18px}
-.walk-scroll{overflow-x:auto;margin-bottom:18px}
-.flow-strip{display:flex;align-items:center;min-width:860px}
-.flow-box{flex:3 1 0;min-width:0;max-width:220px;border:1px solid var(--line-mid);padding:11px 14px;font-family:var(--font-mono);font-size:12px;color:var(--ink-bright);text-align:center}
-.flow-cap{display:block;font-size:9px;letter-spacing:.1em;color:var(--ink-faint);margin-top:5px}
-.flow-line{display:block;font-size:10px;line-height:1.5;color:var(--ink-dim);margin-top:7px}
-.flow-line b{display:block;margin-top:4px;font-size:10px}
-.flow-strip .wire{flex:1 0 36px;background:var(--line-mid)}
+.walk-scroll{overflow-x:auto;margin-bottom:14px}
+.flow-strip{display:flex;align-items:stretch;min-width:920px}
+.flow-box{flex:1 1 0;min-width:0;min-height:60px;display:flex;flex-direction:column;justify-content:center;border:1px solid var(--line-mid);padding:11px 10px;font-family:var(--font-mono);font-size:11px;color:var(--ink-bright);text-align:center}
+.flow-cap{display:block;font-size:9px;letter-spacing:.08em;color:var(--ink-faint);margin-top:5px}
+.flow-strip .wire{flex:0 0 24px;align-self:center;background:var(--line-mid)}
 .flow-box.on{border-color:var(--signal);background:color-mix(in srgb,var(--signal) 5%,transparent)}
 .flow-box.kill{border-color:var(--alert);background:color-mix(in srgb,var(--alert) 5%,transparent)}
-.flow-box.cut{border-style:dashed;border-color:var(--line-quiet);color:var(--ink-muted)}
-.flow-box.cut .flow-line{color:var(--ink-muted)}
 .flow-strip .wire.on{background:var(--signal)}
-.flow-strip .wire.kill{background:var(--alert)}
 .flow-strip .wire.cut{height:0;background:none;border-top:1px dashed var(--line-quiet)}
+.walk-status{font-family:var(--font-mono);font-size:10px;line-height:1.7;color:var(--ink-dim);margin:0 0 14px}
 .walk-cap{font-size:14px;line-height:1.7;color:var(--ink-muted);max-width:760px;margin:0}
 .walk-line{font-family:var(--font-mono);font-size:13px;color:var(--ink);margin:14px 0 0}
 .try-note{font-size:14px;line-height:1.7;color:var(--ink-muted);max-width:760px;margin:16px 0}

@@ -89,15 +89,16 @@ const VERIFIED_MCP_PATHS = [
   "src/audit/index.ts",
   "src/integrations/cheqd/index.ts",
 ];
-// The README facts the REVOKED section must keep (examples/revoked/README.md
-// lines 18-20, 29, 69, 71): the cap, the verify run's elapsedMs, the
-// zero-config command, the hardware kill, and the append-only status list.
+// The README facts the REVOKED section must keep somewhere on the page
+// (examples/revoked/README.md lines 18-20, 29, 69, 71): the cap, the verify
+// run's elapsedMs (the showcase console and the 60-second block carry it;
+// the walkthrough does not repeat the verdict), the zero-config command,
+// the hardware kill, and the append-only status list.
 const REVOKED_FACTS = ["10 CHEQ", "828", "npm run verify:once", "FIDO2", "append-only"];
 // The before / after walkthrough: both state headings, and the facts the
-// two states carry (README lines 69, 71, 33, and the verify run's
-// elapsedMs at line 29).
+// two states carry (README lines 69, 71, and 33).
 const WALKTHROUGH_HEADINGS = ["The agent spends, safely", "After the kill"];
-const WALKTHROUGH_FACTS = ["10 CHEQ", "holderBinding", "828", "append-only", "That refusal is the product."];
+const WALKTHROUGH_FACTS = ["10 CHEQ", "holderBinding", "append-only", "That refusal is the product."];
 
 function assertUseCasesFacts(html) {
   const revoked = sectionById(html, "revoked", "dist/use-cases/index.html");
