@@ -22,19 +22,19 @@ import { waveformSvg } from "./waveform.mjs";
 // verbatim; marketplace added for the hub's schema).
 const TYPE_DEFS = {
   all: "",
-  implementation: "implementation — an independent build of the protocol itself",
-  service: "service — something hosted that you can point at today",
-  integration: "integration — a product that uses KYA-OS inside",
-  marketplace: "marketplace — a directory or store that lists KYA-OS agents",
-  template: "template — a starting point to fork",
-  example: "example — a working demonstration to learn from",
+  implementation: "implementation - an independent build of the protocol itself",
+  service: "service - something hosted that you can point at today",
+  integration: "integration - a product that uses KYA-OS inside",
+  marketplace: "marketplace - a directory or store that lists KYA-OS agents",
+  template: "template - a starting point to fork",
+  example: "example - a working demonstration to learn from",
 };
 
 // The honest per-state conformance line for the expanded row, keyed on the
 // DISPLAY state: the entry status refined by the build's credential verdict
 // (a suspension bit renders a verified entry as suspended).
 const CONF_TEXT = {
-  "in-verification": `Claim being independently re-run against suite ${SUITE.version} — the program attests exactly what it observes.`,
+  "in-verification": `Claim being independently re-run against suite ${SUITE.version} - the program attests exactly what it observes.`,
   verified:
     "The program re-ran the suite, this build cryptographically verified the linked credential, and its status bits are clean: verify it yourself without trusting this site.",
   suspended:
@@ -123,7 +123,7 @@ function directoryRow(entry, probes, verdicts) {
   const state = c && displayState(c, verdict);
   const confLine = c
     ? `<div class="dconf-line tone-${CONF_TONE[state]}">${waveformSvg(claimWaveSeed(entry.slug, c), CLAIM_WAVE)}<p>conformance: <a href="${esc(conformanceLevelUrl(c))}">${esc(conformanceLabel(c))}</a>${deployed} - ${esc(CONF_TEXT[state])}</p></div>`
-    : `<div class="dconf-line tone-faint"><p>Listed in the registry — no conformance claim yet.</p></div>`;
+    : `<div class="dconf-line tone-faint"><p>Listed in the registry - no conformance claim yet.</p></div>`;
   const capabilities = [];
   if (entry.buildsOn?.length) capabilities.push(`builds on: ${entry.buildsOn.map((repo) => esc(repo)).join(", ")}`);
   if (entry.standards?.length) capabilities.push(`speaks: ${entry.standards.map((slug) => esc(slug)).join(", ")}`);
@@ -191,7 +191,7 @@ ${chips}
     <div class="dtable">
       <div class="dgrid dhead" aria-hidden="true"><span>PROJECT</span><span>TYPE</span><span>WHAT IT IS</span><span>CONFORMANCE</span><span>LISTED</span><span></span></div>
 ${rows}
-      <div class="dfoot">your project here — <a href="${esc(ADD_PROJECT_URL)}">one JSON file and one pull request -&gt;</a></div>
+      <div class="dfoot">your project here - <a href="${esc(ADD_PROJECT_URL)}">one JSON file and one pull request -&gt;</a></div>
     </div>
     <p class="dnote">Ordered by the ladder: verified first, then in verification, then self-reported, then everything listed. A <span class="tone-signal">&#9679;</span> next to the name marks a hosted service endpoint you can point at today; where the entry names a probe endpoint, the daily probe classifies it in the expanded row - dated, from the wire, independent of any claim.</p>
   </section>`;
@@ -205,13 +205,13 @@ export function sectionStartHere() {
     <div class="grid-3">
       <div class="panel-card">
         <a class="pc-title" href="${PLAYGROUND_URL}">poke a live server</a>
-        <p>Speak MCP to a real KYA-OS endpoint before running your own — inspect the signed proof in every response.</p>
+        <p>Speak MCP to a real KYA-OS endpoint before running your own - inspect the signed proof in every response.</p>
         <p class="pc-sub">raw endpoint: <code>POST ${DEMO_MCP_URL}</code></p>
         <a class="pc-link" href="${PLAYGROUND_URL}">open the playground -&gt;</a>
       </div>
       <div class="panel-card">
         <a class="pc-title" href="${STARTER_URL}">fork the starter</a>
-        <p>From existing implementation to submission-ready conformance claim in under an hour — all ${SUITE.vectors} vectors, any language.</p>
+        <p>From existing implementation to submission-ready conformance claim in under an hour - all ${SUITE.vectors} vectors, any language.</p>
         <a class="pc-link" href="${STARTER_URL}">conformance-starter -&gt;</a>
       </div>
       <div class="panel-card">
@@ -229,7 +229,7 @@ export function sectionSubmit() {
   return `  <section id="submit" class="fx fxd-40">
     <h2>Join the registry</h2>
     <div class="rule"></div>
-    <p class="section-lede">Getting listed and claiming conformance are not separate acts — they are rungs of one ladder, and the same registry entry climbs it in public. Corrections count too: every standards-matrix row is one file in <code>registry/interop/</code> — use the row's edit link on <a href="/standards/">the standards page</a>, or PR the file directly.</p>
+    <p class="section-lede">Getting listed and claiming conformance are not separate acts - they are rungs of one ladder, and the same registry entry climbs it in public. Corrections count too: every standards-matrix row is one file in <code>registry/interop/</code> - use the row's edit link on <a href="/standards/">the standards page</a>, or PR the file directly.</p>
     <div class="ladder">
 ${[
     rung(`<span class="chip st-listed">&middot; listed</span>`, "5 minutes"),
@@ -241,11 +241,11 @@ ${[
     <p class="ladder-copy">Listed in five minutes. Self-reported the same hour. Verified when the <a href="/conformance/">program</a> re-runs your bytes. Services can additionally prove live enforcement via the daily probe - the wire is the witness: a bare request must be refused.</p>
     <div class="panel-card path-primary">
       <div class="pc-title t-static">one action, every rung</div>
-      <p>Hand the prompt to your coding agent and it walks the ladder with you: your entry, an optional self-reported conformance run against the pinned suite, one pull request, and the submission issue if you want verification. Or take the one-click path — the button opens the GitHub editor on <code>registry/builders/</code> with the entry template prefilled: rename to <code>&lt;your-slug&gt;.json</code>, edit the fields, propose the change.</p>
+      <p>Hand the prompt to your coding agent and it walks the ladder with you: your entry, an optional self-reported conformance run against the pinned suite, one pull request, and the submission issue if you want verification. Or take the one-click path - the button opens the GitHub editor on <code>registry/builders/</code> with the entry template prefilled: rename to <code>&lt;your-slug&gt;.json</code>, edit the fields, propose the change.</p>
       ${promptBlock("prompt-join-registry")}
       <p class="pc-sub">Two fields CI will not forgive: set <code>listedAt</code> to today's real date, and keep <code>slug</code> equal to your filename.</p>
       <a class="btn-solid" href="${esc(ADD_PROJECT_URL)}">add your project -&gt;</a>
     </div>
-    <p class="note">Prefer a local workflow? Copy <a href="${REPO_URL}/blob/main/registry/builders/example-builder.json"><code>example-builder.json</code></a> to <code>registry/builders/&lt;your-slug&gt;.json</code>, run <code>npm test</code> (no dependencies to install), and open a PR — the field reference is in <a href="${REPO_URL}/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>.</p>
+    <p class="note">Prefer a local workflow? Copy <a href="${REPO_URL}/blob/main/registry/builders/example-builder.json"><code>example-builder.json</code></a> to <code>registry/builders/&lt;your-slug&gt;.json</code>, run <code>npm test</code> (no dependencies to install), and open a PR - the field reference is in <a href="${REPO_URL}/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>.</p>
   </section>`;
 }

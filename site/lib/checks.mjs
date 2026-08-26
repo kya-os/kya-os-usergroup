@@ -315,3 +315,12 @@ export function assertSuitePinAgreement(repoRoot) {
   assertBuild(mint.includes(`suiteVersion: "${SUITE.version}"`), `${mintPath}: suiteVersion does not match SUITE.version (${SUITE.version})`);
   assertBuild(mint.includes(`vectorSetHash: "${SUITE.vectorSetHash}"`), `${mintPath}: vectorSetHash does not match SUITE.vectorSetHash`);
 }
+
+
+/** House style: plain dashes only. An em dash anywhere in a rendered page fails the build. */
+export function assertNoEmDashes(pages) {
+  for (const [name, html] of Object.entries(pages)) {
+    const at = html.indexOf("\u2014");
+    assertBuild(at === -1, `an em dash reached ${name} near: ${html.slice(Math.max(0, at - 40), at + 40).replace(/\s+/g, " ")}`);
+  }
+}

@@ -30,6 +30,7 @@ import {
   assertCopyParity,
   assertFoundingCohort,
   assertHomePolish,
+  assertNoEmDashes,
   assertLadderReadout,
   assertMigrateHook,
   assertProbeHonesty,
@@ -148,6 +149,7 @@ export function runRenderChecks({ distDir, rendered, interopSorted, probes, cred
   assertMigrateHook(pages["index.html"]);
   assertHomePolish(pages);
   assertCopyFacts(pages);
+  assertNoEmDashes(pages);
 
   // Client modules: byte copies, the generated vocabulary, the import graph,
   // per-page module tags, and the no-JS guard lines (lib/module-checks.mjs).

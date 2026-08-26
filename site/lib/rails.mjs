@@ -187,7 +187,7 @@ ${entries.map(standardsRow).join("\n")}
     <span><span class="chip st-shipping">shipping</span> code at the current release</span>
     <span><span class="chip st-specified">specified</span> normative spec text</span>
     <span><span class="chip st-planned">planned</span> on the roadmap</span>
-    <span><span class="chip st-none">none</span> exactly that — listed so nobody has to guess</span>
+    <span><span class="chip st-none">none</span> exactly that - listed so nobody has to guess</span>
   </div>
   <p class="section-lede fx fxd-15">Click a row for the full relationship and evidence. Disputes and updates are one pull request: every row is one file in <code>registry/interop/</code>; the machine-readable matrix is <a href="/interop.json">interop.json</a>.</p>
 ${categories}`;
@@ -230,15 +230,15 @@ export function sectionsRails(interopSorted) {
         <div class="rd-col rd-projections">
           <div class="rd-label">PROJECTS ONTO</div>
           <div>
-            <div class="rd-cap">DISCOVERY — where agents are found</div>
+            <div class="rd-cap">DISCOVERY - where agents are found</div>
             <div class="rd-outs">${outBox("A2A AgentExtension")}${outBox("MCP catalog / server.json")}${outBox("NANDA AgentFacts")}</div>
           </div>
           <div>
-            <div class="rd-cap">TRUST — what the proof is made of</div>
+            <div class="rd-cap">TRUST - what the proof is made of</div>
             <div class="rd-outs">${outBox("W3C DIDs + VC 2.0", "identity")}${outBox("Bitstring + cheqd DLR", "revocation")}</div>
           </div>
           <div>
-            <div class="rd-cap">TRANSPORT — how the proof travels</div>
+            <div class="rd-cap">TRANSPORT - how the proof travels</div>
             <div class="rd-outs">${outBox("OAuth 2.1 + DPoP")}</div>
           </div>
         </div>

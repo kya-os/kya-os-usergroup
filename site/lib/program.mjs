@@ -86,7 +86,7 @@ function badgeHow(seed) {
 
 function implementationsTable(conformanceEntries, verdicts) {
   if (conformanceEntries.length === 0) {
-    return `      <div class="ifoot">no conformance claims yet — <a href="/builders/#submit">claim conformance -&gt;</a></div>`;
+    return `      <div class="ifoot">no conformance claims yet - <a href="/builders/#submit">claim conformance -&gt;</a></div>`;
   }
   const rows = conformanceEntries
     .map((entry) => {
@@ -101,7 +101,7 @@ function implementationsTable(conformanceEntries, verdicts) {
     })
     .join("\n");
   return `${rows}
-      <div class="ifoot">your implementation here — <a href="/builders/#submit">claim conformance -&gt;</a></div>`;
+      <div class="ifoot">your implementation here - <a href="/builders/#submit">claim conformance -&gt;</a></div>`;
 }
 
 export function sectionsConformance(rendered, verdicts) {
@@ -138,8 +138,8 @@ export function sectionsConformance(rendered, verdicts) {
       </div>
     </div>
     <div class="pipeline"><span class="pipe-dot"></span></div>
-    <p class="note">Fastest on-ramp: the <a href="${STARTER_URL}">conformance starter</a> — clone to a submission-ready claim in under an hour.</p>
-    <p class="note">These are rungs of one ladder, not a separate act: listed in five minutes, self-reported the same hour, verified when the program re-runs your bytes — <a href="/builders/#submit">join on the builders page -&gt;</a></p>
+    <p class="note">Fastest on-ramp: the <a href="${STARTER_URL}">conformance starter</a> - clone to a submission-ready claim in under an hour.</p>
+    <p class="note">These are rungs of one ladder, not a separate act: listed in five minutes, self-reported the same hour, verified when the program re-runs your bytes - <a href="/builders/#submit">join on the builders page -&gt;</a></p>
     <p class="note">Services: add a <code>probeUrl</code> to your registry entry and the daily probe verifies your deployment enforces, independent of any claim - a bare request on the wire, answered by the protocol&#39;s own refusal.</p>
     ${promptBlock("prompt-prove-conformance")}
   </section>
@@ -149,7 +149,7 @@ export function sectionsConformance(rendered, verdicts) {
     <div class="badge-copy">
       <p class="lede-lg">The payoff of the pipeline. A badge is not a logo you paste - it resolves to the signed credential behind it, so anyone can verify your claim without trusting this site.</p>
       <p class="note">It renders <span class="tone-signal">verified</span> only while the claim links its credential; revoke the credential and every embedded badge downgrades itself. Amber means the program is still re-running your suite.</p>
-      <p class="note">Embed it the day you are listed: every tier builds with the site — grey <span class="tone-faint">listed</span> and <span class="tone-faint">self-reported</span>, amber <span class="tone-amber">in verification</span>, and <span class="tone-signal">verified</span> only after the build has cryptographically verified your credential against the program keys and its signed status lists (build-time verification of in-repo state). The badge upgrades itself as your status climbs the ladder.</p>
+      <p class="note">Embed it the day you are listed: every tier builds with the site - grey <span class="tone-faint">listed</span> and <span class="tone-faint">self-reported</span>, amber <span class="tone-amber">in verification</span>, and <span class="tone-signal">verified</span> only after the build has cryptographically verified your credential against the program keys and its signed status lists (build-time verification of in-repo state). The badge upgrades itself as your status climbs the ladder.</p>
       <p class="note">Paste this into your README the day you are listed - it is the same <code>/badge/&lt;slug&gt;.svg</code> the build emits and the worker serves, so it upgrades itself as your status climbs:</p>
       ${embedBlock()}
       <div class="badge-row">
@@ -204,16 +204,16 @@ export function sectionsConformance(rendered, verdicts) {
     <div class="grid-3">
       <div class="panel-card">
         <span class="chip st-submitted demo">submitted</span>
-        <p>claim.json received. The claim is public from the moment it lands — nothing is gatekept. <a href="${SUBMISSION_ISSUE_URL}">open a submission issue -&gt;</a></p>
+        <p>claim.json received. The claim is public from the moment it lands - nothing is gatekept. <a href="${SUBMISSION_ISSUE_URL}">open a submission issue -&gt;</a></p>
       </div>
       <div class="panel-card state-verifying">
         <span class="bl-scan" aria-hidden="true"></span>
         <span class="chip st-inverif demo pulse-ring">in verification</span>
-        <p>The program is independently re-running your suite against the pinned vectors. Attests exactly what it observes — no more, no less.</p>
+        <p>The program is independently re-running your suite against the pinned vectors. Attests exactly what it observes - no more, no less.</p>
       </div>
       <div class="panel-card state-verified">
         <span class="chip st-verified demo">&check; verified</span>
-        <p>The claim links its credential. Only this state counts as verified — a claim without a linked credential never displays it.</p>
+        <p>The claim links its credential. Only this state counts as verified - a claim without a linked credential never displays it.</p>
         <div class="readout">
           <div><span class="tone-signal">&check;</span> vectors <b>${SUITE.vectors}/${SUITE.vectors}</b> &middot; suite <b>${esc(SUITE.version)}</b></div>
           <div>attested <b>${esc(SUITE.vectorSetHash.slice(0, 11))}&hellip;${esc(SUITE.vectorSetHash.slice(-4))}</b></div>
