@@ -107,6 +107,17 @@ const AUTHZ_NOTE_FACTS = ["reference adapter", "8 sign-in modes"];
 // the walkthrough does not repeat the verdict), the zero-config command,
 // the hardware kill, and the append-only status list.
 const REVOKED_FACTS = ["10 CHEQ", "828", "npm run verify:once", "FIDO2", "append-only"];
+// The showcase console: five beats in README order (lines 69-72, the verify
+// run line 29), each opening with a dot in the beat's tone - signal for the
+// delegation and the payment, alert from the kill on - and the facts the
+// line must keep. The signed-proof lockup appears at the payment beat only.
+const CONSOLE_BEATS = [
+  ["signal", ["payments.transfer", "cap 10 CHEQ"]],
+  ["signal", ["wallet_send"]],
+  ["alert", ["new status-list version", "append-only"]],
+  ["alert", ["DENIED (CREDENTIAL_REVOKED)"]],
+  ["alert", ["elapsedMs: 828"]],
+];
 // The before / after walkthrough: both state headings, and the facts the
 // two states carry (README lines 69, 71, and 33).
 const WALKTHROUGH_HEADINGS = ["The agent spends, safely", "After the kill"];
@@ -119,6 +130,7 @@ function assertUseCasesFacts(html) {
   }
   const walkStart = revoked.indexOf('id="revoked-walkthrough"');
   assertBuild(walkStart !== -1, "the REVOKED section lost its before / after walkthrough");
+  assertConsoleBeats(revoked.slice(revoked.indexOf('<div class="flag-console'), walkStart));
   const walkthrough = revoked.slice(walkStart, revoked.indexOf('<div class="uc-block">', walkStart));
   for (const heading of WALKTHROUGH_HEADINGS) {
     assertBuild(walkthrough.includes(`<h3 class="walk-title">${heading}</h3>`), `the walkthrough lost its state heading "${heading}"`);
@@ -147,6 +159,19 @@ function assertUseCasesFacts(html) {
     assertBuild(path !== undefined, `use-cases links "${href}", which is not a /tree/main/ or /blob/main/ path in the reference tree`);
     assertBuild(VERIFIED_MCP_PATHS.includes(path), `use-cases links reference path "${path}", which is not in the verified allowlist`);
   }
+}
+
+// The showcase console renders exactly the five beats, each line opening
+// with its tone's dot and carrying its fact, and the signed-proof lockup
+// once, on the payment line.
+function assertConsoleBeats(console_) {
+  const lines = console_.split('<div class="fc-line">').slice(1);
+  assertBuild(lines.length === CONSOLE_BEATS.length, `the REVOKED console must render ${CONSOLE_BEATS.length} lines, found ${lines.length}`);
+  CONSOLE_BEATS.forEach(([tone, facts], i) => {
+    assertBuild(lines[i].startsWith(`<span class="fc-dot tone-${tone}" aria-hidden="true"></span>`), `console line ${i + 1} must open with the ${tone} dot`);
+    for (const fact of facts) assertBuild(lines[i].includes(fact), `console line ${i + 1} lost the README fact "${fact}"`);
+  });
+  assertBuild(console_.split('<span class="wf-lockup').length === 2 && lines[1].includes('<span class="fc-proof"><span class="wf-lockup') && lines[1].includes("signed proof"), "the signed-proof lockup must appear once, on the console's payment line");
 }
 
 // The consent card's authorization-methods row sits between the Reference

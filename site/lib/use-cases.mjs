@@ -83,6 +83,33 @@ const TIERS = [
   },
 ];
 
+// The showcase console: the README's beats as five lines, one status dot
+// each (signal for the delegation and the payment, alert from the kill on;
+// README lines 69-72, the verify run line 29). The markup is the FINAL
+// state, fc-killed greying and striking the signed-proof lockup on the
+// payment line; /ui/revoked-console.js hides the lines, reveals the hidden
+// [ send payment ] button, and replays the beats under the js-anim gate.
+// .fc-nb keeps a fact whole across a wrap (the cap, append-only).
+// lib/copy-checks.mjs asserts the lines and their tones on the dist bytes;
+// lib/module-checks.mjs asserts the shipped state and the module's guards.
+const CONSOLE_LINES = [
+  ["signal", 'delegation <b>payments.transfer &middot; <span class="fc-nb">cap 10 CHEQ</span></b>'],
+  ["signal", `wallet_send <b>under the cap</b> <span class="fc-proof">${waveformLockup("revoked:delegation:spend<=10cheq", { bars: 14, trackHeight: 10, small: true })}</span>`],
+  ["alert", 'FIDO2 touch <span class="tone-alert">new status-list version, <span class="fc-nb">append-only</span></span>'],
+  ["alert", 'next call <span class="tone-alert">DENIED (CREDENTIAL_REVOKED)</span>'],
+  ["alert", 'verify:once <span class="tone-alert">elapsedMs: 828</span>'],
+];
+
+function flagConsole() {
+  const lines = CONSOLE_LINES.map(
+    ([tone, text]) => `        <div class="fc-line"><span class="fc-dot tone-${tone}" aria-hidden="true"></span><span class="fc-text">${text}</span></div>`,
+  ).join("\n");
+  return `<div class="flag-console fc-killed" id="revoked-console">
+${lines}
+        <button type="button" class="fc-btn" hidden>[ send payment ]</button>
+      </div>`;
+}
+
 function sectionRevoked() {
   const beats = BEATS.map(([title, body]) => `      <li><div class="path-body"><strong>${title}</strong> ${body}</div></li>`).join("\n");
   const tiers = TIERS.map(
@@ -107,15 +134,7 @@ function sectionRevoked() {
           <a class="quiet" href="/standards/#std-cheqd-dlr">standards: cheqd-dlr</a>
         </div>
       </div>
-      <div class="flag-console">
-        <div class="fc-line"><span class="kill-dot" aria-hidden="true"></span><span>delegation <b>payments.transfer, cap 10 CHEQ per transfer</b></span></div>
-        <div class="wire fc-wire"><span class="wire-dot"></span></div>
-        <div class="fc-line fc-wrap">agent spends under ${waveformLockup("revoked:delegation:spend<=10cheq", { bars: 14, trackHeight: 10, small: true })}</div>
-        <div class="fc-hr"></div>
-        <div class="fc-line">FIDO2 touch <span class="tone-alert">new status-list version, append-only</span></div>
-        <div class="fc-line">next call <span class="tone-alert">DENIED (CREDENTIAL_REVOKED)</span></div>
-        <div class="fc-line">verify:once <span class="tone-alert">elapsedMs: 828</span></div>
-      </div>
+      ${flagConsole()}
     </div>
     ${revokedWalkthrough()}
     <div class="uc-block">

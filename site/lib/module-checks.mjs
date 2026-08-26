@@ -19,6 +19,7 @@ export const SHELL_MODULES = ["page-fx.js", "copy-prompt.js"];
 export const PAGE_MODULES = {
   "builders/index.html": ["entry-builder.js"],
   "conformance/index.html": ["badge-preview.js"],
+  "use-cases/index.html": ["revoked-console.js"],
 };
 export const COPIED_MODULES = { "builder-entry.js": "scripts/lib/builder-entry.mjs", "waveform.js": "site/lib/waveform.mjs" };
 export const GENERATED_MODULES = ["registry-enums.js"];
@@ -96,8 +97,9 @@ export function assertClientModules({ distDir, pages, interopSorted, repoUrl }) 
   // Guard lines: page-fx keeps its reduced-motion / js-anim guard and the
   // failsafe handshake; copy-prompt keeps the hidden-button reveal; the
   // entry builder and the badge preview reveal their hidden forms the same
-  // way; the REVOKED walkthrough switch stays CSS-only (radios ahead of the
-  // labels and the states, sibling rules in hub.css, no module).
+  // way; the REVOKED console keeps its motion gate and its hidden-button
+  // reveal; the REVOKED walkthrough switch stays CSS-only (radios ahead of
+  // the labels and the states, sibling rules in hub.css, no module).
   const pageFx = readFileSync(join(distUi, "page-fx.js"), "utf8");
   assertBuild(pageFx.includes("prefers-reduced-motion") && pageFx.includes("js-anim"), "page-fx.js lost its reduced-motion / js-anim guard");
   assertBuild(pageFx.includes("__pageFxInit"), "page-fx.js lost the failsafe handshake (__pageFxInit)");
@@ -108,10 +110,34 @@ export function assertClientModules({ distDir, pages, interopSorted, repoUrl }) 
   const badgePreview = readFileSync(join(distUi, "badge-preview.js"), "utf8");
   assertBuild(badgePreview.includes("form.hidden = false") && badgePreview.includes("claimWaveSeed("), "badge-preview.js lost the hidden-form reveal or the shared seed derivation");
   assertBuild(/<form id="badge-preview"[^>]*\bhidden\b/.test(pages["conformance/index.html"]), "the badge-preview form must ship hidden (no JS, the build-time lockup stands)");
-  assertWalkthroughSwitch(pages["use-cases/index.html"], readFileSync(join(distDir, "hub.css"), "utf8"));
+  const revokedConsole = readFileSync(join(distUi, "revoked-console.js"), "utf8");
+  assertBuild(revokedConsole.includes("prefers-reduced-motion") && revokedConsole.includes("js-anim"), "revoked-console.js lost its reduced-motion / js-anim gate");
+  assertBuild(revokedConsole.includes("button.hidden = false"), "revoked-console.js lost the hidden-button reveal");
+  const hubCss = readFileSync(join(distDir, "hub.css"), "utf8");
+  assertRevokedConsole(pages["use-cases/index.html"], hubCss);
+  assertWalkthroughSwitch(pages["use-cases/index.html"], hubCss);
   const buildersHtml = pages["builders/index.html"];
   assertBuild(/<form id="entry-builder"[^>]*\bhidden\b/.test(buildersHtml), "the entry-builder form must ship hidden (no JS, no dead form)");
   assertBuild(buildersHtml.includes('<details class="disclosure">') && buildersHtml.includes('data-snippet="entry-preview"'), "the entry builder must keep its no-JS template fallback");
+}
+
+// The console's no-JS contract: it ships in its FINAL state (fc-killed on
+// the root, nothing armed, no line lit) with the [ send payment ] button
+// hidden, so no JS and reduced motion read the finished story; hub.css keeps
+// the one hidden initial state gated (html.js-anim .fc-armed); and no
+// keyframe is left behind by a deleted animation - every @keyframes name in
+// hub.css is used by an animation declaration.
+function assertRevokedConsole(html, css) {
+  const start = html.indexOf('<div class="flag-console');
+  assertBuild(start !== -1, "the use-cases page lost the REVOKED showcase console");
+  const console_ = html.slice(start, html.indexOf('id="revoked-walkthrough"', start));
+  assertBuild(console_.startsWith('<div class="flag-console fc-killed" id="revoked-console">'), "the REVOKED console must ship in its final state (fc-killed on the root)");
+  assertBuild(!console_.includes("fc-armed") && !console_.includes('class="fc-line on"'), "the REVOKED console must not ship armed or lit (the module does that)");
+  assertBuild(console_.includes('<button type="button" class="fc-btn" hidden>[ send payment ]</button>'), "the console's [ send payment ] button must ship hidden (no JS, no dead button)");
+  assertBuild(css.includes("html.js-anim .fc-armed .fc-line{opacity:0"), "hub.css lost the gated armed-console rule");
+  for (const [, name] of css.matchAll(/@keyframes\s+([\w-]+)/g)) {
+    assertBuild(new RegExp(`animation(?:-name)?:[^;{}]*\\b${name}\\b`).test(css), `hub.css: @keyframes ${name} is declared but no animation uses it`);
+  }
 }
 
 // The CSS-only switch contract: two radios named walk-state (BEFORE
