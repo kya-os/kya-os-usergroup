@@ -142,12 +142,15 @@ function contactErrors(contact, vocab, fail) {
   const at = (message) => fail("contact", message);
   if (!isObject(contact)) return at('"contact" must be an object');
   const keys = Object.keys(contact);
-  if (keys.length === 0) at('"contact" must have at least one of "email" or "github"');
+  if (keys.length === 0) at(`"contact" must have at least one of ${vocab.CONTACT_KEYS.map((k) => `"${k}"`).join(", ")}`);
   for (const key of keys) {
     if (!vocab.CONTACT_KEYS.includes(key)) at(`unexpected contact property "${key}" (allowed: ${vocab.CONTACT_KEYS.join(", ")})`);
   }
   if (contact.email !== undefined && (typeof contact.email !== "string" || !EMAIL_RE.test(contact.email))) {
     at('"contact.email" must be a valid email address');
+  }
+  if (contact["press-email"] !== undefined && (typeof contact["press-email"] !== "string" || !EMAIL_RE.test(contact["press-email"]))) {
+    at('"contact.press-email" must be a valid email address');
   }
   if (contact.github !== undefined && (typeof contact.github !== "string" || !GITHUB_USER_RE.test(contact.github))) {
     at('"contact.github" must be a GitHub username (letters, digits, dashes, max 39 chars, no @)');
