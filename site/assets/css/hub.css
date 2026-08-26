@@ -441,6 +441,9 @@ a.pc-title{display:inline-block}
 .recipe-kv code{font-size:12px}
 .recipe-kv a{display:inline-block}
 .recipe-wide{grid-column:1/-1;display:grid;grid-template-columns:1fr 1.25fr;gap:28px;align-items:start}
+/* Grid items may shrink below their longest code line; the code block then scrolls inside itself instead of spilling past the card. */
+.recipe-wide>*{min-width:0}
+.recipe-authz{grid-column:1/-1;border-top:1px solid var(--line);padding-top:18px}
 .recipe-wide .code-wrap{max-width:none}
 .scat-label .chip{margin-left:6px;font-size:10px;padding:1px 8px;text-transform:none;letter-spacing:.02em}
 

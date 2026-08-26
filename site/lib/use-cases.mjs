@@ -262,7 +262,7 @@ function recipeCard({ title, body, target, refs, tags, path, also, wide, authz }
   const copy = `<div class="pc-title t-static">${esc(title)}</div>
         <p>${body}</p>
         <p class="recipe-kv"><strong>Target</strong> ${esc(target)}</p>
-        <p class="recipe-kv"><strong>Reference</strong> ${refs.map(([label, href]) => ref(label, href)).join(" &middot; ")}</p>${authz ? `\n        ${authzRow()}` : ""}
+        <p class="recipe-kv"><strong>Reference</strong> ${refs.map(([label, href]) => ref(label, href)).join(" &middot; ")}</p>
         <div class="tag-row">${tags.map((tag) => `<span class="tag">${esc(tag)}</span>`).join("")}</div>
         <div class="dlinks pc-actions">
           <a class="btn-solid" href="${example(path)}">Open the example -&gt;</a>${secondary}
@@ -273,7 +273,7 @@ function recipeCard({ title, body, target, refs, tags, path, also, wide, authz }
         <div class="recipe">
         ${copy}
         </div>
-        ${codeBlock(CONSENT_GATE)}
+        ${codeBlock(CONSENT_GATE)}${authz ? `\n        <div class="recipe-authz">${authzRow()}</div>` : ""}
       </div>`;
 }
 

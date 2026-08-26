@@ -156,10 +156,11 @@ function assertUseCasesFacts(html) {
 // vocabulary is checked page-wide above, so it covers this row too.
 function assertAuthzRow(card) {
   assertBuild(card !== undefined, "the recipes grid lost the gated MCP tools card");
-  const start = card.indexOf('<div class="authz-row">');
-  const end = card.indexOf('<div class="tag-row">');
-  assertBuild(start !== -1 && end !== -1 && card.indexOf("<strong>Reference</strong>") < start && start < end, "the gated MCP tools card must carry the authorization-methods row between its Reference line and its tags");
-  const row = card.slice(start, end);
+  // The row spans the full card width beneath the two columns (prose,
+  // wrapWithDelegation sample), so it must come after both.
+  const start = card.indexOf('<div class="recipe-authz">');
+  assertBuild(start !== -1 && card.indexOf("<strong>Reference</strong>") < start && card.indexOf('data-copy-target="consent-gate"') < start, "the gated MCP tools card must carry the authorization-methods row as a full-width band after its Reference line and its code sample");
+  const row = card.slice(start);
   const chips = [...row.matchAll(/<span class="chip authz-type">([a-z]+)<\/span>/g)].map((m) => m[1]);
   assertBuild(chips.join(",") === AUTHZ_TYPES.join(","), `the authorization-methods row must render exactly the type chips ${AUTHZ_TYPES.join(", ")} in order (found: ${chips.join(", ")})`);
   for (const fact of AUTHZ_NOTE_FACTS) {
