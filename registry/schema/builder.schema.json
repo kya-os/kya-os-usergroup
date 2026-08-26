@@ -4,7 +4,14 @@
   "description": "One entry in the KYA-OS community registry. Each entry lives at registry/builders/<slug>.json and the filename must equal the `slug` property. Structural validation is enforced by scripts/validate.mjs (including cross-file checks this schema cannot express, like `standards` slugs resolving to registry/interop/ files); keep that script and this schema in sync.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["name", "slug", "description", "homepage", "kind", "listedAt"],
+  "required": [
+    "name",
+    "slug",
+    "description",
+    "homepage",
+    "kind",
+    "listedAt"
+  ],
   "properties": {
     "name": {
       "type": "string",
@@ -36,7 +43,14 @@
       "description": "Source repository. https only."
     },
     "kind": {
-      "enum": ["implementation", "service", "template", "example", "integration", "marketplace"],
+      "enum": [
+        "implementation",
+        "service",
+        "template",
+        "example",
+        "integration",
+        "marketplace"
+      ],
       "description": "What kind of entry this is. Determines which site section renders it: implementation/service/integration/marketplace go to #builders, template to #templates, example to #examples."
     },
     "buildsOn": {
@@ -44,7 +58,12 @@
       "minItems": 1,
       "uniqueItems": true,
       "items": {
-        "enum": ["kya-os-mcp", "kya-os-schema", "kya-os", "spec"]
+        "enum": [
+          "kya-os-mcp",
+          "kya-os-schema",
+          "kya-os",
+          "spec"
+        ]
       },
       "description": "Which KYA-OS repos this entry builds on."
     },
@@ -61,14 +80,26 @@
     "conformance": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["level", "scope", "suiteVersion", "status"],
+      "required": [
+        "level",
+        "scope",
+        "suiteVersion",
+        "status"
+      ],
       "properties": {
         "level": {
-          "enum": ["L1", "L2", "L3"],
+          "enum": [
+            "L1",
+            "L2",
+            "L3"
+          ],
           "description": "Compliance level claimed, per kya-os-mcp CONFORMANCE.md."
         },
         "scope": {
-          "enum": ["full", "subset"],
+          "enum": [
+            "full",
+            "subset"
+          ],
           "description": "Whether the claim covers every vector category at the level, or a named subset. A subset never renders as a bare level."
         },
         "categories": {
@@ -87,7 +118,12 @@
           "description": "The conformance suite version the claim ran against (semver)."
         },
         "status": {
-          "enum": ["self-reported", "in-verification", "verified", "revoked"],
+          "enum": [
+            "self-reported",
+            "in-verification",
+            "verified",
+            "revoked"
+          ],
           "description": "Claim status. `verified` requires `attestationUrl` and renders green only after the site build cryptographically verifies that credential; `revoked` is the terminal post-verified state set by the program's revocation workflow and keeps `attestationUrl` as the public record; anything else renders amber or grey."
         },
         "attestationUrl": {
@@ -104,23 +140,46 @@
         }
       },
       "if": {
-        "properties": { "scope": { "const": "subset" } },
-        "required": ["scope"]
+        "properties": {
+          "scope": {
+            "const": "subset"
+          }
+        },
+        "required": [
+          "scope"
+        ]
       },
       "then": {
-        "required": ["categories"]
+        "required": [
+          "categories"
+        ]
       },
       "allOf": [
         {
           "if": {
-            "properties": { "status": { "enum": ["verified", "revoked"] } },
-            "required": ["status"]
+            "properties": {
+              "status": {
+                "enum": [
+                  "verified",
+                  "revoked"
+                ]
+              }
+            },
+            "required": [
+              "status"
+            ]
           },
           "then": {
-            "required": ["attestationUrl"]
+            "required": [
+              "attestationUrl"
+            ]
           },
           "else": {
-            "not": { "required": ["attestationUrl"] }
+            "not": {
+              "required": [
+                "attestationUrl"
+              ]
+            }
           }
         }
       ],
@@ -138,10 +197,19 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["platform", "url"],
+        "required": [
+          "platform",
+          "url"
+        ],
         "properties": {
           "platform": {
-            "enum": ["vercel", "railway", "cloudflare", "docker", "other"],
+            "enum": [
+              "vercel",
+              "railway",
+              "cloudflare",
+              "docker",
+              "other"
+            ],
             "description": "Deploy target the URL launches on."
           },
           "url": {
@@ -168,9 +236,14 @@
           "type": "string",
           "pattern": "^[a-zA-Z0-9-]{1,39}$",
           "description": "GitHub username (no @ prefix)."
+        },
+        "press-email": {
+          "type": "string",
+          "format": "email",
+          "description": "Press or media contact email address."
         }
       },
-      "description": "How maintainers can reach you about this entry."
+      "description": "How maintainers can reach you about this entry; press-email is for media inquiries."
     },
     "listedAt": {
       "type": "string",

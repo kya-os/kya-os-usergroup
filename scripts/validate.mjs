@@ -28,7 +28,7 @@
  *   - probeUrl: optional https URL of a live MCP endpoint for the daily
  *     enforcement probe; kinds service|implementation only
  *   - deploy: optional non-empty array of {platform, url(https)}
- *   - contact: optional object with at least one of email / github
+ *   - contact: optional object with at least one of email / github / press-email
  *   - listedAt: real calendar date, YYYY-MM-DD
  *
  * Enforced per interop entry:
@@ -85,7 +85,7 @@ export const INTEROP_STATUSES = ["shipping", "specified", "planned", "exploring"
 const BUILDER_KEYS = ["name", "slug", "description", "homepage", "repo", "kind", "buildsOn", "standards", "conformance", "probeUrl", "deploy", "contact", "listedAt"];
 const CONFORMANCE_KEYS = ["level", "scope", "categories", "suiteVersion", "status", "attestationUrl", "evidenceUrl"];
 const DEPLOY_KEYS = ["platform", "url"];
-const CONTACT_KEYS = ["email", "github"];
+const CONTACT_KEYS = ["email", "github", "press-email"];
 const INTEROP_KEYS = ["standard", "slug", "category", "relationship", "status", "evidence", "notes", "listedAt"];
 
 const SLUG_RE = /^[a-z0-9-]{2,40}$/;
@@ -161,12 +161,15 @@ function checkContact(contact, fail) {
     return;
   }
   const keys = Object.keys(contact);
-  if (keys.length === 0) fail('"contact" must have at least one of "email" or "github"');
+  if (keys.length === 0) fail('"contact" must have at least one of "email", "github", or "press-email"');
   for (const key of keys) {
     if (!CONTACT_KEYS.includes(key)) fail(`unexpected contact property "${key}" (allowed: ${CONTACT_KEYS.join(", ")})`);
   }
   if (contact.email !== undefined && (typeof contact.email !== "string" || !EMAIL_RE.test(contact.email))) {
     fail('"contact.email" must be a valid email address');
+  }
+  if (contact["press-email"] !== undefined && (typeof contact["press-email"] !== "string" || !EMAIL_RE.test(contact["press-email"]))) {
+    fail('"contact.press-email" must be a valid email address');
   }
   if (contact.github !== undefined && (typeof contact.github !== "string" || !GITHUB_USER_RE.test(contact.github))) {
     fail('"contact.github" must be a GitHub username (letters, digits, dashes, max 39 chars, no @)');

@@ -35,7 +35,7 @@ Every entry must conform to [`registry/schema/builder.schema.json`](registry/sch
 | `conformance` | no | a conformance claim (see below) |
 | `probeUrl` | no | `https://` URL of your live MCP endpoint; `service` and `implementation` kinds only (see below) |
 | `deploy` | no | one-click deploy targets: `{platform, url}` with platform one of `vercel`, `railway`, `cloudflare`, `docker`, `other` |
-| `contact` | no | object with `email` and/or `github` |
+| `contact` | no | object with `email` and/or `github` and `press-email` |
 | `listedAt` | yes | date added, `YYYY-MM-DD` |
 
 No other properties are allowed.
