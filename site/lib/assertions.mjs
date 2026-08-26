@@ -36,6 +36,7 @@ import {
   assertSuitePinAgreement,
   assertThemeIntegrity,
 } from "./checks.mjs";
+import { assertCopyFacts } from "./copy-checks.mjs";
 import { assertClientModules } from "./module-checks.mjs";
 import { THEME_COLORS } from "./theme.mjs";
 
@@ -143,6 +144,7 @@ export function runRenderChecks({ distDir, rendered, interopSorted, probes, cred
   assertCopyParity(pages);
   assertMigrateHook(pages["index.html"]);
   assertHomePolish(pages);
+  assertCopyFacts(pages);
 
   // Client modules: byte copies, the generated vocabulary, the import graph,
   // per-page module tags, and the no-JS guard lines (lib/module-checks.mjs).

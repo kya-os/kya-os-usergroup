@@ -170,7 +170,7 @@ const HOME_KEYPHRASES = [
   "<strong>signed receipt for every tool call</strong>",
   "<strong>no logs to trust, nothing to impersonate.</strong>",
 ];
-const HOME_BANNED = /\b(certified|pinky|edge|live|compliance framework|trust matrix|validation engine|generate your badge)\b/i;
+export const BANNED_COPY = /\b(certified|certifies|pinky|edge|live|compliance framework|trust matrix|validation engine|generate your badge)\b/i;
 
 export function assertHomePolish(pages) {
   const landing = pages["index.html"];
@@ -190,7 +190,7 @@ export function assertHomePolish(pages) {
   for (const [, href] of landing.matchAll(/href="(\/[a-z-]+\/#[^"]+)"/g)) {
     assertBuild(resolves(href), `the home page links "${href}", which is not a real anchor in its target page`);
   }
-  const banned = landing.match(HOME_BANNED);
+  const banned = landing.match(BANNED_COPY);
   assertBuild(banned === null, `banned home vocabulary "${banned?.[0]}" leaked into dist/index.html`);
 }
 
