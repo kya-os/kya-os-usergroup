@@ -5,7 +5,10 @@
  * page's levels section names L1, L2, and L3 with their CONFORMANCE.md
  * anchors and says what a level is; the use-cases page's REVOKED section
  * carries the README's own numbers and commands, every recipe card has its
- * Target and Reference lines and its "Open the example" button, and every
+ * Target and Reference lines and its "Open the example" button, the consent
+ * card's authorization-methods row names exactly the requirement types
+ * src/authz/requirement.ts declares, in its order, with the adapter note
+ * and the copyable ToolProtection sample, and every
  * link into the reference tree names
  * a path verified to exist there; and the owner's banned vocabulary appears
  * on none of the three pages. Expected strings are reconstructed here,
@@ -64,7 +67,8 @@ export function assertCopyFacts(pages) {
 }
 
 // Every path the use-cases page links inside decentralized-identity/
-// kya-os-mcp. VERIFIED 2026-08-25 against origin/main at 966b5406 with
+// kya-os-mcp. VERIFIED 2026-08-25 against origin/main at 966b5406 (the
+// src/authz pair at 77040d7c) with
 // `git -C <kya-os-mcp> cat-file -e origin/main:<path>` for each entry (trees
 // and blobs alike); re-verify the same way before adding a path. A link to
 // a path outside this list fails the build.
@@ -88,7 +92,15 @@ const VERIFIED_MCP_PATHS = [
   "src/delegation/index.ts",
   "src/audit/index.ts",
   "src/integrations/cheqd/index.ts",
+  "src/authz",
+  "src/authz/requirement.ts",
 ];
+// The authorization-methods row on the consent card: the requirement
+// types, in the order AuthorizationRequirementSchema declares them
+// (src/authz/requirement.ts), and the two facts its note must keep (the
+// one shipped adapter, and consent-full/README.md line 73's mode count).
+const AUTHZ_TYPES = ["oauth", "mdl", "idv", "credential", "none"];
+const AUTHZ_NOTE_FACTS = ["reference adapter", "8 sign-in modes"];
 // The README facts the REVOKED section must keep somewhere on the page
 // (examples/revoked/README.md lines 18-20, 29, 69, 71): the cap, the verify
 // run's elapsedMs (the showcase console and the 60-second block carry it;
@@ -126,6 +138,7 @@ function assertUseCasesFacts(html) {
     }
     assertBuild(/<a class="btn-solid" href="[^"]+">Open the example -&gt;<\/a>/.test(card), `recipe "${title}" lost its "Open the example" button`);
   }
+  assertAuthzRow(cards.find((card) => card.includes('<div class="pc-title t-static">gated MCP tools</div>')));
 
   const prefix = `${MCP_REPO_URL}/`;
   for (const [, href] of html.matchAll(/href="([^"]+)"/g)) {
@@ -134,4 +147,23 @@ function assertUseCasesFacts(html) {
     assertBuild(path !== undefined, `use-cases links "${href}", which is not a /tree/main/ or /blob/main/ path in the reference tree`);
     assertBuild(VERIFIED_MCP_PATHS.includes(path), `use-cases links reference path "${path}", which is not in the verified allowlist`);
   }
+}
+
+// The consent card's authorization-methods row sits between the Reference
+// line and the tags, renders exactly the five type chips in schema order,
+// keeps both note facts, and carries the copy button for the ToolProtection
+// sample (its bytes are parity-checked in lib/checks.mjs). Banned
+// vocabulary is checked page-wide above, so it covers this row too.
+function assertAuthzRow(card) {
+  assertBuild(card !== undefined, "the recipes grid lost the gated MCP tools card");
+  const start = card.indexOf('<div class="authz-row">');
+  const end = card.indexOf('<div class="tag-row">');
+  assertBuild(start !== -1 && end !== -1 && card.indexOf("<strong>Reference</strong>") < start && start < end, "the gated MCP tools card must carry the authorization-methods row between its Reference line and its tags");
+  const row = card.slice(start, end);
+  const chips = [...row.matchAll(/<span class="chip authz-type">([a-z]+)<\/span>/g)].map((m) => m[1]);
+  assertBuild(chips.join(",") === AUTHZ_TYPES.join(","), `the authorization-methods row must render exactly the type chips ${AUTHZ_TYPES.join(", ")} in order (found: ${chips.join(", ")})`);
+  for (const fact of AUTHZ_NOTE_FACTS) {
+    assertBuild(row.includes(fact), `the authorization-methods note lost "${fact}"`);
+  }
+  assertBuild(row.includes('data-copy-target="consent-protection"'), "the authorization-methods row must carry the copy button for the ToolProtection sample");
 }

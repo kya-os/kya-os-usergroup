@@ -135,7 +135,24 @@ export const CONSENT_GATE = {
   ],
 };
 
-export const SNIPPETS = [MIGRATE_BEFORE, MIGRATE_AFTER, ENTRY_PREVIEW, BADGE_EMBED, CARD_PROJECTIONS, REVOKED_VERIFY, REVOKED_VERDICT, CONSENT_GATE];
+/**
+ * A ToolProtection, verbatim from examples/consent-persistence/scripts/
+ * scenario-cross-instance.ts lines 102-105 (the function body's two-space
+ * indent dropped, nothing else touched): a real binding of the `oauth`
+ * requirement type to a tool, as src/authz/requirement.ts defines the
+ * shape. The `as const` is the file's own.
+ */
+export const CONSENT_PROTECTION = {
+  id: "consent-protection",
+  lines: [
+    ["const protection = {", false],
+    ["  toolName: 'vault.read',", false],
+    ["  requirement: { type: 'oauth' as const, provider: 'generic-oidc', requiredScopes: ['vault:read'] },", false],
+    ["};", false],
+  ],
+};
+
+export const SNIPPETS = [MIGRATE_BEFORE, MIGRATE_AFTER, ENTRY_PREVIEW, BADGE_EMBED, CARD_PROJECTIONS, REVOKED_VERIFY, REVOKED_VERDICT, CONSENT_GATE, CONSENT_PROTECTION];
 
 /** The plain-text bytes of a snippet: what the clipboard receives. */
 export function snippetText(snippet) {

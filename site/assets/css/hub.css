@@ -573,3 +573,18 @@ html.js-anim .fade-overlay.active{opacity:1;pointer-events:all}
 @media (forced-colors: active){
   .panel-card,.dtable,.stable,.itable,.rails-panel,.rails-diagram,.showcase{border-color:CanvasText}
 }
+
+/* ── Authorization methods row (the gated-tools recipe card) ──────────────
+   BEGIN authz-row block: appended as one unit so it merges cleanly beside
+   concurrent hub.css work. The five requirement types a ToolProtection can
+   bind, each a currentColor glyph (lib/icons.mjs) + label + type chip; the
+   adapter note; and the caption over the ToolProtection sample. */
+.authz-row{margin-top:16px}
+.authz-label{display:block;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-muted);margin-bottom:10px}
+.authz-list{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px 18px}
+.authz-item{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--ink)}
+.authz-item .glyph{flex-shrink:0;color:var(--ink-dim)}
+.authz-type{font-size:10px;padding:0 6px;color:var(--ink-dim);border-color:var(--line-mid)}
+.panel-card .authz-note{font-size:13px;margin-top:12px}
+.panel-card .authz-cap{font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);margin:14px 0 8px}
+/* END authz-row block */

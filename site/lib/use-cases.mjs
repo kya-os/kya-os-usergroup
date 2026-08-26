@@ -8,19 +8,25 @@
  * reference line naming the
  * exact file or npm subpath it comes from (they are examples to read and
  * steal from, not GitHub templates - only conformance/starter is a
- * template), plus the proof playground on the protocol site.
+ * template), plus the proof playground on the protocol site. The consent
+ * card also carries the authorization-methods row: the five requirement
+ * types a ToolProtection can bind to a tool, one glyph each.
  *
  * PARITY: every REVOKED fact, number, command, and option below is taken
  * from examples/revoked/README.md at decentralized-identity/kya-os-mcp
- * origin/main (line numbers cited inline); every reference path is in the
+ * origin/main (line numbers cited inline); the requirement types and their
+ * glosses are src/authz/requirement.ts (AuthorizationRequirementSchema and
+ * its doc comment) and the "8 auth modes" sentence is
+ * examples/consent-full/README.md line 73; every reference path is in the
  * verified allowlist in lib/copy-checks.mjs, which the build re-checks on
  * the dist bytes.
  */
 import { CONSENT_GUIDE_URL, MCP_REPO_URL, PLAYGROUND_PROOF_URL, REVOKED_README_URL, REVOKED_TREE_URL, REVOKED_VIDEO_URL } from "./constants.mjs";
 import { codeBlock } from "./highlight.mjs";
 import { esc, promptBlock } from "./html.mjs";
+import { icon } from "./icons.mjs";
 import { revokedWalkthrough } from "./revoked-walkthrough.mjs";
-import { CONSENT_GATE, REVOKED_VERDICT, REVOKED_VERIFY } from "./snippets.mjs";
+import { CONSENT_GATE, CONSENT_PROTECTION, REVOKED_VERDICT, REVOKED_VERIFY } from "./snippets.mjs";
 import { waveformLockup } from "./waveform.mjs";
 
 const example = (path) => `${MCP_REPO_URL}/${path.includes(".") ? "blob" : "tree"}/main/examples/${path}`;
@@ -139,10 +145,38 @@ ${tiers}
 
 // ── Recipes ─────────────────────────────────────────────────────────────────
 
+// The authorization requirement types a ToolProtection binds to a tool:
+// [type, label, glyph], in the order src/authz/requirement.ts declares the
+// discriminated union (oauth, mdl, idv, credential, none).
+const AUTHZ_TYPES = [
+  ["oauth", "OAuth / OIDC", "key"],
+  ["mdl", "mDL", "id-card"],
+  ["idv", "Identity verification", "person-check"],
+  ["credential", "Verifiable credential", "seal"],
+  ["none", "Consent only", "check-square"],
+];
+const AUTHZ_URL = source("src/authz");
+const REQUIREMENT_URL = source("src/authz/requirement.ts");
+
+/** The authorization-methods row: label, the five typed items, the adapter note, and the real protection shape. */
+function authzRow() {
+  const items = AUTHZ_TYPES.map(
+    ([type, label, glyph]) => `<li class="authz-item">${icon(glyph)}<span>${esc(label)}</span><span class="chip authz-type">${type}</span></li>`,
+  ).join("");
+  return `<div class="authz-row">
+          <span class="authz-label">Bind a requirement to the tool</span>
+          <ul class="authz-list">${items}</ul>
+          <p class="authz-note">Only <code>oauth</code> ships with a <a href="${AUTHZ_URL}">reference adapter</a> (generic OIDC); the other types are protocol vocabulary that downstream adapters implement. The consent page itself supports 8 sign-in modes including OAuth, magic-link, OTP, passkey, and IDV.</p>
+          <p class="authz-cap">A <a href="${REQUIREMENT_URL}"><code>ToolProtection</code></a>, as consent-persistence binds one:</p>
+          ${codeBlock(CONSENT_PROTECTION)}
+        </div>`;
+}
+
 // title, body (trusted literal HTML), target, references [label, href],
 // tags, the example that demonstrates it (the primary action), an optional
-// secondary link [label, href], and `wide` for the card that carries a code
-// sample beside its copy.
+// secondary link [label, href], `wide` for the card that carries a code
+// sample beside its copy, and `authz` for the card that carries the
+// authorization-methods row between its references and its tags.
 const RECIPES = [
   {
     title: "gated MCP tools",
@@ -157,6 +191,7 @@ const RECIPES = [
     path: "consent-basic",
     also: ["durable grants: consent-persistence", example("consent-persistence")],
     wide: true,
+    authz: true,
   },
   {
     title: "delegated spend budgets",
@@ -222,12 +257,12 @@ const RECIPES = [
   },
 ];
 
-function recipeCard({ title, body, target, refs, tags, path, also, wide }) {
+function recipeCard({ title, body, target, refs, tags, path, also, wide, authz }) {
   const secondary = also ? `\n          <a class="pc-link quiet" href="${esc(also[1])}">${esc(also[0])} -&gt;</a>` : "";
   const copy = `<div class="pc-title t-static">${esc(title)}</div>
         <p>${body}</p>
         <p class="recipe-kv"><strong>Target</strong> ${esc(target)}</p>
-        <p class="recipe-kv"><strong>Reference</strong> ${refs.map(([label, href]) => ref(label, href)).join(" &middot; ")}</p>
+        <p class="recipe-kv"><strong>Reference</strong> ${refs.map(([label, href]) => ref(label, href)).join(" &middot; ")}</p>${authz ? `\n        ${authzRow()}` : ""}
         <div class="tag-row">${tags.map((tag) => `<span class="tag">${esc(tag)}</span>`).join("")}</div>
         <div class="dlinks pc-actions">
           <a class="btn-solid" href="${example(path)}">Open the example -&gt;</a>${secondary}
