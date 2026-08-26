@@ -1,5 +1,5 @@
 {
-  "name": "@kya-os/mcp (reference implementation)",
+  "name": "@kya-os/mcp",
   "slug": "kya-os-mcp",
   "description": "The reference implementation of KYA-OS for MCP servers: DID identity, scoped delegation with consent gating, and detached-JWS proofs in two added lines. The conformance vectors derive from this codebase, so its full-suite pass is self-reported, not independent evidence.",
   "homepage": "https://kya-os.org",
