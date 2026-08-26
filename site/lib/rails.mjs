@@ -4,8 +4,9 @@
  * artboards. The standards matrix renders every registry/interop/ row as an
  * expandable <details> row (no JS required); the rails hero diagram is a
  * static translation of the "Protocol Rails" artboard with build-time
- * waveforms and the four-projection code block (parity-asserted against
- * lib/snippets.mjs).
+ * waveforms, the four-projection code block (parity-asserted against
+ * lib/snippets.mjs), and the rail-by-rail cards grounded in the reference
+ * tree's src/card/emit.ts and SPEC-ENTITY-CARD section 6.
  */
 import { ENTITY_CARD_URL, REPO_URL } from "./constants.mjs";
 import { interopByCategory } from "./data.mjs";
@@ -22,6 +23,46 @@ const PROJECTIONS = [
   ["toA2AExtension", "6.2 A2A AgentExtension", `${ENTITY_CARD_URL}#62-a2a-agentextension`, "a2a-agentextension"],
   ["toAgentFacts", "6.3 NANDA AgentFacts", `${ENTITY_CARD_URL}#63-nanda-agentfacts`, "nanda-agentfacts"],
 ];
+
+// Rail by rail: what each projection emits and how its rail carries it.
+// Every export, key, URI, and field named here exists in src/card/emit.ts
+// at origin/main of the reference tree; `projections` keys into PROJECTIONS
+// for the spec-section and standards-row links.
+const RAIL_CARDS = [
+  {
+    rail: "MCP",
+    projections: ["toServerCardMeta", "toCatalogEntry"],
+    output: `the <code>_meta["org.kya-os/card"]</code> entry on <code>server.json</code> (<code>toServerCardMeta</code>: an inline claim-minimal summary, or <code>{ byRef: true }</code> for an <code>org.kya-os/cardRef</code> pointer) and the always-by-ref <code>catalog.json</code> index row (<code>toCatalogEntry</code>).`,
+    mechanic: `the card is embedded in MCP's own discovery documents through the <code>_meta</code> extension point, so core MCP is unchanged; a registry that strips the key degrades to a fetch of the canonical card, never a failure.`,
+  },
+  {
+    rail: "A2A",
+    projections: ["toA2AExtension"],
+    output: `an AgentExtension entry in <code>AgentCard.capabilities.extensions[]</code> with uri <code>https://kya-os.org/a2a/ext/entity-card/v1</code> (<code>toA2AExtension</code>; <code>entityType: 'agent'</code> only, any other type fails closed), carrying the card's <code>id</code>, its <code>cardUrl</code>, and its <code>proofProfile</code> when the card declares one.`,
+    mechanic: `peers discover the DID-anchored identity from the AgentCard they already fetch; <code>required: false</code> means an unaware peer ignores the entry instead of rejecting the card, and the <code>A2A-Extensions</code> header activates it.`,
+  },
+  {
+    rail: "NANDA",
+    projections: ["toAgentFacts"],
+    output: `an AgentFacts JSON-LD document whose <code>@context</code> carries the KYA-OS namespace <code>kya: https://kya-os.org/ns/agentfacts/v1#</code> (<code>toAgentFacts</code>).`,
+    mechanic: `the card's identity populates AgentFacts' own slots: <code>id</code> from the card DID, <code>agent_name</code> from its name, <code>owner</code> from <code>responsibleParty</code> (never re-claimed); the KYA-OS-only axes ride as <code>kya:entityType</code>, <code>kya:proofProfile</code>, and <code>kya:delegationRef</code>, and conforming NANDA consumers preserve unknown keys.`,
+  },
+];
+
+function railCard({ rail, projections, output, mechanic }) {
+  const links = projections.map((fn) => {
+    const [, label, spec, slug] = PROJECTIONS.find(([name]) => name === fn);
+    return `          <span class="proj-link"><a class="pc-link" href="${spec}">${esc(label)} -&gt;</a> <a class="pc-link quiet" href="/standards/#std-${slug}">row</a></span>`;
+  });
+  return `      <div class="panel-card">
+        <div class="pc-title t-static">${rail}</div>
+        <p><span class="rail-kv">output</span> ${output}</p>
+        <p><span class="rail-kv">mechanic</span> ${mechanic}</p>
+        <div class="dlinks pc-actions">
+${links.join("\n")}
+        </div>
+      </div>`;
+}
 
 const CATEGORY_LABELS = {
   "discovery-projection": "Discovery projections",
@@ -170,21 +211,14 @@ ${PROJECTIONS.map(([fn, label, spec, slug]) => `      <span class="proj-link"><c
       <p class="note">Every projection references the same canonical <code>card.json</code> on the entity's <code>did:web</code> DID document (the <code>KyaOsEntityCard</code> service entry anchors it), so a verifier always lands back on one source of truth. The MCP <code>_meta["org.kya-os/card"]</code> value is either an inline summary that carries the identity axes plus the trust-bearing pointers (<code>delegationRef</code>, <code>revocation</code>) or a by-ref <code>org.kya-os/cardRef</code>; the catalog index row is always by-ref so the index stays cheap. The A2A entry is an <code>AgentCard.capabilities.extensions[]</code> item with <code>required: false</code> - that flag is the graceful-degradation contract: an unaware peer ignores it instead of rejecting the card. The NANDA projection is JSON-LD: it populates NANDA's shipped <code>owner</code> slot from <code>responsibleParty</code> (never re-claiming it) and keeps the uniquely-ours axes under the <code>kya:</code> <code>@context</code> namespace, so unknown keys degrade the same way. The per-request holder-of-key proof is never projected - it rides per-request <code>_meta</code>, and a stripped <code>_meta</code> degrades to a fetch, never a failure.</p>
     </details>
   </section>
-  <section class="fx fxd-40 sec-70">
+  <section id="rail-by-rail" class="fx fxd-40">
+    <h2>Rail by rail</h2>
+    <div class="rule"></div>
+    <p class="section-lede">What each projection emits and how its rail carries it. Every export, key, and URI below is the reference implementation's (<code>src/card/emit.ts</code>); the standards row grounds each rail's status with evidence.</p>
     <div class="grid-3">
-      <div class="panel-card">
-        <a class="pc-title" href="${ENTITY_CARD_URL}#62-a2a-agentextension">project onto A2A</a>
-        <p>Emits an AgentCard capability extension, scoped to agent entities. Activated via the A2A-Extensions header; unaware peers ignore it.</p>
-      </div>
-      <div class="panel-card">
-        <a class="pc-title" href="${ENTITY_CARD_URL}#61-mcp-serverjson--catalogjson-_metaorgkya-oscard">project onto MCP</a>
-        <p>An always-by-ref catalog index row plus Entity Card metadata in the MCP Registry _meta extension point — the index stays cheap, the card lazy-fetches.</p>
-      </div>
-      <div class="panel-card">
-        <a class="pc-title" href="${ENTITY_CARD_URL}#63-nanda-agentfacts">project onto NANDA</a>
-        <p>An AgentFacts JSON-LD projection populating NANDA's shipped owner slot; namespaced kya:* keys degrade gracefully.</p>
-      </div>
+${RAIL_CARDS.map(railCard).join("\n")}
     </div>
+    <p class="note">What the card does not carry, in the spec's own words (<a href="${ENTITY_CARD_URL}#42-claim-minimalism">section 4.2</a>): "A Card ASSERTS only identity + type + declared capabilities + accountability locators." Delegations are not on the card: <code>delegationRef</code> is a locator, and the delegation chain it points at travels as separate signed credentials (W3C VC 2.0) that a verifier resolves and checks. The trust level is likewise recomputed by the verifier, never self-claimed (<a href="${ENTITY_CARD_URL}#9-capabilities--conformance-ladder-normative">section 9</a>): "the Card's self-declared <code>conformanceLevel</code> is NEVER trusted."</p>
     <p class="see-all"><a href="/standards/">see all ${interopSorted.length} standards rows, with evidence -&gt;</a></p>
   </section>`;
 }

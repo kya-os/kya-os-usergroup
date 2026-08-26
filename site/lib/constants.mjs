@@ -40,6 +40,9 @@ export const STARTER_URL = "https://github.com/kya-os/conformance-starter";
 export const SUITE = {
   version: "1.0.0",
   vectors: 44,
+  // The nine vector files conformance/SUITE-MANIFEST.json pins, one
+  // category each (conformance/README.md: "44 vectors across nine categories").
+  categories: 9,
   vectorSetHash: "sha256:81d537d4574d3f66d651a03ca41c0b18493b67ea6f3e61aba47d1bda4f3cf49b",
 };
 

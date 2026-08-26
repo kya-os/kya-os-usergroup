@@ -11,11 +11,16 @@
  */
 import { CLAIM_WAVE, claimWaveSeed } from "../../scripts/lib/builder-entry.mjs";
 import { CONFORMANCE_LEVELS } from "../../scripts/lib/registry-enums.mjs";
-import { CONFORMANCE_MD_URL, ORIGIN, SUBMISSION_ISSUE_URL, SUITE, STARTER_URL } from "./constants.mjs";
+import { CONFORMANCE_MD_URL, MCP_REPO_URL, ORIGIN, SUBMISSION_ISSUE_URL, SUITE, STARTER_URL } from "./constants.mjs";
 import { conformanceLabel, conformanceLevelUrl, levelUrl, withConformance } from "./data.mjs";
 import { conformanceStatusChip, esc, promptBlock } from "./html.mjs";
 import { BADGE_EMBED, BADGE_EMBED_SLUG, snippetText } from "./snippets.mjs";
 import { waveformSvg } from "./waveform.mjs";
+
+// The CONFORMANCE.md section the levels cite for the audit axis, and the
+// committed suite manifest the pin strip's numbers come from.
+const AAP_URL = `${CONFORMANCE_MD_URL}#audit-assurance-profile-conformance`;
+const SUITE_MANIFEST_URL = `${MCP_REPO_URL}/blob/main/conformance/SUITE-MANIFEST.json`;
 
 const brandCell = (size) =>
   `<span class="bl-brand"><img class="mark mark-white" src="/img/kya-mark-white.svg" alt="" width="${size}" height="${size + 2}" /><img class="mark mark-black" src="/img/kya-mark-black.svg" alt="" width="${size}" height="${size + 2}" />KYA-OS</span>`;
@@ -59,6 +64,26 @@ function badgePreview() {
       </div>`;
 }
 
+/**
+ * How the badge works, from workers/badge/worker.mjs and its README: the
+ * paths and the two tiers behind them, what a green badge requires, the
+ * state grammar, the propagation bound, and which artifact carries the
+ * waveform (the site's lockups, seeded by `seed`) versus the README badge
+ * (the flat SVG). Every state and header named here is the worker's own.
+ */
+function badgeHow(seed) {
+  return `<div class="badge-how">
+        <div class="pc-title t-static">how the badge works</div>
+        <ul class="bullets">
+          <li><strong>Where it is served.</strong> <code>/badge/&lt;slug&gt;.svg</code> and <code>.json</code> (the shields.io endpoint schema) on <code>builders.kya-os.org</code>. Two tiers share those paths: today the site build emits every badge as a static file, and the badge worker takes over <code>builders.kya-os.org/badge/*</code> with request-time verification once it deploys. The worker is armed (the program keys are provisioned and pinned in it) but not deployed yet: deployment is a manual workflow run, and until it runs the static tier answers on these paths.</li>
+          <li><strong>What makes it green.</strong> Only a verified credential, on either tier. The worker fetches the credential from its canonical URL (the build reads the committed copy); its Ed25519 <code>eddsa-jcs-2022</code> proof is checked against the pinned issuer key the proof names, never a key the credential carries; then the revocation and suspension bits are read from two signed Bitstring status lists, each verified against a separate pinned status key before any bit is read, so a stolen issuer key can never clear its own revocation bits. The credential has no expiry: currency lives in suite supersession, recorded in its <code>termsOfUse</code>.</li>
+          <li><strong>The states.</strong> <code>&middot; listed</code>, <code>&middot; &lt;claim&gt; self-reported</code>, and <code>&#9676; &lt;claim&gt; in verification</code> render from the registry entry alone, no fetch; <code>&check; &lt;claim&gt; verified</code> needs the proof valid and both bits clear; <code>&#9676; under appeal</code> is the suspension bit (contested, not withdrawn); <code>revoked</code> is the revocation bit, terminal; <code>unverified</code> is the worker's fail-closed answer to unprovisioned keys or any failure anywhere, never a 500 and never anything green.</li>
+          <li><strong>How fast it changes.</strong> On the static tier a revocation lands when its PR merges and the site redeploys. On the worker it propagates in one cache TTL: <code>s-maxage=300</code>, about five minutes, before any caching by the page that embeds the image; failure responses cache for 60 seconds so an outage cannot pin a stale answer.</li>
+          <li><strong>Waveform versus README badge.</strong> The waveform lockups on this site are drawn at build time from a seed, not from the badge: a listed claim's wave is seeded by <code>&lt;slug&gt;#&lt;claim label&gt;</code> (<code>${esc(seed)}</code> for the preview below), the same derivation the directory row draws from, so the same claim always draws the same wave. The badge you embed in a README is the flat two-cell SVG (a KYA-OS label cell and a state cell) the build emits and the worker serves, byte-identical between the tiers; it carries no waveform.</li>
+        </ul>
+      </div>`;
+}
+
 function implementationsTable(conformanceEntries, verdicts) {
   if (conformanceEntries.length === 0) {
     return `      <div class="ifoot">no conformance claims yet — <a href="/builders/#submit">claim conformance -&gt;</a></div>`;
@@ -89,7 +114,7 @@ export function sectionsConformance(rendered, verdicts) {
   <section id="how-verification-works" class="fx fxd-20">
     <h2>How verification works</h2>
     <div class="rule"></div>
-    <p class="section-lede lede-lg">Requirements live in <a href="${CONFORMANCE_MD_URL}">CONFORMANCE.md</a>. Any language that can read JSON and do Ed25519 + SHA-256 can play. A level is claimed in full or as a named subset of vector categories — a subset claim covers exactly the categories it names and never rounds up to the bare level.</p>
+    <p class="section-lede lede-lg">Requirements are defined in <a href="${CONFORMANCE_MD_URL}">CONFORMANCE.md</a>. Any language that can read JSON and do Ed25519 + SHA-256 can play. A level is claimed in full or as a named subset of vector categories - a subset claim covers exactly the categories it names and never rounds up to the bare level.</p>
     <div class="grid-4">
       <div class="panel-card step">
         <div class="step-n">01</div>
@@ -122,7 +147,7 @@ export function sectionsConformance(rendered, verdicts) {
     <h2>The badge</h2>
     <div class="rule"></div>
     <div class="badge-copy">
-      <p class="lede-lg">The payoff of the pipeline. A badge is not a logo you paste — it resolves to the signed credential behind it, so anyone can verify your claim without trusting this site. The waveform is the credential's signature fingerprint: the same credential always draws the same wave, and a re-issued one redraws it completely.</p>
+      <p class="lede-lg">The payoff of the pipeline. A badge is not a logo you paste - it resolves to the signed credential behind it, so anyone can verify your claim without trusting this site.</p>
       <p class="note">It renders <span class="tone-signal">verified</span> only while the claim links its credential; revoke the credential and every embedded badge downgrades itself. Amber means the program is still re-running your suite.</p>
       <p class="note">Embed it the day you are listed: every tier builds with the site — grey <span class="tone-faint">listed</span> and <span class="tone-faint">self-reported</span>, amber <span class="tone-amber">in verification</span>, and <span class="tone-signal">verified</span> only after the build has cryptographically verified your credential against the program keys and its signed status lists (build-time verification of in-repo state). The badge upgrades itself as your status climbs the ladder.</p>
       <p class="note">Paste this into your README the day you are listed - it is the same <code>/badge/&lt;slug&gt;.svg</code> the build emits and the worker serves, so it upgrades itself as your status climbs:</p>
@@ -131,7 +156,7 @@ export function sectionsConformance(rendered, verdicts) {
         <span class="badge-lockup bl-verified">
           <span class="bl-scan" aria-hidden="true"></span>
           <span class="bl-brand"><img class="mark mark-white" src="/img/kya-mark-white.svg" alt="" width="13" height="15" /><img class="mark mark-black" src="/img/kya-mark-black.svg" alt="" width="13" height="15" />KYA-OS</span>
-          <span class="bl-wave" title="signature fingerprint — same credential always draws the same wave">${waveformSvg("did:web:poc.kya-os.ai#l1-claim-suite-1.0.0", { bars: 18, trackHeight: 16 })}</span>
+          <span class="bl-wave" title="claim wave - the same seed always draws the same wave">${waveformSvg("did:web:poc.kya-os.ai#l1-claim-suite-1.0.0", { bars: 18, trackHeight: 16 })}</span>
           <span class="bl-state">&check; L1 verified v${esc(SUITE.version)}</span>
         </span>
         <span class="badge-lockup bl-verifying">
@@ -146,26 +171,32 @@ export function sectionsConformance(rendered, verdicts) {
         </span>
       </div>
       <p class="micro">badges build with the site at /badge/&lt;slug&gt;.svg &middot; verified renders only from build-time credential verification</p>
+      ${badgeHow(claimWaveSeed(BADGE_EMBED_SLUG, { level: CONFORMANCE_LEVELS[0], scope: "full" }))}
       ${badgePreview()}
     </div>
   </section>
   <section id="levels" class="fx fxd-30">
     <h2>Levels</h2>
     <div class="rule"></div>
+    <p class="section-lede"><a href="${CONFORMANCE_MD_URL}">CONFORMANCE.md</a> defines three levels. Each builds on the previous, with increasing capability requirements, and an implementation must pass all tests for a level to claim conformance at it. Levels are capability tiers, not vector ranges: the suite is one pinned set (suite ${esc(SUITE.version)}, ${SUITE.vectors} vectors in ${SUITE.categories} categories, per <a href="${SUITE_MANIFEST_URL}">SUITE-MANIFEST.json</a>), and a claim names the level your implementation supports, in full or as a named subset of categories.</p>
     <div class="grid-3">
       <div class="panel-card">
         <a class="pc-title pc-lg" href="${levelUrl("L1")}">L1 <span class="pc-tag">core crypto</span></a>
-        <p>Identity anchored - anonymous calls stop here. Ed25519 signing and verification over canonical digests, against a DID the caller can prove it owns. The entry point for any implementation.</p>
+        <p>"Level 1 establishes the cryptographic foundation. An implementation at this level can generate identities, sign data, verify signatures, and expose discovery metadata."</p>
+        <p class="pc-sub">Requires an Ed25519 key pair with a <code>did:key</code> DID, SHA-256 over RFC 8785 (JCS) canonical JSON, EdDSA signing and verification in JWS compact serialization, and <code>did:key</code> resolution to a DID Document. Audit logging MAY be implemented.</p>
       </div>
       <div class="panel-card">
         <a class="pc-title pc-lg" href="${levelUrl("L2")}">L2 <span class="pc-tag">full session</span></a>
-        <p>Sessions that refuse replay - handshake, nonce and skew rules, and detached proofs binding every response to its request over a live transport binding.</p>
+        <p>"Level 2 adds session management with replay prevention and proof generation. An implementation at this level can establish secure sessions and generate non-repudiation proofs."</p>
+        <p class="pc-sub">Requires all of Level 1, plus handshake validation, nonce format and uniqueness (replay prevention), a timestamp skew of 120 seconds by default, session TTL, and detached proofs (a JWS binding a tool request and its response together) that carry the request and response hashes and verify against them. Audit logging SHOULD be implemented.</p>
       </div>
       <div class="panel-card">
         <a class="pc-title pc-lg" href="${levelUrl("L3")}">L3 <span class="pc-tag">full delegation</span></a>
-        <p>Authority you can revoke - attenuated delegation chains, fail-closed revocation checks, and tamper-evident audit, enforced end to end. The level that stops a rogue spend.</p>
+        <p>"Level 3 adds W3C Verifiable Credential-based delegation with revocation support. An implementation at this level can issue, verify, and revoke delegations, and propagate delegation context on outbound calls."</p>
+        <p class="pc-sub">Requires all of Level 2, plus issuing and verifying DelegationCredentials, StatusList2021 status checks, delegation chain validation with cascading revocation, and a delegation proof on outbound calls. Audit logging MUST be implemented.</p>
       </div>
     </div>
+    <p class="note">Audit assurance is a separate axis, not a fourth level: the <a href="${AAP_URL}">Audit Assurance Profile ladder</a> (AAP-0 to AAP-4: no claim, Recorded, Chained, Transparent, Observed) is claimed alongside L1 to L3, and each profile requires all lower profiles plus its own executable evidence.</p>
   </section>
   <section class="fx fxd-40">
     <h2>Verification states</h2>

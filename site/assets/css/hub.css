@@ -360,6 +360,8 @@ a.pc-title{display:inline-block}
 .rd-out{border:1px solid var(--line);padding:8px 12px;font-family:var(--font-mono);font-size:11px;color:var(--ink)}
 .rd-sub{color:var(--ink-muted)}
 .rails-caption{font-family:var(--font-mono);font-size:12px;color:var(--ink-muted);margin:16px 0 0;text-align:center}
+/* The rail-by-rail cards: a mono caption opens each output / mechanic line. */
+.rail-kv{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin-right:6px}
 
 /* ── Use-cases ────────────────────────────────────────────────────────────── */
 .showcase{border:1px solid var(--line-mid);background:var(--panel-2);padding:40px;display:grid;grid-template-columns:1.2fr 1fr;gap:40px;align-items:center}
