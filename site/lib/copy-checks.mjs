@@ -3,11 +3,14 @@
  * lib LOC cap): the rails page's rail-by-rail cards name each rail's real
  * emit.ts exports and link a standards row that exists; the conformance
  * page's levels section names L1, L2, and L3 with their CONFORMANCE.md
- * anchors and says what a level is; and the owner's banned vocabulary
- * appears on neither page. Expected strings are reconstructed here, never
- * taken from the renderers, so a regression cannot pass its own check.
+ * anchors and says what a level is; the use-cases page's REVOKED section
+ * carries the README's own numbers and commands, every recipe card has its
+ * Target and Reference lines, and every link into the reference tree names
+ * a path verified to exist there; and the owner's banned vocabulary appears
+ * on none of the three pages. Expected strings are reconstructed here,
+ * never taken from the renderers, so a regression cannot pass its own check.
  */
-import { CONFORMANCE_MD_URL } from "./constants.mjs";
+import { CONFORMANCE_MD_URL, MCP_REPO_URL } from "./constants.mjs";
 import { assertBuild, BANNED_COPY } from "./checks.mjs";
 
 // The export each rail card must name, per src/card/emit.ts in the reference tree.
@@ -51,8 +54,68 @@ export function assertCopyFacts(pages) {
   }
   assertBuild(levels.includes("capability tiers"), 'the levels section must say levels are "capability tiers"');
 
-  for (const name of ["rails/index.html", "conformance/index.html"]) {
+  assertUseCasesFacts(pages["use-cases/index.html"]);
+
+  for (const name of ["rails/index.html", "conformance/index.html", "use-cases/index.html"]) {
     const banned = pages[name].match(BANNED_COPY);
     assertBuild(banned === null, `banned vocabulary "${banned?.[0]}" leaked into dist/${name}`);
+  }
+}
+
+// Every path the use-cases page links inside decentralized-identity/
+// kya-os-mcp. VERIFIED 2026-08-25 against origin/main at 966b5406 with
+// `git -C <kya-os-mcp> cat-file -e origin/main:<path>` for each entry (trees
+// and blobs alike); re-verify the same way before adding a path. A link to
+// a path outside this list fails the build.
+const VERIFIED_MCP_PATHS = [
+  "AUDITABILITY.md",
+  "examples/revoked",
+  "examples/revoked/README.md",
+  "examples/consent-basic",
+  "examples/consent-full",
+  "examples/consent-persistence",
+  "examples/outbound-delegation",
+  "examples/entity-card/walkthrough.ts",
+  "examples/entity-card/server.ts",
+  "examples/audit-trail",
+  "examples/statuslist",
+  "examples/cheqd-dlr",
+  "src/card/index.ts",
+  "src/card/emit.ts",
+  "src/card/revocation.ts",
+  "src/card/delegation.ts",
+  "src/delegation/index.ts",
+  "src/audit/index.ts",
+  "src/integrations/cheqd/index.ts",
+];
+// The README facts the REVOKED section must keep (examples/revoked/README.md
+// lines 18-20, 29, 69, 71): the cap, the verify run's elapsedMs, the
+// zero-config command, the hardware kill, and the append-only status list.
+const REVOKED_FACTS = ["10 CHEQ", "828", "npm run verify:once", "FIDO2", "append-only"];
+
+function assertUseCasesFacts(html) {
+  const revoked = sectionById(html, "revoked", "dist/use-cases/index.html");
+  for (const fact of REVOKED_FACTS) {
+    assertBuild(revoked.includes(fact), `the REVOKED section lost the README fact "${fact}"`);
+  }
+  assertBuild(revoked.includes('data-copy-target="revoked-verify"'), "the REVOKED section must carry the copy button for the 60-second verify commands");
+
+  const recipes = sectionById(html, "recipes", "dist/use-cases/index.html");
+  const cards = recipes.split('<div class="panel-card recipe').slice(1);
+  assertBuild(cards.length === 6, `the recipes grid must render six cards, found ${cards.length}`);
+  for (const card of cards) {
+    const title = card.match(/<div class="pc-title t-static">([^<]+)<\/div>/)?.[1] ?? "(untitled)";
+    for (const line of ["Target", "Reference"]) {
+      assertBuild(card.includes(`<p class="recipe-kv"><strong>${line}</strong> `), `recipe "${title}" lost its ${line} line`);
+    }
+    assertBuild(card.includes(">Open the example -&gt;</a>"), `recipe "${title}" lost its "Open the example" action`);
+  }
+
+  const prefix = `${MCP_REPO_URL}/`;
+  for (const [, href] of html.matchAll(/href="([^"]+)"/g)) {
+    if (!href.startsWith(prefix)) continue;
+    const path = href.slice(prefix.length).replace(/#.*$/, "").match(/^(?:tree|blob)\/main\/(.+)$/)?.[1];
+    assertBuild(path !== undefined, `use-cases links "${href}", which is not a /tree/main/ or /blob/main/ path in the reference tree`);
+    assertBuild(VERIFIED_MCP_PATHS.includes(path), `use-cases links reference path "${path}", which is not in the verified allowlist`);
   }
 }

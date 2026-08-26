@@ -170,7 +170,7 @@ const HOME_KEYPHRASES = [
   "<strong>signed receipt for every tool call</strong>",
   "<strong>no logs to trust, nothing to impersonate.</strong>",
 ];
-export const BANNED_COPY = /\b(certified|certifies|pinky|edge|live|compliance framework|trust matrix|validation engine|generate your badge)\b/i;
+export const BANNED_COPY = /\b(certified|certifies|pinky|edge|live|compliance framework|trust matrix|validation engine|generate your badge|immediately|gRPC)\b/i;
 
 export function assertHomePolish(pages) {
   const landing = pages["index.html"];
