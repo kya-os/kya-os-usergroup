@@ -94,7 +94,9 @@ function probeSignal(entry, probes) {
 // .dmark box) so no brand reads shorter than another; width follows the
 // asset's own aspect. Presentation-only - no registry field.
 const KYA_MARK_SLUGS = new Set(["kya-os-mcp", "kya-os-demo-server", "kya-os-schema"]);
-const BRAND_LOGOS = { "knowthat-ai": { onDark: "/img/knowthat-mark-ondark.png", onLight: "/img/knowthat-mark-onlight.png" } };
+// KnowThat.ai is always the red mark: the owner wants the brand red on both
+// themes, so the theme-paired slot points at the same asset twice.
+const BRAND_LOGOS = { "knowthat-ai": { onDark: "/img/knowthat-mark-onlight.png", onLight: "/img/knowthat-mark-onlight.png" } };
 function rowMark(entry) {
   if (KYA_MARK_SLUGS.has(entry.slug)) {
     return `<span class="dmark dmark-logo" aria-hidden="true"><img class="mark mark-white" src="/img/kya-mark-white.svg" alt="" width="14" height="16" /><img class="mark mark-black" src="/img/kya-mark-black.svg" alt="" width="14" height="16" /></span>`;
