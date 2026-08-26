@@ -121,7 +121,10 @@ export function runRenderChecks({ distDir, rendered, interopSorted, probes, cred
   // entry-builder form, the Before / After pair, the badge preview); the
   // ceiling still catches runaway growth.
   const cssBytes = CSS_FILES.reduce((sum, name) => sum + Buffer.byteLength(sheets[name]), 0);
-  assertBuild(cssBytes <= 40 * 1024, `emitted CSS is ${cssBytes} bytes; the budget is 40KB total`);
+  // 40KB -> 44KB with the rails restructure (rail rows, projection flow) and
+  // the authorization-methods row on the gated-tools recipe; both are
+  // content, not chrome, and the emitted total landed at 41.2KB.
+  assertBuild(cssBytes <= 44 * 1024, `emitted CSS is ${cssBytes} bytes; the budget is 44KB total`);
   assertThemeIntegrity(sheets);
   assertAnimGating(sheets);
 
