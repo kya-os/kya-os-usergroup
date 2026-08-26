@@ -377,27 +377,34 @@ a.pc-title{display:inline-block}
 .tag-row{display:flex;flex-wrap:wrap;gap:8px;font-family:var(--font-mono);font-size:10px;color:var(--ink-muted);margin-top:16px}
 .recipe{display:flex;flex-direction:column}
 .recipe .tag-row{margin-top:auto;padding-top:16px}
-.pc-actions{gap:10px 18px;margin-top:4px}
+.pc-actions{gap:10px 18px;margin-top:18px;align-items:center}
+.pc-actions .btn-solid{margin-top:0;padding:8px 14px;font-size:12px}
+.pc-actions .pc-link{margin-top:0}
 .recipe .micro{margin-top:8px}
 .recipes-try{margin:-20px 0 28px}
 .tag{border:1px solid var(--line);padding:2px 8px}
 /* REVOKED, step by step: the before / after walkthrough (two states of the
-   README's participants strip; the segmented control ships hidden and
-   /ui/revoked-walkthrough.js reveals it - no JS, both states stack under
-   their headings), the beats as a .path list, and the tiered-demo cards.
-   Each strip scrolls inside its own row; the boxes share the row's width
-   and the wires take the rest. Tones: .on is the authority path, .kill the
-   revocation path, .cut the broken authority path (dashed, muted). The
-   highlight transition is js-anim gated; there are no pulses here. */
+   README's participants strip behind a CSS-only switch: two visually-hidden
+   radios first inside .walk, their labels as the segmented control, and
+   general-sibling rules that hide the unchecked state - the directory
+   filter's mechanism, no module; without CSS both states stack under their
+   headings), the beats as a .path list, and the tiered-demo cards. The
+   walk sits tight under the showcase so card, switch, and state read as one
+   block. Each strip scrolls inside its own row; the boxes share the row's
+   width and the wires take the rest. Tones: .on is the authority path,
+   .kill the revocation path, .cut the broken authority path (dashed,
+   muted). There are no pulses here. */
 .uc-block{margin-top:44px}
-.walk{border:1px solid var(--line);background:var(--panel);padding:28px 32px 26px;margin-top:28px}
-.walk-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 24px;margin-bottom:24px}
+.walk{border:1px solid var(--line);background:var(--panel);padding:24px 32px 26px;margin-top:10px}
+.walk>input{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%)}
+.walk-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 24px;margin-bottom:18px}
 .walk-switch{display:flex;flex-wrap:wrap;gap:8px}
 .walk-btn{font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;color:var(--ink-muted);background:transparent;border:1px solid var(--line-mid);padding:7px 12px;cursor:pointer}
 .walk-btn:hover{color:var(--ink);border-color:var(--line-strong)}
-.walk-btn[aria-pressed="true"]{color:var(--on-accent);background:var(--accent);border-color:var(--accent)}
+#walk-pick-before:checked~.walk-head label[for="walk-pick-before"],#walk-pick-after:checked~.walk-head label[for="walk-pick-after"]{color:var(--on-accent);background:var(--accent);border-color:var(--accent)}
+#walk-pick-before:focus-visible~.walk-head label[for="walk-pick-before"],#walk-pick-after:focus-visible~.walk-head label[for="walk-pick-after"]{outline:1px solid var(--signal);outline-offset:2px}
+#walk-pick-before:checked~#walk-after,#walk-pick-after:checked~#walk-before{display:none}
 .walk-note{font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);margin:0}
-.walk-state+.walk-state{margin-top:30px;padding-top:26px;border-top:1px solid var(--line)}
 .walk-title{font-family:var(--font-sans);font-size:16px;font-weight:600;color:var(--ink-bright);margin:0 0 16px}
 .walk-row{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 8px}
 .walk-row-verdict{margin-top:18px}
@@ -550,7 +557,6 @@ html.js-anim .fxd-50{animation-delay:.5s}
 html.js-anim [data-title-reveal]{visibility:hidden}
 html.js-anim .fade-overlay{position:fixed;inset:0;background:var(--canvas);z-index:9999;pointer-events:none;opacity:0;transition:opacity .4s ease-out}
 html.js-anim .fade-overlay.active{opacity:1;pointer-events:all}
-html.js-anim .flow-box,html.js-anim .flow-strip .wire{transition:border-color .35s ease-out,background-color .35s ease-out,color .35s ease-out}
 /* Reference parity (kya-os.org main.css): letters carry a 0.3s opacity and
    transform transition so they bloom in during the glitch phase instead of
    snapping; the homepage reveal is glow-only (letterRevealHome), inner pages

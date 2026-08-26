@@ -5,7 +5,8 @@
  * page's levels section names L1, L2, and L3 with their CONFORMANCE.md
  * anchors and says what a level is; the use-cases page's REVOKED section
  * carries the README's own numbers and commands, every recipe card has its
- * Target and Reference lines, and every link into the reference tree names
+ * Target and Reference lines and its "Open the example" button, and every
+ * link into the reference tree names
  * a path verified to exist there; and the owner's banned vocabulary appears
  * on none of the three pages. Expected strings are reconstructed here,
  * never taken from the renderers, so a regression cannot pass its own check.
@@ -122,7 +123,7 @@ function assertUseCasesFacts(html) {
     for (const line of ["Target", "Reference"]) {
       assertBuild(card.includes(`<p class="recipe-kv"><strong>${line}</strong> `), `recipe "${title}" lost its ${line} line`);
     }
-    assertBuild(card.includes(">Open the example -&gt;</a>"), `recipe "${title}" lost its "Open the example" action`);
+    assertBuild(/<a class="btn-solid" href="[^"]+">Open the example -&gt;<\/a>/.test(card), `recipe "${title}" lost its "Open the example" button`);
   }
 
   const prefix = `${MCP_REPO_URL}/`;

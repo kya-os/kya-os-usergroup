@@ -128,6 +128,5 @@ export function renderUseCasesHtml() {
       lede: "What the primitives are for. One shipping example, step by step, and six recipes - each with a target, the runnable example in the reference repository that demonstrates it, and the exact file or subpath it comes from - plus the demo server to try a proof against before you build.",
     }),
     sections: [sectionsUseCases()],
-    modules: ["revoked-walkthrough.js"],
   });
 }

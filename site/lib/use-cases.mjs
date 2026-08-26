@@ -3,8 +3,9 @@
  * runnable blueprint: the before / after walkthrough of the participants
  * strip from lib/revoked-walkthrough.mjs, the beats, the 60-second verify
  * path with its copyable commands, the tiered full demo) and the
- * recipe grid, each recipe with a target, an "Open the example" action into
- * the real example in kya-os-mcp/examples, and a reference line naming the
+ * recipe grid, each recipe with a target, an "Open the example" button (the
+ * site's .btn-solid) into the real example in kya-os-mcp/examples, and a
+ * reference line naming the
  * exact file or npm subpath it comes from (they are examples to read and
  * steal from, not GitHub templates - only conformance/starter is a
  * template), plus the proof playground on the protocol site.
@@ -229,7 +230,7 @@ function recipeCard({ title, body, target, refs, tags, path, also, wide }) {
         <p class="recipe-kv"><strong>Reference</strong> ${refs.map(([label, href]) => ref(label, href)).join(" &middot; ")}</p>
         <div class="tag-row">${tags.map((tag) => `<span class="tag">${esc(tag)}</span>`).join("")}</div>
         <div class="dlinks pc-actions">
-          <a class="pc-link" href="${example(path)}">Open the example -&gt;</a>${secondary}
+          <a class="btn-solid" href="${example(path)}">Open the example -&gt;</a>${secondary}
         </div>
         <span class="micro">examples/${esc(path)}</span>`;
   if (!wide) return `      <div class="panel-card recipe">\n        ${copy}\n      </div>`;

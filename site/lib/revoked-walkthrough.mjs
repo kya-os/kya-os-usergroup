@@ -16,11 +16,15 @@
  * beats 3-4 (lines 71-72), and shows the verify run's real verdict (lines
  * 26-30) under the README's own line 33.
  *
- * Both states ship stacked under their headings (the no-JS page, always
- * reachable); the segmented control ships `hidden` and
- * /ui/revoked-walkthrough.js reveals it and collapses the states into the
- * toggle. lib/copy-checks.mjs asserts the headings and the facts on the
- * dist bytes.
+ * The switch is CSS-only, no module: two visually-hidden radios
+ * (name="walk-state", BEFORE checked) sit first inside .walk, their labels
+ * are the segmented control, and hub.css hides the unchecked state with a
+ * general-sibling rule (#walk-pick-before:checked~#walk-after and the
+ * mirror), the same mechanism as the builders directory filter. Radios are
+ * natively arrow-key navigable; each carries aria-controls for its state.
+ * Without CSS both states stand stacked under their headings.
+ * lib/copy-checks.mjs asserts the headings and the facts on the dist
+ * bytes; lib/module-checks.mjs asserts the radios and the sibling rules.
  */
 import { codeBlock } from "./highlight.mjs";
 import { esc } from "./html.mjs";
@@ -76,7 +80,7 @@ function strip(boxes) {
     .join("")}</div></div>`;
 }
 
-const state = (id, title, body) => `<div class="walk-state" id="walk-${id}" data-walk-state="${id}">
+const state = (id, title, body) => `<div class="walk-state" id="walk-${id}">
         <h3 class="walk-title">${esc(title)}</h3>
         ${body}
       </div>`;
@@ -93,10 +97,12 @@ export function revokedWalkthrough() {
         ${codeBlock(REVOKED_VERDICT, { copy: false })}
         <p class="walk-line">That refusal is the product.</p>`;
   return `<div class="walk" id="revoked-walkthrough">
+      <input type="radio" name="walk-state" id="walk-pick-before" aria-controls="walk-before" checked />
+      <input type="radio" name="walk-state" id="walk-pick-after" aria-controls="walk-after" />
       <div class="walk-head">
-        <div class="walk-switch" role="group" aria-label="Before or after the kill" hidden>
-          <button type="button" class="walk-btn" data-walk="before" aria-controls="walk-before" aria-pressed="true">[ before: spending under a cap ]</button>
-          <button type="button" class="walk-btn" data-walk="after" aria-controls="walk-after" aria-pressed="false">[ after: the kill ]</button>
+        <div class="walk-switch">
+          <label class="walk-btn" for="walk-pick-before">[ before: spending under a cap ]</label>
+          <label class="walk-btn" for="walk-pick-after">[ after: the kill ]</label>
         </div>
         <p class="walk-note">A walkthrough of the README's beats, not a network connection.</p>
       </div>
