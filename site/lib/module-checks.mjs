@@ -119,6 +119,66 @@ export function assertClientModules({ distDir, pages, interopSorted, repoUrl }) 
   const buildersHtml = pages["builders/index.html"];
   assertBuild(/<form id="entry-builder"[^>]*\bhidden\b/.test(buildersHtml), "the entry-builder form must ship hidden (no JS, no dead form)");
   assertBuild(buildersHtml.includes('<details class="disclosure">') && buildersHtml.includes('data-snippet="entry-preview"'), "the entry builder must keep its no-JS template fallback");
+  assertEntryBuilderWiring(buildersHtml, entryBuilder, ruleCoreFields(repoRoot));
+}
+
+/**
+ * The field names the rule core keys its messages with, scraped from the rule
+ * core's own source so no list of them is restated here. Every call is
+ * fail("<field>", ...) but for the shared slug-array helper, which takes its
+ * field as an argument; both spellings are collected.
+ */
+function ruleCoreFields(repoRoot) {
+  const source = readFileSync(join(repoRoot, "scripts", "lib", "builder-entry.mjs"), "utf8");
+  const fields = new Set();
+  for (const pattern of [/fail\(\s*"([\w-]+)"/g, /slugArrayErrors\([^,]+,\s*"([\w-]+)"/g]) {
+    for (const [, field] of source.matchAll(pattern)) fields.add(field);
+  }
+  assertBuild(fields.size > 0, "scripts/lib/builder-entry.mjs: no error field names found - the rule core's fail() shape changed");
+  return fields;
+}
+
+/**
+ * The entry-builder form's wiring, read back off the page it ships on. Each
+ * field must name its control (a `for` that resolves to a control in the same
+ * field, or aria-labelledby for a group of controls, which has no single id to
+ * point `for` at) and must key its error slot with a field the rule core
+ * actually emits - otherwise the visitor's live messages miss the field
+ * entirely and pile up in the catch-all beside the JSON preview. Both halves
+ * have broken silently before, in opposite directions, when one field key was
+ * renamed. The module must derive the touched-set key from these slots too,
+ * so the mapping lives in one place.
+ */
+function assertEntryBuilderWiring(html, module, ruleFields) {
+  const form = html.slice(html.indexOf('<form id="entry-builder"'), html.indexOf('<div class="eb-side">'));
+  const fields = form.split('<div class="eb-field">').slice(1);
+  assertBuild(fields.length > 0, "the entry-builder form rendered no fields");
+  for (const field of fields) {
+    const slots = [...field.matchAll(/data-err="([^"]+)"/g)].map((m) => m[1]);
+    assertBuild(slots.length === 1, `an entry-builder field carries ${slots.length} error slots; each field needs exactly one`);
+    assertBuild(
+      ruleFields.has(slots[0]),
+      `entry-builder slot data-err="${slots[0]}" is not a field the rule core keys errors with (${[...ruleFields].sort().join(", ")}), so its messages would fall through to the catch-all`,
+    );
+    const target = field.match(/<label class="eb-label" for="([^"]+)"/)?.[1];
+    if (target !== undefined) {
+      assertBuild(
+        new RegExp(`<(?:input|select|textarea)[^>]*\\bid="${target}"`).test(field),
+        `the entry-builder label for="${target}" names no control in its own field`,
+      );
+    } else {
+      const labelId = field.match(/<span class="eb-label" id="([^"]+)"/)?.[1];
+      assertBuild(
+        labelId !== undefined && field.includes(`role="group" aria-labelledby="${labelId}"`),
+        `entry-builder field ${slots[0]} labels neither a control (label for) nor a group (aria-labelledby)`,
+      );
+    }
+  }
+  assertBuild(html.includes('data-err="entry"'), "the entry builder lost the catch-all error slot beside the JSON preview");
+  assertBuild(
+    /closest\("\.eb-field"\)[\s\S]{0,120}data-err/.test(module),
+    "entry-builder.js must read each control's error key off its own field slot, never restate the control-to-rule mapping",
+  );
 }
 
 // The console's no-JS contract: it ships in its FINAL state (fc-killed on
