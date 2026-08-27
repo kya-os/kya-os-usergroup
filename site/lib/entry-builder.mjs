@@ -19,11 +19,11 @@ import { ENTRY_PREVIEW, snippetText } from "./snippets.mjs";
 import { DESCRIPTION_MAX } from "../../scripts/lib/builder-entry.mjs";
 import { BUILDS_ON, KINDS } from "../../scripts/lib/registry-enums.mjs";
 
-function field(name, label, control, hint = "") {
+function field(name, label, control, hint = "", errKey = name) {
   return `        <div class="eb-field">
           <label class="eb-label" for="entry-${name}">${label}</label>
           ${control}${hint ? `\n          <span class="eb-hint">${hint}</span>` : ""}
-          <span class="eb-err" data-err="${name}"></span>
+          <span class="eb-err" data-err="${errKey}"></span>
         </div>`;
 }
 
@@ -61,7 +61,7 @@ ${field("repo", `repo <span class="eb-opt">optional</span>`, input("repo", "url"
 ${field("kind", "kind", `<select id="entry-kind" name="kind">${kindOptions}</select>`)}
 ${field("buildsOn", "builds on", `<div class="eb-checks">${buildsOn}</div>`, "what you build ON, not yourself")}
 ${field("standards", `standards <span class="eb-opt">optional</span>`, `<select id="entry-standards" name="standards" multiple size="6">${standards}</select>`, "the rails you exercise; cmd/ctrl-click for several")}
-${field("github", `contact.github <span class="eb-opt">optional</span>`, input("github", "text", ` maxlength="39" placeholder="${esc(ENTRY_TEMPLATE.contact.github)}"`))}
+${field("github", `contact.github <span class="eb-opt">optional</span>`, input("github", "text", ` maxlength="39" placeholder="${esc(ENTRY_TEMPLATE.contact.github)}"`), "", "contact")}
         </div>
         <div class="eb-side">
           <div class="eb-file">registry/builders/<span id="entry-filename">${esc(ENTRY_TEMPLATE.slug)}.json</span></div>
