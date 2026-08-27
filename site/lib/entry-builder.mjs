@@ -19,10 +19,24 @@ import { ENTRY_PREVIEW, snippetText } from "./snippets.mjs";
 import { DESCRIPTION_MAX } from "../../scripts/lib/builder-entry.mjs";
 import { BUILDS_ON, KINDS } from "../../scripts/lib/registry-enums.mjs";
 
-function field(name, label, control, hint = "", errKey = name) {
+/**
+ * One row of the form: the label, the control, an optional hint, and the slot
+ * the module writes this field's live errors into.
+ *
+ * `errKey` is the field name the rule core keys its messages with, which is
+ * also the touched-set key the module reads back off the slot - it is NOT
+ * necessarily the control's name (contact.github's input is named github, but
+ * its errors arrive keyed contact). The label's target is read out of the
+ * control itself rather than passed in, so a renamed control cannot leave the
+ * label pointing at an id that never shipped; a group of controls, having no
+ * single id to point `for` at, is named with aria-labelledby instead.
+ */
+function field(errKey, label, control, hint = "") {
+  const target = control.match(/<(?:input|select|textarea)[^>]*\bid="([^"]+)"/)?.[1];
+  const labelId = `entry-${errKey}-label`;
   return `        <div class="eb-field">
-          <label class="eb-label" for="entry-${name}">${label}</label>
-          ${control}${hint ? `\n          <span class="eb-hint">${hint}</span>` : ""}
+          ${target ? `<label class="eb-label" for="${target}">${label}</label>` : `<span class="eb-label" id="${labelId}">${label}</span>`}
+          ${target ? control : control.replace(/^<(\w+)/, `<$1 role="group" aria-labelledby="${labelId}"`)}${hint ? `\n          <span class="eb-hint">${hint}</span>` : ""}
           <span class="eb-err" data-err="${errKey}"></span>
         </div>`;
 }
@@ -61,7 +75,7 @@ ${field("repo", `repo <span class="eb-opt">optional</span>`, input("repo", "url"
 ${field("kind", "kind", `<select id="entry-kind" name="kind">${kindOptions}</select>`)}
 ${field("buildsOn", "builds on", `<div class="eb-checks">${buildsOn}</div>`, "what you build ON, not yourself")}
 ${field("standards", `standards <span class="eb-opt">optional</span>`, `<select id="entry-standards" name="standards" multiple size="6">${standards}</select>`, "the rails you exercise; cmd/ctrl-click for several")}
-${field("github", `contact.github <span class="eb-opt">optional</span>`, input("github", "text", ` maxlength="39" placeholder="${esc(ENTRY_TEMPLATE.contact.github)}"`), "", "contact")}
+${field("contact", `contact.github <span class="eb-opt">optional</span>`, input("github", "text", ` maxlength="39" placeholder="${esc(ENTRY_TEMPLATE.contact.github)}"`))}
         </div>
         <div class="eb-side">
           <div class="eb-file">registry/builders/<span id="entry-filename">${esc(ENTRY_TEMPLATE.slug)}.json</span></div>
