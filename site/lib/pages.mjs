@@ -11,8 +11,11 @@
 import { DESCRIPTION, ORIGIN, TITLE } from "./constants.mjs";
 import { esc, pageShell } from "./html.mjs";
 import { sectionsConformance } from "./program.mjs";
-import { sectionsRails, sectionsStandards, sectionsUseCases } from "./rails.mjs";
-import { sectionDirectory, sectionsHome, sectionStartHere, sectionSubmit } from "./sections.mjs";
+import { sectionsRails, sectionsStandards } from "./rails.mjs";
+import { sectionsUseCases } from "./use-cases.mjs";
+import { sectionEntryBuilder } from "./entry-builder.mjs";
+import { sectionsHome } from "./home.mjs";
+import { sectionAddCta, sectionDirectory, sectionStartHere, sectionSubmit } from "./sections.mjs";
 
 function metaHead({ title, description, path }) {
   return `<meta name="description" content="${esc(description)}" />
@@ -36,16 +39,17 @@ function pageHero({ title, lede }) {
   </header>`;
 }
 
-function contentPage({ title, description, path, hero, sections }) {
+function contentPage({ title, description, path, hero, sections, modules }) {
   return pageShell({
     title,
     headExtra: metaHead({ title, description, path }),
     body: [hero, ...sections].join("\n"),
     current: path,
+    modules,
   });
 }
 
-/** The overview: hero, live stats strip, THE RAILS panel, four nav cards. */
+/** The overview: the two-line hook, how it works, the path, define-once + THE RAILS panel, explore (stats strip + five cards). */
 export function renderLandingHtml({ rendered, interopSorted }) {
   return pageShell({
     title: TITLE,
@@ -55,21 +59,22 @@ export function renderLandingHtml({ rendered, interopSorted }) {
   });
 }
 
-/** The directory: filterable registry rows, the on-ramps, and the submission paths. */
-export function renderBuildersHtml({ rendered, probes, verdicts }) {
+/** The directory: the add-your-project strip, filterable registry rows, the on-ramps, the entry builder, and the submission paths. */
+export function renderBuildersHtml({ rendered, interopSorted, probes, verdicts }) {
   return contentPage({
     title: `Builders · ${TITLE}`,
     description: "Who builds on KYA-OS: implementations, services, integrations, templates, and examples - one PR to get listed.",
     path: "/builders/",
     hero: pageHero({
       title: "BUILDERS",
-      lede: "Everyone building on KYA-OS, in one registry - ordered by how much has been proven. Conformance here is measured against the pinned vector suite, never self-asserted.",
+      lede: "Everyone building on KYA-OS, in one registry. Verified implementations lead the list, and every listing is one pull request away. Conformance here is measured against the pinned vector suite, never self-asserted.",
     }),
-    sections: [sectionDirectory(rendered, probes, verdicts), sectionStartHere(), sectionSubmit()],
+    sections: [sectionAddCta(), sectionDirectory(rendered, probes, verdicts), sectionStartHere(), sectionEntryBuilder(interopSorted), sectionSubmit()],
+    modules: ["entry-builder.js"],
   });
 }
 
-/** The program: suite pin, pipeline, badge anatomy, levels, states, implementations. */
+/** The program, badge first: suite pin, the badge preview, what a verified claim gives you, the pipeline, levels, implementations. */
 export function renderConformanceHtml({ rendered, verdicts }) {
   return contentPage({
     title: `Conformance · ${TITLE}`,
@@ -77,9 +82,10 @@ export function renderConformanceHtml({ rendered, verdicts }) {
     path: "/conformance/",
     hero: pageHero({
       title: "CONFORMANCE",
-      lede: "Measured, not asserted. The program attests exactly the bytes it re-runs against the published vector suite at your pinned commit.",
+      lede: "What you get: a signed, revocable credential for exactly what the program observed, a badge that re-verifies against that credential every time it renders, and a listing that climbs the ladder in public. Measured, not asserted: the program attests exactly the bytes it re-runs against the published vector suite at your pinned commit.",
     }),
     sections: [sectionsConformance(rendered, verdicts)],
+    modules: ["badge-preview.js"],
   });
 }
 
@@ -91,7 +97,7 @@ export function renderStandardsHtml({ interopSorted }) {
     path: "/standards/",
     hero: pageHero({
       title: "STANDARDS RAILS",
-      lede: "What KYA-OS provides, carries, and projects onto — every row grounded and dated. A status is never listed above what its evidence shows.",
+      lede: "What KYA-OS provides, carries, and projects onto: every row grounded and dated. A status is never listed above what its evidence shows.",
     }),
     sections: [sectionsStandards(interopSorted)],
   });
@@ -105,13 +111,13 @@ export function renderRailsHtml({ interopSorted }) {
     path: "/rails/",
     hero: pageHero({
       title: "THE RAILS",
-      lede: "KYA-OS sits underneath the protocols you already speak. An agent proves who it is once - the same signed proof then projects onto every registry, transport, and credential format downstream.",
+      lede: "Define your agent's Entity Card once. KYA-OS projects it onto every discovery rail your agent needs, so the same identity shows up in MCP server.json, A2A agent cards, and NANDA AgentFacts without rewriting anything.",
     }),
     sections: [sectionsRails(interopSorted)],
   });
 }
 
-/** Use-cases: the REVOKED example and the recipe grid. */
+/** Use-cases: REVOKED step by step (the runnable blueprint) and the recipe grid. */
 export function renderUseCasesHtml() {
   return contentPage({
     title: `Use-cases · ${TITLE}`,
@@ -119,8 +125,9 @@ export function renderUseCasesHtml() {
     path: "/use-cases/",
     hero: pageHero({
       title: "USE-CASES",
-      lede: "What the primitives are for. One shipping example, and the recipes waiting for a builder - each maps directly onto primitives you can run today.",
+      lede: "What the primitives are for. One shipping example, step by step, and six recipes - each with a target, the runnable example in the reference repository that demonstrates it, and the exact file or subpath it comes from - plus the demo server to try a proof against before you build.",
     }),
     sections: [sectionsUseCases()],
+    modules: ["revoked-console.js"],
   });
 }

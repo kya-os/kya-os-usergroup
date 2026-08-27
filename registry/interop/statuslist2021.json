@@ -5,6 +5,7 @@
   "relationship": "More than read-compat: StatusList2021Manager creates and updates lists for the legacy delegation profile, and the cheqd resolver verifies on-chain StatusList2021 credentials.",
   "status": "shipping",
   "evidence": "https://github.com/decentralized-identity/kya-os-mcp/blob/main/src/delegation/statuslist-manager.ts",
+  "implementation": "https://github.com/decentralized-identity/kya-os-mcp/blob/main/src/delegation/statuslist-manager.ts",
   "notes": "The legacy publish format, not just read-compat.",
   "listedAt": "2026-08-19"
 }

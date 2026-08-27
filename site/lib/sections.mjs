@@ -1,6 +1,7 @@
 /**
- * Page bodies for the overview (home) and builders directory pages,
- * translated from the Builders Site design handoff artboards. Every renderer
+ * Page bodies for the builders directory page (the home page lives in
+ * lib/home.mjs), translated from the Builders Site design handoff
+ * artboards. Every renderer
  * is a pure function of the shaped registry data from lib/data.mjs; markup
  * primitives come from lib/html.mjs; waveforms are computed at build time by
  * lib/waveform.mjs.
@@ -10,30 +11,30 @@
  * drive the filter, and native <details> rows carry the expansion - both
  * fully functional without JavaScript.
  */
-import { ADD_PROJECT_URL, DEMO_MCP_URL, DOCS_QUICKSTART_URL, MIGRATE_README_URL, ORIGIN, PLAYGROUND_URL, REPO_URL, REVOKED_TREE_URL, STARTER_URL, SUITE, MIGRATE_LINES } from "./constants.mjs";
+import { ADD_PROJECT_URL, DEMO_MCP_URL, PLAYGROUND_URL, REPO_URL, REVOKED_TREE_URL, STARTER_URL, SUITE } from "./constants.mjs";
+import { CLAIM_WAVE, claimWaveSeed } from "../../scripts/lib/builder-entry.mjs";
 import { conformanceLabel, conformanceLevelUrl, directorySorted } from "./data.mjs";
 import { conformanceStatusChip, esc, promptBlock } from "./html.mjs";
-import { highlightTs } from "./highlight.mjs";
-import { KINDS } from "../../scripts/validate.mjs";
-import { waveformLockup, waveformSvg } from "./waveform.mjs";
+import { KINDS } from "../../scripts/lib/registry-enums.mjs";
+import { waveformSvg } from "./waveform.mjs";
 
 // What each entry kind means, shown under the filter strip (design copy,
 // verbatim; marketplace added for the hub's schema).
 const TYPE_DEFS = {
   all: "",
-  implementation: "implementation — an independent build of the protocol itself",
-  service: "service — something hosted that you can point at today",
-  integration: "integration — a product that uses KYA-OS inside",
-  marketplace: "marketplace — a directory or store that lists KYA-OS agents",
-  template: "template — a starting point to fork",
-  example: "example — a working demonstration to learn from",
+  implementation: "implementation - an independent build of the protocol itself",
+  service: "service - something hosted that you can point at today",
+  integration: "integration - a product that uses KYA-OS inside",
+  marketplace: "marketplace - a directory or store that lists KYA-OS agents",
+  template: "template - a starting point to fork",
+  example: "example - a working demonstration to learn from",
 };
 
 // The honest per-state conformance line for the expanded row, keyed on the
 // DISPLAY state: the entry status refined by the build's credential verdict
 // (a suspension bit renders a verified entry as suspended).
 const CONF_TEXT = {
-  "in-verification": `Claim being independently re-run against suite ${SUITE.version} — the program attests exactly what it observes.`,
+  "in-verification": `Claim being independently re-run against suite ${SUITE.version} - the program attests exactly what it observes.`,
   verified:
     "The program re-ran the suite, this build cryptographically verified the linked credential, and its status bits are clean: verify it yourself without trusting this site.",
   suspended:
@@ -50,101 +51,6 @@ function displayState(conformance, verdict) {
   return conformance.status;
 }
 
-
-function sectionMigrate() {
-  // One source (MIGRATE_LINES), two renders: the visible block carries
-  // build-time token highlighting and diff gutters; the hidden raw <pre> is
-  // what the copy button reads, so clipboard text is always the plain code.
-  const code = MIGRATE_LINES.map(
-    ([text, added]) => `<span class="cl${added ? " hl" : ""}">${highlightTs(text)}</span>`,
-  ).join("");
-  const raw = esc(MIGRATE_LINES.map(([text]) => text).join("\n"));
-  return `  <section class="fx fxd-20">
-    <h2>Two lines to a verifiable server</h2>
-    <div class="rule"></div>
-    <div class="code-wrap">
-      <pre class="code-block"><code>${code}</code></pre>
-      <pre id="migrate-code" hidden aria-hidden="true">${raw}</pre>
-      <button type="button" class="copy-code" data-copy-target="migrate-code" hidden>[ copy ]</button>
-    </div>
-    <div class="dlinks next-strip">
-      <span class="next-label">what next:</span>
-      <a href="${STARTER_URL}">run the suite against it -&gt;</a>
-      <a href="/conformance/">claim conformance -&gt;</a>
-      <a href="${esc(ADD_PROJECT_URL)}">get listed -&gt;</a>
-    </div>
-    <p class="note">High-integrity identity is a wrap, not a rewrite: every tool response now carries a detached JWS proof - invisible to the LLM, verifiable by anyone.</p>
-    <div class="dlinks">
-      <a href="${MIGRATE_README_URL}">reference README -&gt;</a>
-      <a href="${DOCS_QUICKSTART_URL}">docs quickstart -&gt;</a>
-    </div>
-  </section>`;
-}
-
-/** The overview (home) page body. */
-export function sectionsHome({ rendered, interopSorted }) {
-  const stat = (href, html) => `    <a href="${href}">${html}</a>`;
-  return `  <header class="hero fx">
-    <div class="kicker">BUILDERS.KYA-OS.ORG</div>
-    <h1 class="h1-home"><span data-title-reveal>BUILD ON KYA-OS</span><span class="cursor" aria-hidden="true">_</span></h1>
-    <p class="lede">Authority and accountability for the agentic web. Verifiable identity and scoped delegation rooted at a <a href="https://kya-os.org/mcp/docs/concepts/delegation-layer">Responsible Party</a> - every agent action authorized before it runs, and audit-ready after.</p>
-  </header>
-  <div class="stats fx fxd-15">
-${[
-    stat("/conformance/", `suite <b>${esc(SUITE.version)}</b>`),
-    stat("/conformance/", `<b>${SUITE.vectors}</b> vectors`),
-    stat("/conformance/#levels", `levels <b>L1–L3</b>`),
-    stat("/standards/", `<b>${interopSorted.length}</b> standards mapped`),
-    stat("/builders/", `<b>${rendered.length}</b> projects listed`),
-    stat(
-      "/builders/",
-      `<b>${rendered.filter((entry) => entry.conformance?.status === "in-verification").length}</b> in verification &middot; <b>${rendered.filter((entry) => entry.conformance?.status === "verified").length}</b> verified`,
-    ),
-  ].join("\n")}
-  </div>
-${sectionMigrate()}
-  <a href="/rails/" class="rails-panel fx fxd-25" aria-label="The rails: AI agents send signed requests through KYA-OS to MCP servers, A2A peers, and any API - verified before they run. Read how one proof reaches every protocol.">
-    <div class="rails-head">
-      <div class="rails-title">THE RAILS</div>
-      <div class="rails-sub">how one proof reaches every protocol -&gt;</div>
-    </div>
-    <div class="rails-mini" aria-hidden="true">
-      <div class="rm-box rm-c1">AI</div>
-      <div class="wire rm-w2"><span class="wire-dot"></span></div>
-      <div class="rm-box rm-core rm-c3">KYA-OS</div>
-      <div class="wire rm-w4"><span class="wire-dot wd-late"></span></div>
-      <div class="rm-outs rm-c5">
-        <span class="rm-out"><span>MCP server</span><span class="ok">&check;</span></span>
-        <span class="rm-out"><span>A2A peer</span><span class="ok">&check;</span></span>
-        <span class="rm-out"><span>any API</span><span class="ok">&check;</span></span>
-      </div>
-      <div class="rm-cap rm-u1">agents &middot; orchestrators &middot; autonomous</div>
-      <div class="rm-under rm-u3">
-        <div class="rm-wf">${waveformLockup("kya-os:signed-proof:v1.14", { bars: 18, trackHeight: 12 })}</div>
-        <div class="rm-cap">who acts &middot; for whom &middot; with what authority</div>
-      </div>
-      <div class="rm-cap rm-u5">verified before it runs</div>
-    </div>
-  </a>
-  <div class="home-cards fx fxd-35">
-    <a href="/builders/" class="panel-card">
-      <div class="pc-head"><span class="pc-title">builders -&gt;</span></div>
-      <p>Who is building on KYA-OS — implementations, services, templates, and the examples to start from. Listing is one JSON file and one pull request.</p>
-    </a>
-    <a href="/conformance/" class="panel-card">
-      <div class="pc-head"><span class="pc-title">conformance -&gt;</span><span class="chip st-shipping pulse">verifiable</span></div>
-      <p>Measured, not asserted. Run the pinned vector suite, submit a claim, and the program independently re-runs your bytes and attests what it observes.</p>
-    </a>
-    <a href="/standards/" class="panel-card">
-      <div class="pc-head"><span class="pc-title">standards -&gt;</span></div>
-      <p>Every standard KYA-OS provides, carries, or projects onto — ${interopSorted.length} rows, each grounded in evidence and dated. Disputes are one pull request.</p>
-    </a>
-    <a href="/use-cases/" class="panel-card">
-      <div class="pc-head"><span class="pc-title">use-cases -&gt;</span></div>
-      <p>What people actually build: on-chain kill switches, consent-gated tools, delegated spend ceilings. Read them before you build, steal from them while you build.</p>
-    </a>
-  </div>`;
-}
 
 /**
  * The live signal for a service row. Without probe data: the neutral static
@@ -188,7 +94,9 @@ function probeSignal(entry, probes) {
 // .dmark box) so no brand reads shorter than another; width follows the
 // asset's own aspect. Presentation-only - no registry field.
 const KYA_MARK_SLUGS = new Set(["kya-os-mcp", "kya-os-demo-server", "kya-os-schema"]);
-const BRAND_LOGOS = { "knowthat-ai": { onDark: "/img/knowthat-mark-ondark.png", onLight: "/img/knowthat-mark-onlight.png" } };
+// KnowThat.ai is always the red mark: the owner wants the brand red on both
+// themes, so the theme-paired slot points at the same asset twice.
+const BRAND_LOGOS = { "knowthat-ai": { onDark: "/img/knowthat-mark-onlight.png", onLight: "/img/knowthat-mark-onlight.png" } };
 function rowMark(entry) {
   if (KYA_MARK_SLUGS.has(entry.slug)) {
     return `<span class="dmark dmark-logo" aria-hidden="true"><img class="mark mark-white" src="/img/kya-mark-white.svg" alt="" width="14" height="16" /><img class="mark mark-black" src="/img/kya-mark-black.svg" alt="" width="14" height="16" /></span>`;
@@ -214,8 +122,8 @@ function directoryRow(entry, probes, verdicts) {
   const deployed = c && provenanceVersion ? ` <span class="dprov">&middot; deployed ${esc(provenanceVersion)}</span>` : "";
   const state = c && displayState(c, verdict);
   const confLine = c
-    ? `<div class="dconf-line tone-${CONF_TONE[state]}">${waveformSvg(`${entry.slug}#${conformanceLabel(c)}`, { bars: 16, trackHeight: 11, barWidth: 2, gap: 1.5 })}<p>conformance: <a href="${esc(conformanceLevelUrl(c))}">${esc(conformanceLabel(c))}</a>${deployed} — ${esc(CONF_TEXT[state])}</p></div>`
-    : `<div class="dconf-line tone-faint"><p>Listed in the registry — no conformance claim yet.</p></div>`;
+    ? `<div class="dconf-line tone-${CONF_TONE[state]}">${waveformSvg(claimWaveSeed(entry.slug, c), CLAIM_WAVE)}<p>conformance: <a href="${esc(conformanceLevelUrl(c))}">${esc(conformanceLabel(c))}</a>${deployed} - ${esc(CONF_TEXT[state])}</p></div>`
+    : `<div class="dconf-line tone-faint"><p>Listed in the registry - no conformance claim yet.</p></div>`;
   const capabilities = [];
   if (entry.buildsOn?.length) capabilities.push(`builds on: ${entry.buildsOn.map((repo) => esc(repo)).join(", ")}`);
   if (entry.standards?.length) capabilities.push(`speaks: ${entry.standards.map((slug) => esc(slug)).join(", ")}`);
@@ -240,6 +148,16 @@ function directoryRow(entry, probes, verdicts) {
           
         </div>
       </details>`;
+}
+
+/** The compact add-your-project strip under the lede: the invitation first, the detail at the bottom. */
+export function sectionAddCta() {
+  return `  <div class="cta-strip fx fxd-10">
+    <span class="cta-lede">Add your project: one JSON file, one pull request, listed in five minutes.</span>
+    <a class="btn-solid" href="#build-entry">build your entry -&gt;</a>
+    <a href="${esc(ADD_PROJECT_URL)}">or open the prefilled editor -&gt;</a>
+    <a class="quiet" href="#submit">the three paths -&gt;</a>
+  </div>`;
 }
 
 /** The directory: CSS-only type filter + expandable registry rows. */
@@ -273,7 +191,7 @@ ${chips}
     <div class="dtable">
       <div class="dgrid dhead" aria-hidden="true"><span>PROJECT</span><span>TYPE</span><span>WHAT IT IS</span><span>CONFORMANCE</span><span>LISTED</span><span></span></div>
 ${rows}
-      <div class="dfoot">your project here — <a href="${esc(ADD_PROJECT_URL)}">one JSON file and one pull request -&gt;</a></div>
+      <div class="dfoot">your project here - <a href="${esc(ADD_PROJECT_URL)}">one JSON file and one pull request -&gt;</a></div>
     </div>
     <p class="dnote">Ordered by the ladder: verified first, then in verification, then self-reported, then everything listed. A <span class="tone-signal">&#9679;</span> next to the name marks a hosted service endpoint you can point at today; where the entry names a probe endpoint, the daily probe classifies it in the expanded row - dated, from the wire, independent of any claim.</p>
   </section>`;
@@ -287,13 +205,13 @@ export function sectionStartHere() {
     <div class="grid-3">
       <div class="panel-card">
         <a class="pc-title" href="${PLAYGROUND_URL}">poke a live server</a>
-        <p>Speak MCP to a real KYA-OS endpoint before running your own — inspect the signed proof in every response.</p>
+        <p>Speak MCP to a real KYA-OS endpoint before running your own - inspect the signed proof in every response.</p>
         <p class="pc-sub">raw endpoint: <code>POST ${DEMO_MCP_URL}</code></p>
         <a class="pc-link" href="${PLAYGROUND_URL}">open the playground -&gt;</a>
       </div>
       <div class="panel-card">
         <a class="pc-title" href="${STARTER_URL}">fork the starter</a>
-        <p>From existing implementation to submission-ready conformance claim in under an hour — all ${SUITE.vectors} vectors, any language.</p>
+        <p>From existing implementation to submission-ready conformance claim in under an hour - all ${SUITE.vectors} vectors, any language.</p>
         <a class="pc-link" href="${STARTER_URL}">conformance-starter -&gt;</a>
       </div>
       <div class="panel-card">
@@ -311,7 +229,7 @@ export function sectionSubmit() {
   return `  <section id="submit" class="fx fxd-40">
     <h2>Join the registry</h2>
     <div class="rule"></div>
-    <p class="section-lede">Getting listed and claiming conformance are not separate acts — they are rungs of one ladder, and the same registry entry climbs it in public. Corrections count too: every standards-matrix row is one file in <code>registry/interop/</code> — use the row's edit link on <a href="/standards/">the standards page</a>, or PR the file directly.</p>
+    <p class="section-lede">Getting listed and claiming conformance are not separate acts - they are rungs of one ladder, and the same registry entry climbs it in public. Corrections count too: every standards-matrix row is one file in <code>registry/interop/</code> - use the row's edit link on <a href="/standards/">the standards page</a>, or PR the file directly.</p>
     <div class="ladder">
 ${[
     rung(`<span class="chip st-listed">&middot; listed</span>`, "5 minutes"),
@@ -323,11 +241,11 @@ ${[
     <p class="ladder-copy">Listed in five minutes. Self-reported the same hour. Verified when the <a href="/conformance/">program</a> re-runs your bytes. Services can additionally prove live enforcement via the daily probe - the wire is the witness: a bare request must be refused.</p>
     <div class="panel-card path-primary">
       <div class="pc-title t-static">one action, every rung</div>
-      <p>Hand the prompt to your coding agent and it walks the ladder with you: your entry, an optional self-reported conformance run against the pinned suite, one pull request, and the submission issue if you want verification. Or take the one-click path — the button opens the GitHub editor on <code>registry/builders/</code> with the entry template prefilled: rename to <code>&lt;your-slug&gt;.json</code>, edit the fields, propose the change.</p>
+      <p>Hand the prompt to your coding agent and it walks the ladder with you: your entry, an optional self-reported conformance run against the pinned suite, one pull request, and the submission issue if you want verification. Or take the one-click path - the button opens the GitHub editor on <code>registry/builders/</code> with the entry template prefilled: rename to <code>&lt;your-slug&gt;.json</code>, edit the fields, propose the change.</p>
       ${promptBlock("prompt-join-registry")}
       <p class="pc-sub">Two fields CI will not forgive: set <code>listedAt</code> to today's real date, and keep <code>slug</code> equal to your filename.</p>
       <a class="btn-solid" href="${esc(ADD_PROJECT_URL)}">add your project -&gt;</a>
     </div>
-    <p class="note">Prefer a local workflow? Copy <a href="${REPO_URL}/blob/main/registry/builders/example-builder.json"><code>example-builder.json</code></a> to <code>registry/builders/&lt;your-slug&gt;.json</code>, run <code>npm test</code> (no dependencies to install), and open a PR — the field reference is in <a href="${REPO_URL}/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>.</p>
+    <p class="note">Prefer a local workflow? Copy <a href="${REPO_URL}/blob/main/registry/builders/example-builder.json"><code>example-builder.json</code></a> to <code>registry/builders/&lt;your-slug&gt;.json</code>, run <code>npm test</code> (no dependencies to install), and open a PR - the field reference is in <a href="${REPO_URL}/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>.</p>
   </section>`;
 }

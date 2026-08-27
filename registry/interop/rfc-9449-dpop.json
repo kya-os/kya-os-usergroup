@@ -5,6 +5,7 @@
   "relationship": "cnf.jkt sender-constraint fusion (SPEC-ENTITY-CARD section 8.6, 'the spine'): the access token's cnf.jkt (RFC 9449 semantics, RFC 7638 thumbprint) must equal the proof key's thumbprint.",
   "status": "shipping",
   "evidence": "https://github.com/decentralized-identity/kya-os-mcp/blob/main/src/card/proof/verify.ts",
+  "implementation": "https://github.com/decentralized-identity/kya-os-mcp/blob/main/src/card/proof/verify.ts",
   "notes": "cnf handled across src/card/proof/*; normative references. Section 8.8 defines the relationship to DPoP explicitly.",
   "listedAt": "2026-08-19"
 }

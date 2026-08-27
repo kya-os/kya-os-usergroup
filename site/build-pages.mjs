@@ -6,12 +6,14 @@
  *
  * Validates both registries first (via the shared core in scripts/validate.mjs;
  * refuses to render on any error), then emits to dist/ (gitignored):
- *   - index.html               the overview: hero, live stats strip, THE
- *                              RAILS panel, four nav cards
+ *   - index.html               the overview: the two-line hook, how it
+ *                              works, the path, define-once + THE RAILS
+ *                              panel, explore (stats strip + five cards)
  *   - builders/index.html      the directory: filterable registry rows, the
  *                              on-ramps, and the three submission paths
- *   - conformance/index.html   the program: suite pin, pipeline, badge
- *                              anatomy, levels, states, implementations
+ *   - conformance/index.html   the program, badge first: suite pin, the
+ *                              badge preview, what a verified claim gives
+ *                              you, pipeline, levels, implementations
  *   - standards/index.html     the rails matrix grouped by category
  *   - rails/index.html         the protocol rails diagram page
  *   - use-cases/index.html     the REVOKED flagship and the recipe grid
@@ -40,10 +42,14 @@
  *                              the Builders Site design-language token layer
  *                              and the hub page layer - ALL page CSS, served
  *                              same-origin so style-src stays 'self'
- *   - ui/                      byte copies of site/assets/ui/*.js: the
- *                              page-fx motion module (Title decrypt,
- *                              GlitchText, ScrollSkew, FadeTransition) and
- *                              the copy-prompt module
+ *   - ui/                      byte copies of site/assets/ui/*.js (the
+ *                              page-fx motion module, the copy-prompt
+ *                              module, the builders page's entry-builder
+ *                              module), byte copies of the browser-safe
+ *                              library modules the client shares with the
+ *                              build (builder-entry.js), and the generated
+ *                              registry vocabulary (registry-enums.js, from
+ *                              registry/schema/)
  *   - _headers                 security headers + content types; the CSP pins
  *                              the one inline script by sha256 (computed here
  *                              from the exact THEME_SCRIPT bytes), covers the
@@ -70,17 +76,29 @@
  *   lib/data.mjs        registry loading + shaping, machine-readable artifacts
  *   lib/html.mjs        escaping, chips, the prompt block, the shared shell
  *                       + nav, the 404 page (honesty rules enforced there)
+ *   lib/snippets.mjs    the code snippets as data (the migrate pair verbatim
+ *                       from the reference README) - parity-asserted
+ *   lib/highlight.mjs   build-time TypeScript highlighting + the copyable
+ *                       code block
  *   lib/waveform.mjs    build-time seeded proof waveforms as static SVG
- *   lib/sections.mjs    the overview and directory page bodies
+ *   lib/home.mjs        the overview page body (the two-line hook hero +
+ *                       how it works)
+ *   lib/home-sections.mjs  the overview's path, define-once, and explore
+ *                       sections
+ *   lib/sections.mjs    the directory page bodies
+ *   lib/entry-builder.mjs  the builders page's entry-builder form markup
  *   lib/program.mjs     the conformance page body
- *   lib/rails.mjs       the standards, rails, and use-cases page bodies
+ *   lib/rails.mjs       the standards and rails page bodies
+ *   lib/use-cases.mjs   the use-cases page body (REVOKED + recipes with
+ *                       their reference examples)
  *   lib/pages.mjs       page assembly: hero + sections per page, per-page meta
  *   lib/theme.mjs       the inline-only pieces: THEME_SCRIPT (theme toggle +
  *                       js-anim gate + page-fx failsafe) and the theme-color
  *                       meta pair; all CSS lives in site/assets/css/
  *   lib/assertions.mjs  post-build render checks, run per page: completeness,
- *                       honesty, theme integrity, prompt parity, and the CSP
- *                       script hash
+ *                       honesty, theme integrity, copy parity, and the CSP
+ *                       script hash (client-module checks in
+ *                       lib/module-checks.mjs)
  *
  * Output is deterministic: a pure function of registry/**.json, fixed
  * strings, and committed binaries/modules (entries sorted by slug, no build
@@ -97,7 +115,8 @@ import { fileURLToPath } from "node:url";
 import { runRenderChecks } from "./lib/assertions.mjs";
 import { renderBadgeFiles } from "./lib/badge.mjs";
 import { renderDidJson, verifyCredentialArtifacts } from "./lib/credentials.mjs";
-import { loadSiteData, renderBadgeAllowlist, renderBuildersJson, renderGeneratedKeys, renderInteropJson } from "./lib/data.mjs";
+import { loadSiteData, renderBadgeAllowlist, renderBuildersJson, renderGeneratedKeys, renderInteropJson, renderRegistryEnums } from "./lib/data.mjs";
+import { COPIED_MODULES } from "./lib/module-checks.mjs";
 import { render404Html } from "./lib/html.mjs";
 import {
   renderBuildersHtml,
@@ -183,7 +202,7 @@ for (const page of ["builders", "conformance", "standards", "rails", "use-cases"
 }
 
 writeFileSync(join(distDir, "index.html"), renderLandingHtml({ rendered, interopSorted }));
-writeFileSync(join(distDir, "builders", "index.html"), renderBuildersHtml({ rendered, probes, verdicts }));
+writeFileSync(join(distDir, "builders", "index.html"), renderBuildersHtml({ rendered, interopSorted, probes, verdicts }));
 writeFileSync(join(distDir, "conformance", "index.html"), renderConformanceHtml({ rendered, verdicts }));
 writeFileSync(join(distDir, "standards", "index.html"), renderStandardsHtml({ interopSorted }));
 writeFileSync(join(distDir, "rails", "index.html"), renderRailsHtml({ interopSorted }));
@@ -255,13 +274,21 @@ for (const name of readdirSync(cssSrcDir).sort()) {
   writeFileSync(join(distDir, name), stripCss(readFileSync(join(cssSrcDir, name), "utf8")));
 }
 
-// Client modules: deterministic byte copies of site/assets/ui/*.js - the
-// page-fx motion module and the copy-prompt module, both same-origin under
-// script-src 'self'. Assertions verify byte equality and the guard lines.
+// Client modules, all same-origin under script-src 'self': deterministic
+// byte copies of site/assets/ui/*.js (page-fx, copy-prompt, and the
+// page-specific modules), byte copies of the browser-safe library modules
+// the client shares with the build and the validator (COPIED_MODULES - the
+// same bytes run in Node and in the browser), and the generated registry
+// vocabulary from the schemas. lib/module-checks.mjs verifies byte
+// equality, the generated lines, the import graph, and the guard lines.
 mkdirSync(join(distDir, "ui"), { recursive: true });
 for (const entry of readdirSync(uiSrcDir, { recursive: true }).map(String).sort()) {
   if (entry.endsWith(".js")) copyFileSync(join(uiSrcDir, entry), join(distDir, "ui", entry));
 }
+for (const [name, source] of Object.entries(COPIED_MODULES)) {
+  copyFileSync(join(repoRoot, source), join(distDir, "ui", name));
+}
+writeFileSync(join(distDir, "ui", "registry-enums.js"), renderRegistryEnums(interopSorted));
 
 // The badge worker's generated modules are committed, not dist/ artifacts:
 // the worker deploy must never depend on a site build having run. The slug
@@ -280,5 +307,5 @@ writeFileSync(join(badgeDir, "generated-keys.mjs"), renderGeneratedKeys(credenti
 runRenderChecks({ distDir, rendered, interopSorted, probes, credentialData, verdicts });
 
 console.log(
-  `Built Pages artifact: ${rendered.length} entr${rendered.length === 1 ? "y" : "ies"}, ${interopSorted.length} standards rails -> dist/ (6 pages, static + one hashed inline script + page-fx/copy-prompt modules and stylesheets, build-time waveforms, self-hosted fonts, real 404.html, no worker)`,
+  `Built Pages artifact: ${rendered.length} entr${rendered.length === 1 ? "y" : "ies"}, ${interopSorted.length} standards rails -> dist/ (6 pages, static + one hashed inline script + same-origin ui modules and stylesheets, build-time waveforms, self-hosted fonts, real 404.html, no worker)`,
 );

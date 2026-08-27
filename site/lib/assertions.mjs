@@ -9,16 +9,17 @@
  * and the certified check scans raw bytes, so a regression in a formatter
  * cannot make its own assertion pass. The CSP check recomputes the script
  * hash from the emitted page bytes for the same reason; the font, mark, and
- * ui-module checks re-read the committed files rather than trusting the copy
- * step; the prompt-parity check re-extracts button/fallback pairs from the
- * page bytes and matches them against lib/constants.mjs. The theme, gating,
- * prompt-parity, and suite-pin checks live in lib/checks.mjs (split to keep
+ * ui-module checks (lib/module-checks.mjs) re-read the committed files
+ * rather than trusting the copy step; the copy-parity check re-extracts button/fallback pairs from the
+ * page bytes and matches them against lib/constants.mjs and
+ * lib/snippets.mjs. The theme, gating, copy-parity, migration-hook, and
+ * suite-pin checks live in lib/checks.mjs (split to keep
  * both files under the lib LOC cap) and run from here.
  */
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { SUITE, TEMPLATE_SLUG } from "./constants.mjs";
+import { REPO_URL, SUITE, TEMPLATE_SLUG } from "./constants.mjs";
 import { assertBadges } from "./badge.mjs";
 import { assertCredentialArtifacts } from "./credential-checks.mjs";
 import { withConformance } from "./data.mjs";
@@ -26,13 +27,18 @@ import { esc } from "./html.mjs";
 import {
   assertAnimGating,
   assertBuild,
+  assertCopyParity,
   assertFoundingCohort,
+  assertHomePolish,
+  assertNoEmDashes,
   assertLadderReadout,
+  assertMigrateHook,
   assertProbeHonesty,
-  assertPromptParity,
   assertSuitePinAgreement,
   assertThemeIntegrity,
 } from "./checks.mjs";
+import { assertConformanceStructure, assertCopyFacts } from "./copy-checks.mjs";
+import { assertClientModules } from "./module-checks.mjs";
 import { THEME_COLORS } from "./theme.mjs";
 
 const PAGE_FILES = [
@@ -48,14 +54,13 @@ const FONT_FILES = ["fonts/space-grotesk-latin-wght.woff2", "fonts/jetbrains-mon
 const FONT_LICENSES = ["fonts/space-grotesk-OFL.txt", "fonts/jetbrains-mono-OFL.txt"];
 const MARK_FILES = ["img/kya-mark-white.svg", "img/kya-mark-black.svg"];
 const CSS_FILES = ["tokens.css", "hub.css"];
-const UI_FILES = ["copy-prompt.js", "page-fx.js"];
 
 /**
  * The script and style contract, per page: exactly ONE inline script (the
  * theme toggle + js-anim pre-paint gate + page-fx failsafe), byte-identical
  * across pages, whose sha256 is exactly the hash the _headers CSP allows -
  * recomputed from the page bytes, never trusted from the build's own
- * constants - plus the two module tags; all script tags in <head>,
+ * constants - plus the module tags (lib/module-checks.mjs); all script tags in <head>,
  * reduced-motion guard, js-anim gate, and failsafe intact. Styles are the
  * mirror image: style-src is 'self', so every page must link both
  * same-origin stylesheets and carry NO <style> block and NO style attribute
@@ -74,12 +79,6 @@ function assertPageScripts(name, html, themeHash, referenceScript) {
   assertBuild(scripts[0].includes("__pageFxInit"), `${name}: the theme script lost the 2.5s page-fx failsafe`);
   assertBuild(scripts[0].includes("data-theme"), `${name}: the theme script no longer drives data-theme`);
   assertBuild(html.includes('id="theme-toggle"'), `${name}: the theme toggle button is missing`);
-  for (const module of UI_FILES) {
-    assertBuild(
-      html.includes(`<script type="module" src="/ui/${module}"></script>`),
-      `${name}: the /ui/${module} module tag is missing`,
-    );
-  }
   for (const href of ["/tokens.css", "/hub.css"]) {
     assertBuild(html.includes(`<link rel="stylesheet" href="${href}" />`), `${name}: the ${href} stylesheet link is missing`);
   }
@@ -117,11 +116,16 @@ export function runRenderChecks({ distDir, rendered, interopSorted, probes, cred
     const committed = readFileSync(join(distDir, "..", "site", "assets", "css", name), "utf8");
     assertBuild(sheets[name] === stripCss(committed), `dist/${name} is not the comment-stripped copy of site/assets/css/${name}`);
   }
-  // Budget raised 25KB -> 32KB with the Builders Site design swap: six pages
-  // of layout (directory grid + CSS-only filter, rails diagrams, badge
-  // lockups) ship ~28KB; the ceiling still catches runaway growth.
+  // Budget raised 25KB -> 32KB with the Builders Site design swap (six pages
+  // of layout: directory grid + CSS-only filter, rails diagrams, badge
+  // lockups), then 32KB -> 40KB with the developer-conversion pass (the
+  // entry-builder form, the Before / After pair, the badge preview); the
+  // ceiling still catches runaway growth.
   const cssBytes = CSS_FILES.reduce((sum, name) => sum + Buffer.byteLength(sheets[name]), 0);
-  assertBuild(cssBytes <= 32 * 1024, `emitted CSS is ${cssBytes} bytes; the budget is 32KB total`);
+  // 40KB -> 44KB with the rails restructure (rail rows, projection flow) and
+  // the authorization-methods row on the gated-tools recipe; both are
+  // content, not chrome, and the emitted total landed at 41.2KB.
+  assertBuild(cssBytes <= 44 * 1024, `emitted CSS is ${cssBytes} bytes; the budget is 44KB total`);
   assertThemeIntegrity(sheets);
   assertAnimGating(sheets);
 
@@ -141,32 +145,16 @@ export function runRenderChecks({ distDir, rendered, interopSorted, probes, cred
   for (const [name, html] of Object.entries(pages)) {
     assertPageScripts(name, html, cspHashes[0], referenceScript);
   }
-  assertPromptParity(pages);
+  assertCopyParity(pages);
+  assertMigrateHook(pages["index.html"]);
+  assertHomePolish(pages);
+  assertCopyFacts(pages);
+  assertConformanceStructure({ html: pages["conformance/index.html"], repoRoot: join(distDir, ".."), conformanceEntries });
+  assertNoEmDashes(pages);
 
-  // Client modules: dist/ui/*.js must be exact byte copies of the committed
-  // site/assets/ui/*.js (both directions - same file set), page-fx must keep
-  // its reduced-motion / js-anim guard and the failsafe handshake, and
-  // copy-prompt must keep the hidden-button reveal (the no-JS contract).
-  const uiSrcDir = join(distDir, "..", "site", "assets", "ui");
-  const uiCommitted = readdirSync(uiSrcDir, { recursive: true }).map(String).filter((n) => n.endsWith(".js")).sort();
-  const uiBuilt = readdirSync(join(distDir, "ui"), { recursive: true }).map(String).filter((n) => n.endsWith(".js")).sort();
-  assertBuild(uiBuilt.join(",") === UI_FILES.join(","), `dist/ui/ (${uiBuilt.join(", ")}) must hold exactly: ${UI_FILES.join(", ")}`);
-  assertBuild(uiCommitted.join(",") === UI_FILES.join(","), `site/assets/ui/ (${uiCommitted.join(", ")}) must hold exactly: ${UI_FILES.join(", ")}`);
-  for (const name of uiCommitted) {
-    const built = readFileSync(join(distDir, "ui", name));
-    assertBuild(built.equals(readFileSync(join(uiSrcDir, name))), `dist/ui/${name} is not a byte copy of site/assets/ui/${name}`);
-  }
-  const pageFx = readFileSync(join(distDir, "ui", "page-fx.js"), "utf8");
-  assertBuild(
-    pageFx.includes("prefers-reduced-motion") && pageFx.includes("js-anim"),
-    "page-fx.js lost its reduced-motion / js-anim guard",
-  );
-  assertBuild(pageFx.includes("__pageFxInit"), "page-fx.js lost the failsafe handshake (__pageFxInit)");
-  const copyPrompt = readFileSync(join(distDir, "ui", "copy-prompt.js"), "utf8");
-  assertBuild(
-    copyPrompt.includes("data-copy-target") && copyPrompt.includes("hidden = false"),
-    "copy-prompt.js lost the hidden-button reveal wiring",
-  );
+  // Client modules: byte copies, the generated vocabulary, the import graph,
+  // per-page module tags, and the no-JS guard lines (lib/module-checks.mjs).
+  assertClientModules({ distDir, pages, interopSorted, repoUrl: REPO_URL });
 
   // Fonts and marks: dist copies must be exact byte copies of the committed
   // sources, each font must really be woff2 (leading wOF2 magic), and the
@@ -190,10 +178,9 @@ export function runRenderChecks({ distDir, rendered, interopSorted, probes, cred
   // and neither is "tamper-proof" ("tamper-evident" is the honest phrase).
   for (const [name, html] of Object.entries(pages)) {
     assertBuild(!/certified|certification|tamper-proof/i.test(html), `a banned term (certified/certification/tamper-proof) leaked into ${name}`);
-    // A green "verified" chip exists only as a credential link (the .demo
-    // state-machine samples on the conformance page are the one labeled
-    // exception): every non-demo st-verified chip must sit inside a
-    // .chip-link anchor.
+    // A green "verified" chip exists only as a credential link (the
+    // builders page's ladder rung, labeled .demo, is the one exception):
+    // every non-demo st-verified chip must sit inside a .chip-link anchor.
     for (const match of html.matchAll(/<(a|span)[^>]*class="[^"]*\bst-verified\b[^"]*"[^>]*>/g)) {
       if (match[0].includes("demo")) continue;
       // Directory summaries deliberately render chips unlinked - an anchor
@@ -240,6 +227,12 @@ export function runRenderChecks({ distDir, rendered, interopSorted, probes, cred
       standardsHtml.includes(`<span class="slisted">${esc(entry.listedAt)}</span>`),
       `dist/standards/index.html does not date standard "${entry.slug}" (${entry.listedAt})`,
     );
+    if (entry.implementation !== undefined) {
+      assertBuild(
+        standardsHtml.includes(`href="${esc(entry.implementation)}"`),
+        `dist/standards/index.html does not link the implementation of "${entry.slug}"`,
+      );
+    }
   }
 
   // Claim honesty on both pages that render claims (directory rows and the
@@ -271,15 +264,16 @@ export function runRenderChecks({ distDir, rendered, interopSorted, probes, cred
   // Readout truth: every count the pages show must be the live registry
   // number (recomputed here from the shaped data, never from a formatter) -
   // the home stats strip, the directory filter counts, the rails page's
-  // matrix pointer, and the suite pin strip. No tables anywhere: the design
-  // renders rows as grids.
+  // matrix pointer, and the suite pin strip. No tables on the landing page:
+  // the design renders its rows as grids (the conformance implementations
+  // table is the site's one real table, checked in lib/copy-checks.mjs).
   const landingHtml = pages["index.html"];
   assertBuild(landingHtml.includes(`<b>${rendered.length}</b> projects listed`), "the home stats strip must show the live entry count");
   assertBuild(landingHtml.includes(`<b>${interopSorted.length}</b> standards mapped`), "the home stats strip must show the live rails count");
   assertBuild(landingHtml.includes(`suite <b>${esc(SUITE.version)}</b>`), "the home stats strip must show the pinned suite version");
   assertBuild(landingHtml.includes(`<b>${SUITE.vectors}</b> vectors`), "the home stats strip must show the pinned vector count");
   assertBuild(
-    landingHtml.includes(`${interopSorted.length} rows, each grounded in evidence and dated`),
+    landingHtml.includes(`${interopSorted.length} rows with evidence`),
     "the home standards card must carry the live rails count",
   );
   assertBuild(!landingHtml.includes("<table"), "no tables on the landing page");

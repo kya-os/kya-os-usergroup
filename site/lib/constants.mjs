@@ -4,6 +4,7 @@
  * Everything here is data, not behavior - renderers import from this file
  * so a URL or suite pin changes in exactly one place.
  */
+import { newEntryUrl } from "../../scripts/lib/builder-entry.mjs";
 
 export const ORIGIN = "https://builders.kya-os.org"; // planned; final URL decision open
 export const SITE_URL = "https://kya-os.org";
@@ -20,8 +21,22 @@ export const DOCS_QUICKSTART_URL = `${SITE_URL}/mcp/docs/getting-started/quickst
 // registry - via .github/ISSUE_TEMPLATE/conformance_submission.yml. Claims
 // already in flight on the spec repo remain valid; see conformance/README.md.
 export const SUBMISSION_ISSUE_URL = `${REPO_URL}/issues/new?template=conformance_submission.yml`;
+// The badge's operating detail (tiers, cache bound, deploy status), kept off
+// the conformance page and linked from its badge section.
+export const BADGE_WORKER_DOC_URL = `${REPO_URL}/blob/main/docs/BADGE-WORKER.md`;
 export const REVOKED_TREE_URL = `${MCP_REPO_URL}/tree/main/examples/revoked`;
+export const REVOKED_README_URL = `${MCP_REPO_URL}/blob/main/examples/revoked/README.md`;
+// The README's own 3-minute video link (examples/revoked/README.md line 9).
+export const REVOKED_VIDEO_URL = "https://www.loom.com/share/f32b82a292f14a6c952dba3a0a246e45";
+// The real MCP server (Context7) migrated with exactly the two lines the
+// home hero shows - the README's own pointer.
+export const CONTEXT7_EXAMPLE_URL = `${MCP_REPO_URL}/tree/main/examples/context7-with-kya-os`;
+// The README's next step after the two lines: per-tool consent gating.
+export const CONSENT_GUIDE_URL = "https://github.com/decentralized-identity/kya-os-mcp#protect-tools-with-human-consent";
 export const PLAYGROUND_URL = `${SITE_URL}/mcp/playground`;
+// The live proof console on the protocol site: try a signed request against
+// the demo server without running anything.
+export const PLAYGROUND_PROOF_URL = `${PLAYGROUND_URL}/proof`;
 export const DEMO_MCP_URL = "https://demo-mcp.kya-os.ai/mcp";
 // 2026-08-20: the live standalone starter repo. Repoint to
 // `${REPO_URL}/tree/main/conformance/starter` after PR #1 merges and the
@@ -31,6 +46,9 @@ export const STARTER_URL = "https://github.com/kya-os/conformance-starter";
 export const SUITE = {
   version: "1.0.0",
   vectors: 44,
+  // The nine vector files conformance/SUITE-MANIFEST.json pins, one
+  // category each (conformance/README.md: "44 vectors across nine categories").
+  categories: 9,
   vectorSetHash: "sha256:81d537d4574d3f66d651a03ca41c0b18493b67ea6f3e61aba47d1bda4f3cf49b",
 };
 
@@ -39,10 +57,12 @@ export const TITLE = "KYA-OS Builders";
 export const DESCRIPTION =
   "The KYA-OS community registry: who builds on it, what conforms to it, and the standards it carries.";
 
-// The prefilled "Add your project" link: opens the GitHub new-file editor on
-// registry/builders/ with the entry template already in the buffer. GitHub
-// auto-forks for non-collaborators and opens the PR from the fork.
-const ENTRY_TEMPLATE = {
+// The entry template: the file contributors start from, the JSON the
+// builders page's entry builder shows before a field is typed, and the
+// buffer the prefilled "Add your project" link opens the GitHub new-file
+// editor on registry/builders/ with (GitHub auto-forks for
+// non-collaborators and opens the PR from the fork). Keys in schema order.
+export const ENTRY_TEMPLATE = {
   name: "Your Project",
   slug: "your-project",
   description: "One or two sentences on what you ship on KYA-OS.",
@@ -53,9 +73,7 @@ const ENTRY_TEMPLATE = {
   contact: { github: "your-github-username" },
   listedAt: "YYYY-MM-DD",
 };
-export const ADD_PROJECT_URL = `${REPO_URL}/new/main/registry/builders?filename=your-project.json&value=${encodeURIComponent(
-  JSON.stringify(ENTRY_TEMPLATE, null, 2) + "\n",
-)}`;
+export const ADD_PROJECT_URL = newEntryUrl(REPO_URL, ENTRY_TEMPLATE);
 
 // The copy-to-agent prompts: curated onboarding prompts a visitor hands to
 // their coding agent. Each renders as BOTH the copy button's payload and its
@@ -80,20 +98,3 @@ export const PROMPTS = [
       "Show me KYA-OS in action: clone https://github.com/decentralized-identity/kya-os-mcp and run the examples/revoked demo (the on-chain revocation kill switch), then explain how the per-request proof, delegation chain, and status list interact, and scaffold a minimal verifier for my stack using @kya-os/mcp.",
   },
 ];
-
-// The two-line migration snippet, verbatim from the reference README's
-// "Migrate any MCP server in 2 lines" quickstart (the "after" block; the two
-// "+1 line" comments mark the entire delta from a stock MCP server). Lines
-// flagged true are the additions and render highlighted.
-export const MIGRATE_LINES = [
-  ["import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';", false],
-  ["import { withKyaOs, NodeCryptoProvider } from '@kya-os/mcp';  // +1 line", true],
-  ["", false],
-  ["const server = new McpServer({ name: 'my-server', version: '1.0.0' });", false],
-  ["await withKyaOs(server, { crypto: new NodeCryptoProvider() }); // +1 line", true],
-  ["", false],
-  ["server.registerTool('greet', { description: 'Say hello' }, async (args) => ({", false],
-  ["  content: [{ type: 'text', text: `Hello, ${args.name}!` }],", false],
-  ["}));", false],
-];
-

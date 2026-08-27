@@ -101,13 +101,14 @@ function logoMark(cls = "") {
 /**
  * The shared shell: head (meta, the two same-origin stylesheets, the ONE
  * inline script - theme toggle + js-anim gate + page-fx failsafe, CSP-pinned
- * by hash - and the two module tags, covered by script-src 'self'), the
- * fixed top nav with the current page in white, and the footer. `current` is
- * the page's root-absolute path ("/builders/"); null (the 404 page)
- * highlights nothing. Scripts sit in <head>: the inline script's pre-paint
+ * by hash - and the module tags, covered by script-src 'self': the shell
+ * pair on every page plus the page's own `modules`), the fixed top nav with
+ * the current page in white, and the footer. `current` is the page's
+ * root-absolute path ("/builders/"); null (the 404 page) highlights
+ * nothing. Scripts sit in <head>: the inline script's pre-paint
  * halves must run before first render, and modules are deferred by nature.
  */
-export function pageShell({ title, headExtra = "", body, current = null }) {
+export function pageShell({ title, headExtra = "", body, current = null, modules = [] }) {
   const navLinks = NAV_PAGES.map(([href, label]) =>
     href === current
       ? `\n    <a href="${href}" data-glitch aria-current="page" class="nav-on">${label}</a>`
@@ -128,7 +129,7 @@ ${headExtra}<link rel="stylesheet" href="/tokens.css" />
 <script>${THEME_SCRIPT}</script>
 <script type="module" src="/ui/page-fx.js"></script>
 <script type="module" src="/ui/copy-prompt.js"></script>
-</head>
+${modules.map((name) => `<script type="module" src="/ui/${name}"></script>\n`).join("")}</head>
 <body>
 <div class="page">
 <nav class="topnav">
