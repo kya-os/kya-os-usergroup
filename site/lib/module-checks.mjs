@@ -175,10 +175,21 @@ function assertEntryBuilderWiring(html, module, ruleFields) {
     }
   }
   assertBuild(html.includes('data-err="entry"'), "the entry builder lost the catch-all error slot beside the JSON preview");
+
+  // The module's half of the contract: the touched key is read off the field's
+  // own slot (not a mapping restated in JS), the input path really uses that
+  // lookup, and any key the module still adds by hand is one a rule emits.
   assertBuild(
-    /closest\("\.eb-field"\)[\s\S]{0,120}data-err/.test(module),
-    "entry-builder.js must read each control's error key off its own field slot, never restate the control-to-rule mapping",
+    /closest\("\.eb-field"\)[\s\S]{0,160}getAttribute\("data-err"\)/.test(module),
+    "entry-builder.js lost the lookup that reads a control's error key off its own field slot",
   );
+  assertBuild(
+    module.includes("touched.add(errKey("),
+    "entry-builder.js must key the touched set with that slot lookup, never restate the control-to-rule mapping",
+  );
+  for (const [, key] of module.matchAll(/touched\.add\("([^"]+)"\)/g)) {
+    assertBuild(ruleFields.has(key), `entry-builder.js: touched.add("${key}") is not a field the rule core keys errors with`);
+  }
 }
 
 // The console's no-JS contract: it ships in its FINAL state (fc-killed on
