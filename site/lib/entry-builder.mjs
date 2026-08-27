@@ -61,7 +61,7 @@ ${field("repo", `repo <span class="eb-opt">optional</span>`, input("repo", "url"
 ${field("kind", "kind", `<select id="entry-kind" name="kind">${kindOptions}</select>`)}
 ${field("buildsOn", "builds on", `<div class="eb-checks">${buildsOn}</div>`, "what you build ON, not yourself")}
 ${field("standards", `standards <span class="eb-opt">optional</span>`, `<select id="entry-standards" name="standards" multiple size="6">${standards}</select>`, "the rails you exercise; cmd/ctrl-click for several")}
-${field("contact", `contact.github <span class="eb-opt">optional</span>`, input("github", "text", ` maxlength="39" placeholder="${esc(ENTRY_TEMPLATE.contact.github)}"`))}
+${field("github", `contact.github <span class="eb-opt">optional</span>`, input("github", "text", ` maxlength="39" placeholder="${esc(ENTRY_TEMPLATE.contact.github)}"`))}
         </div>
         <div class="eb-side">
           <div class="eb-file">registry/builders/<span id="entry-filename">${esc(ENTRY_TEMPLATE.slug)}.json</span></div>
