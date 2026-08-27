@@ -28,6 +28,11 @@ function init(form) {
   const touched = new Set();
   let slugEdited = false;
 
+  // The error key a control's messages arrive under: the one its own field
+  // carries, so the touched set follows the markup instead of restating the
+  // control-to-rule mapping here (contact.github's input is named github,
+  // but the rule core keys its errors contact).
+  const errKey = (el) => el.closest(".eb-field")?.querySelector("[data-err]")?.getAttribute("data-err") ?? el.name;
   const text = (name) => control(name).value.trim();
   const slugify = (value) => value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
   const pad = (n) => String(n).padStart(2, "0");
@@ -85,7 +90,7 @@ function init(form) {
   function onInput(event) {
     const name = event.target.name;
     if (!name) return;
-    touched.add(name === "github" ? "contact" : name);
+    touched.add(errKey(event.target));
     if (name === "name") {
       touched.add("slug");
       if (!slugEdited) control("slug").value = slugify(event.target.value);
