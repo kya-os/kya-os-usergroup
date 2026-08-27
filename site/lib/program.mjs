@@ -23,7 +23,7 @@ import { waveformSvg } from "./waveform.mjs";
 // The CONFORMANCE.md section the levels cite for the audit axis, and the
 // committed suite manifest the pin strip's numbers come from.
 const AAP_URL = `${CONFORMANCE_MD_URL}#audit-assurance-profile-conformance`;
-const SUITE_MANIFEST_URL = `${MCP_REPO_URL}/blob/main/conformance/SUITE-MANIFEST.json`;
+const SUITE_MANIFEST_URL = `${MCP_REPO_URL}/blob/f2c615c/conformance/SUITE-MANIFEST.json`;
 
 // CONFORMANCE.md's three levels: the heading name (plain dash, house style;
 // GitHub slugs the heading to the anchor lib/data.mjs links), the
