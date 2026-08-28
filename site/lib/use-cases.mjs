@@ -126,7 +126,6 @@ function sectionRevoked() {
         <div class="flag-title">REVOKED</div>
         <p class="flag-lede">An on-chain kill switch for AI agents with wallet access. Agents spend under cryptographically scoped, verifiable delegations, and that spending authority can be revoked on a public chain. A rogue or hijacked agent is stopped before it drains a wallet, with no server anyone has to trust.</p>
         <p class="flag-sub">Built solo in a weekend at DEF CON 34 (2nd place, Cryptocurrency Village hackathon), now the flagship example of the reference implementation. The agent is Claude Desktop, the same MCP client thousands of people use, plugged into a local <code>kya-wallet</code> gateway that holds the agent's key and signs each call; the LLM never touches key material. In the 3-minute video an agent pays an invoice, gets caught misbehaving, and loses its spending authority on-chain. Its next transaction is refused in about half a second.</p>
-        <p class="flag-sub">The four things the hackathon build had to invent now ship in <code>@kya-os/mcp</code>: <code>CheqdStatusListResolver</code> from <code>@kya-os/mcp/cheqd</code>, <code>prepareCheqdDlrResource</code> for publishing status lists as DID-Linked Resources, <code>verificationMethodJwk</code> inside the verifier, and revocation checked on every call since 1.13.0, which deleted a 60-second blind spot the demo used to work around. Rehearsing it surfaced a real fail-open upstream; fixing it made the demo simpler.</p>
         <div class="dlinks">
           <a href="${REVOKED_README_URL}">the README -&gt;</a>
           <a href="${REVOKED_VIDEO_URL}">3-minute video -&gt;</a>
@@ -149,7 +148,6 @@ ${beats}
       ${codeBlock(REVOKED_VERIFY)}
       <p class="try-note">Expected output, as the README prints it:</p>
       ${codeBlock(REVOKED_VERDICT, { copy: false })}
-      <p class="try-note">The signature is real, the credential is unexpired, and the chain still refuses it. That refusal is the product. Also bundled: <code>samples/delegation-94.json</code>, the actual credential from the DEF CON stage. Its 48-hour validity is long gone, so <code>npm run verify:once -- --index 94</code> shows expiry beating revocation to the refusal. Fail-closed has layers.</p>
     </div>
     <div class="uc-block">
       <div class="scat-label">run the full demo</div>
@@ -180,7 +178,7 @@ const REQUIREMENT_URL = source("src/authz/requirement.ts");
 /** The authorization-methods row: label, the five typed items, the adapter note, and the real protection shape. */
 function authzRow() {
   const items = AUTHZ_TYPES.map(
-    ([type, label, glyph]) => `<li class="authz-item">${icon(glyph)}<span>${esc(label)}</span><span class="chip authz-type">${type}</span></li>`,
+    ([type, label, glyph]) => `<li class="authz-item" data-authz="${type}">${icon(glyph)}<span>${esc(label)}</span></li>`,
   ).join("");
   return `<div class="authz-row">
           <span class="authz-label">Bind a requirement to the tool</span>

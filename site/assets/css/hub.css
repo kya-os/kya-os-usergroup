@@ -454,6 +454,7 @@ html.js-anim .fc-armed .fc-proof .wf-lockup{transition:color .35s ease-out,backg
 /* Grid items may shrink below their longest code line; the code block then scrolls inside itself instead of spilling past the card. */
 .recipe-wide>*{min-width:0}
 .recipe-authz{grid-column:1/-1;border-top:1px solid var(--line);padding-top:18px}
+.recipe-authz .code-wrap,.recipe-authz .code-block{max-width:none}
 .recipe-wide .code-wrap{max-width:none}
 .scat-label .chip{margin-left:6px;font-size:10px;padding:1px 8px;text-transform:none;letter-spacing:.02em}
 

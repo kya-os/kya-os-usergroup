@@ -249,8 +249,8 @@ function assertAuthzRow(card) {
   const start = card.indexOf('<div class="recipe-authz">');
   assertBuild(start !== -1 && card.indexOf("<strong>Reference</strong>") < start && card.indexOf('data-copy-target="consent-gate"') < start, "the gated MCP tools card must carry the authorization-methods row as a full-width band after its Reference line and its code sample");
   const row = card.slice(start);
-  const chips = [...row.matchAll(/<span class="chip authz-type">([a-z]+)<\/span>/g)].map((m) => m[1]);
-  assertBuild(chips.join(",") === AUTHZ_TYPES.join(","), `the authorization-methods row must render exactly the type chips ${AUTHZ_TYPES.join(", ")} in order (found: ${chips.join(", ")})`);
+  const chips = [...row.matchAll(/<li class="authz-item" data-authz="([a-z]+)"/g)].map((m) => m[1]);
+  assertBuild(chips.join(",") === AUTHZ_TYPES.join(","), `the authorization-methods row must render exactly the requirement types ${AUTHZ_TYPES.join(", ")} in order (found: ${chips.join(", ")})`);
   for (const fact of AUTHZ_NOTE_FACTS) {
     assertBuild(row.includes(fact), `the authorization-methods note lost "${fact}"`);
   }
