@@ -19,6 +19,7 @@ The site renders as six pages at **builders.kya-os.org**:
 | `/use-cases/` | The REVOKED flagship and the recipe grid | static |
 
 The design language is the KYA-OS Builders Site handoff: `#0a0a0a` canvas with a fixed dot grid, Space Grotesk display, JetBrains Mono micro-labels, `#00ff88` signal green, and seeded "signed proof" waveforms - computed at BUILD TIME (`site/lib/waveform.mjs`, the same FNV-1a/LCG math as Checkpoint's proof-waveform, emitted as static SVG).
+Where an entry has a credential, its wave is seeded by that credential's signature (`proof.proofValue`), so the wave is the credential's signature fingerprint: the directory row and the `/badge/<slug>.svg` you embed draw the same bars, and a reissued credential redraws them.
 It ships as two real stylesheets (`site/assets/css/tokens.css` + `hub.css`); the dark side is the design, the light side is the hub's own paper/ink/darkened-green mapping, and both hold a 4.5:1 text-contrast floor.
 Every page ships exactly one inline script: the theme toggle (system, light, dark), which also gates the page choreography behind an `html.js-anim` class unless `prefers-reduced-motion` is set, and arms a 2.5s failsafe that releases the gate if the motion module never loads.
 The motion itself - title decrypt, staggered fadeUp entries, hover glitch, scroll skew, the 400ms fade page transition - runs from the same-origin `/ui/page-fx.js` module; without JavaScript (or with reduced motion) the site is fully visible with native navigation.

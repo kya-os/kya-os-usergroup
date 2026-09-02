@@ -62,8 +62,13 @@ The label cell always says `KYA-OS`.
   The cache key is the path only (the query string is stripped).
 - Failure responses cache for 60 seconds, so an outage cannot pin a stale answer.
 
-## Waveform versus README badge
+## The waveform on the badge
 
 The waveform lockups on the site are drawn at build time from a seed, not from the badge.
-A listed claim's wave is seeded by `<slug>#<claim label>` (the badge preview on the conformance page shows the seed it draws from), the same derivation the directory row uses, so the same claim always draws the same wave.
-The badge you embed in a README is the flat two-cell SVG (a `KYA-OS` label cell and a state cell) the build emits and the worker serves, byte-identical between the tiers; it carries no waveform.
+
+Once an entry has a credential, that seed **is the credential's signature**: `proof.proofValue`, the multibase Ed25519 signature both tiers verify against the pinned issuer key, hashed with the same FNV-1a the wave has always used ([`site/lib/waveform.mjs`](../site/lib/waveform.mjs), and the worker's own copy in [`workers/badge/wave.mjs`](../workers/badge/wave.mjs)).
+So the wave is the credential's signature fingerprint: the same credential always draws the same wave, a reissued credential redraws it completely, and no two credentials draw alike.
+The entry's directory row and its badge draw from that one seed, so the row and the badge carry the same wave.
+
+The badge you embed in a README carries it too: the three credential-backed states (`verified`, `◌ under appeal`, `revoked`) lead their message cell with 14 bars in the state color, byte-identical between the tiers.
+A claim below the credential boundary has no signature to fingerprint yet, so its wave is still seeded by `<slug>#<claim label>` (the badge preview on the conformance page shows the seed it draws from) and its badge stays flat: a `KYA-OS` label cell and a state cell, no bars.

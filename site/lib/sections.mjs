@@ -121,8 +121,13 @@ function directoryRow(entry, probes, verdicts) {
   const provenanceVersion = probes?.results?.[entry.slug]?.provenanceVersion;
   const deployed = c && provenanceVersion ? ` <span class="dprov">&middot; deployed ${esc(provenanceVersion)}</span>` : "";
   const state = c && displayState(c, verdict);
+  // The wave: seeded by the credential's SIGNATURE once there is one to
+  // fingerprint (verdict.waveSeed, from proof.proofValue - the same seed the
+  // entry's badge draws with, so the row and the badge are one wave), and by
+  // the claim itself while the entry carries no credential.
+  const waveSeed = verdict?.waveSeed ?? (c && claimWaveSeed(entry.slug, c));
   const confLine = c
-    ? `<div class="dconf-line tone-${CONF_TONE[state]}">${waveformSvg(claimWaveSeed(entry.slug, c), CLAIM_WAVE)}<p>conformance: <a href="${esc(conformanceLevelUrl(c))}">${esc(conformanceLabel(c))}</a>${deployed} - ${esc(CONF_TEXT[state])}</p></div>`
+    ? `<div class="dconf-line tone-${CONF_TONE[state]}">${waveformSvg(waveSeed, CLAIM_WAVE)}<p>conformance: <a href="${esc(conformanceLevelUrl(c))}">${esc(conformanceLabel(c))}</a>${deployed} - ${esc(CONF_TEXT[state])}</p></div>`
     : `<div class="dconf-line tone-faint"><p>Listed in the registry - no conformance claim yet.</p></div>`;
   const capabilities = [];
   if (entry.buildsOn?.length) capabilities.push(`builds on: ${entry.buildsOn.map((repo) => esc(repo)).join(", ")}`);

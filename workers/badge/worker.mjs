@@ -37,7 +37,10 @@
  *      credentials, each verified against the pinned STATUS key its proof
  *      names - a key set separate from the issuer keys, so a stolen issuer
  *      key can never clear its own revocation bits - before any bit is read
- *   6. render: revoked > suspended ("under appeal") > verified
+ *   6. render: revoked > suspended ("under appeal") > verified, each with
+ *      the credential's SIGNATURE WAVE - bars seeded by the proofValue this
+ *      request just verified (wave.mjs), so the badge carries a fingerprint
+ *      of the signature behind it and a reissue redraws it
  *
  * Entries below the credential rungs (listed / self-reported /
  * in-verification) render straight from the allowlist with no fetch at all.
@@ -55,6 +58,7 @@
  * failure responses cache 60s so an outage cannot pin a stale answer.
  */
 import { verifyEddsaJcs2022, ed25519KeyFromMultibase, bitstringStatusAt } from "./verify.mjs";
+import { WAVE_WIDTH, credentialWaveSeed, waveRects } from "./wave.mjs";
 import { BADGE_ALLOWLIST } from "./generated-allowlist.mjs";
 import { PINNED_ISSUER_KEYS, PINNED_STATUS_KEYS, PROVISIONED } from "./generated-keys.mjs";
 
@@ -82,18 +86,21 @@ const TEXT_LABEL = "#ffffff";
 
 const esc = (value) => String(value).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const num = (value) => value.toFixed(1).replace(/\.0$/, "");
-const cellWidth = (text) => [...text].length * 6.6 + 18;
+const CELL_PAD = 9;
+const cellWidth = (text) => [...text].length * 6.6 + CELL_PAD * 2;
 
-export function renderSvg({ message, color }) {
+export function renderSvg({ message, color, wave = null }) {
   const lw = cellWidth(LABEL);
-  const mw = cellWidth(message);
+  const ww = wave === null ? 0 : CELL_PAD + WAVE_WIDTH;
+  const mw = cellWidth(message) + ww;
+  const bars = wave === null ? "" : `\n  ${waveRects(wave, lw + CELL_PAD, color)}`;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${num(lw + mw)}" height="20" role="img" aria-label="${LABEL}: ${esc(message)}">
   <title>${LABEL}: ${esc(message)}</title>
   <rect width="${num(lw)}" height="20" fill="${CELL_LABEL}"/>
-  <rect x="${num(lw)}" width="${num(mw)}" height="20" fill="${CELL_MESSAGE}"/>
+  <rect x="${num(lw)}" width="${num(mw)}" height="20" fill="${CELL_MESSAGE}"/>${bars}
   <g font-family="${FONT}" font-size="11" text-anchor="middle">
     <text x="${num(lw / 2)}" y="14" fill="${TEXT_LABEL}">${LABEL}</text>
-    <text x="${num(lw + mw / 2)}" y="14" fill="#${color}">${esc(message)}</text>
+    <text x="${num(lw + ww + cellWidth(message) / 2)}" y="14" fill="#${color}">${esc(message)}</text>
   </g>
 </svg>
 `;
@@ -107,14 +114,18 @@ export function renderJson({ message, color }) {
 // "unverified" is the one worker-only state: the static build REFUSES on any
 // verification failure, while this worker must answer the request - grey,
 // claim-free, fail-closed.
+// Only the states minted from a VERIFIED credential carry a wave (`wave` is
+// the seed, from that credential's signature): there is nothing to
+// fingerprint below the credential rungs, and nothing verified behind an
+// unverified answer, so those stay the flat two-cell badge.
 const UNVERIFIED = { message: "unverified", color: "999999" };
 const STATE = {
   listed: () => ({ message: "· listed", color: "999999" }),
   "self-reported": (claim) => ({ message: `· ${claim} self-reported`, color: "999999" }),
   "in-verification": (claim) => ({ message: `◌ ${claim} in verification`, color: "ffb340" }),
-  verified: (claim) => ({ message: `✓ ${claim} verified`, color: "00c86e" }),
-  suspended: () => ({ message: "◌ under appeal", color: "ffb340" }),
-  revoked: () => ({ message: "revoked", color: "6e7681" }),
+  verified: (claim, wave) => ({ message: `✓ ${claim} verified`, color: "00c86e", wave }),
+  suspended: (wave) => ({ message: "◌ under appeal", color: "ffb340", wave }),
+  revoked: (wave) => ({ message: "revoked", color: "6e7681", wave }),
 };
 
 // ── pinned key resolution (rotation-aware, purpose-restricted) ──────────────
@@ -235,9 +246,14 @@ export async function resolveBadgeState(entry, { fetchImpl, issuerKeys, statusKe
   }
   if (label !== entry.claim) throw new Error(`credential claim "${label}" does not match the registry claim "${entry.claim}"`);
 
-  if (await statusBit(credential, "revocation", fetchImpl, statusKeys)) return STATE.revoked();
-  if (await statusBit(credential, "suspension", fetchImpl, statusKeys)) return STATE.suspended();
-  return STATE.verified(entry.claim);
+  // The wave seed, from the signature this request just verified. Throwing
+  // here (a credential with no proofValue) fails closed like every other
+  // step: a verified badge never renders without its fingerprint.
+  const wave = credentialWaveSeed(credential);
+
+  if (await statusBit(credential, "revocation", fetchImpl, statusKeys)) return STATE.revoked(wave);
+  if (await statusBit(credential, "suspension", fetchImpl, statusKeys)) return STATE.suspended(wave);
+  return STATE.verified(entry.claim, wave);
 }
 
 // ── HTTP handler ────────────────────────────────────────────────────────────

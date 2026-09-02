@@ -13,14 +13,15 @@
  * rather than trusting the copy step; the copy-parity check re-extracts button/fallback pairs from the
  * page bytes and matches them against lib/constants.mjs and
  * lib/snippets.mjs. The theme, gating, copy-parity, migration-hook, and
- * suite-pin checks live in lib/checks.mjs (split to keep
- * both files under the lib LOC cap) and run from here.
+ * suite-pin checks live in lib/checks.mjs, and the badge checks in
+ * lib/badge-checks.mjs (split to keep every file under the lib LOC cap);
+ * all of them run from here.
  */
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { REPO_URL, SUITE, TEMPLATE_SLUG } from "./constants.mjs";
-import { assertBadges } from "./badge.mjs";
+import { assertBadges } from "./badge-checks.mjs";
 import { assertCredentialArtifacts } from "./credential-checks.mjs";
 import { withConformance } from "./data.mjs";
 import { esc } from "./html.mjs";
@@ -310,9 +311,10 @@ export function runRenderChecks({ distDir, rendered, interopSorted, probes, cred
   assertBuild(publishedInterop.count === interopSorted.length, "interop.json count mismatch");
 
   // Badge tiers: every rendered entry has its .svg + shields .json pair,
-  // states match the entries, and "verified" appears exactly where the build
-  // cryptographically verified the credential (checks live in lib/badge.mjs,
-  // on the dist bytes).
+  // states match the entries, "verified" appears exactly where the build
+  // cryptographically verified the credential, and the signature wave is the
+  // shipped credential's (checks live in lib/badge-checks.mjs, on the dist
+  // bytes).
   assertBadges(distDir, rendered, verdicts);
 
   // Credential artifacts: the sentinel provably renders nothing green; a
