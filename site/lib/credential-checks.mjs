@@ -168,12 +168,23 @@ export function assertCredentialArtifacts({ distDir, rendered, credentialData, v
   // ── page honesty: chips agree with the verdicts ───────────────────────────
   const buildersHtml = readFileSync(join(distDir, "builders", "index.html"), "utf8");
   const conformanceHtml = readFileSync(join(distDir, "conformance", "index.html"), "utf8");
-  for (const [name, html] of [["builders/index.html", buildersHtml], ["conformance/index.html", conformanceHtml]]) {
-    const greenChips = [...html.matchAll(/class="[^"]*\bst-verified\b[^"]*"/g)].filter((m) => !m[0].includes("demo")).length;
-    const expected = rendered.filter((entry) => verdicts.get(entry.slug)?.state === "verified").length;
+  const expectedVerified = rendered.filter((entry) => verdicts.get(entry.slug)?.state === "verified").length;
+  // The conformance table renders the emitted badge artifact instead of a
+  // chip, so count what each page actually draws: chips on builders, badge
+  // images on conformance. Both are minted from the same verdict and both
+  // fail closed without one.
+  // The "demo" exclusion belongs to the builders ladder sample chip only: a
+  // real entry may legitimately have "demo" in its slug (kya-os-demo-server),
+  // and its badge must still be counted.
+  for (const [name, html, pattern, dropDemo] of [
+    ["builders/index.html", buildersHtml, /class="[^"]*\bst-verified\b[^"]*"/g, true],
+    ["conformance/index.html", conformanceHtml, /<img class="ibadge-img"[^>]*alt="KYA-OS conformance: [^"]*verified"/g, false],
+  ]) {
+    const greenChips = [...html.matchAll(pattern)].filter((m) => !(dropDemo && m[0].includes("demo"))).length;
+    const expected = expectedVerified;
     assertBuild(
       greenChips === expected,
-      `${name}: ${greenChips} non-demo verified chips rendered, expected ${expected} (one per build-verified credential)`,
+      `${name}: ${greenChips} non-demo verified artifacts rendered, expected ${expected} (one per build-verified credential)`,
     );
     for (const entry of rendered) {
       const state = verdicts.get(entry.slug)?.state;
@@ -181,7 +192,11 @@ export function assertCredentialArtifacts({ distDir, rendered, credentialData, v
         assertBuild(html.includes("under appeal"), `${name}: suspended credential for "${entry.slug}" must render "under appeal"`);
       }
       if (state === "revoked") {
-        assertBuild(html.includes('class="chip st-revoked"'), `${name}: revoked credential for "${entry.slug}" must render the dark revoked chip`);
+        // Same state, two renderings: the builders directory draws the dark
+        // chip, the conformance table draws the emitted badge whose alt text
+        // carries the word. Either way the page must say revoked.
+        const revokedShown = html.includes('class="chip st-revoked"') || html.includes(`alt="KYA-OS conformance: revoked"`);
+        assertBuild(revokedShown, `${name}: revoked credential for "${entry.slug}" must render the revoked state`);
       }
     }
   }

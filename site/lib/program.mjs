@@ -16,7 +16,8 @@ import { CLAIM_WAVE, claimWaveSeed } from "../../scripts/lib/builder-entry.mjs";
 import { CONFORMANCE_LEVELS } from "../../scripts/lib/registry-enums.mjs";
 import { BADGE_WORKER_DOC_URL, CONFORMANCE_MD_URL, MCP_REPO_URL, SUITE, STARTER_URL } from "./constants.mjs";
 import { conformanceLabel, conformanceLevelUrl, levelUrl, withConformance } from "./data.mjs";
-import { conformanceStatusChip, esc, promptBlock } from "./html.mjs";
+import { esc, promptBlock } from "./html.mjs";
+import { badgeState } from "./badge.mjs";
 import { BADGE_EMBED, BADGE_EMBED_SLUG, snippetText } from "./snippets.mjs";
 import { waveformSvg } from "./waveform.mjs";
 
@@ -88,9 +89,10 @@ function badgePreview() {
         <span class="badge-lockup bl-preview">
           ${brandCell(11)}
           <span class="bl-wave" id="bp-wave">${waveformSvg(seed, CLAIM_WAVE)}</span>
-          <span class="bl-state">&middot; preview</span>
+          <span class="bl-state">&middot; listed</span>
         </span>
-        <p class="micro">preview of the visual only - not a verified badge; verification comes from the program &middot; seed <span id="bp-seed">${esc(seed)}</span> - the same derivation the directory row draws your wave from</p>
+        <p class="micro">the visual only, at the rung a new entry starts on: <span class="tone-faint">listed</span>. It turns green when the program issues your credential, never before &middot; seed <span id="bp-seed">${esc(seed)}</span> - the same derivation the directory row draws your wave from</p>
+        <p class="micro bp-real">a verified badge, served from this site right now: <img class="bp-badge" src="/badge/kya-os-mcp.svg" alt="KYA-OS conformance badge for @kya-os/mcp: L3 full verified" width="195" height="20" /> <a href="/badge/kya-os-mcp.svg">the file</a></p>
         <p class="note">Paste this into your README the day you are listed - it is the same <code>/badge/&lt;slug&gt;.svg</code> the build emits and the worker serves, so it climbs as your status does:</p>
         ${embedBlock()}
       </div>`;
@@ -109,7 +111,7 @@ function sectionBadge() {
     <div class="badge-copy">
       <p class="lede-lg">The badge resolves to the signed credential behind it, so anyone can check your claim without trusting this site. Revoke the credential and every embedded badge downgrades itself.</p>
       ${badgePreview()}
-      <p class="note">It has seven states and nothing else: <span class="tone-faint">listed</span>, <span class="tone-faint">self-reported</span>, <span class="tone-amber">in verification</span>, <span class="tone-signal">verified</span>, <span class="tone-amber">under appeal</span>, revoked, and <span class="tone-faint">unverified</span> (the fail-closed answer to any failure). Only a verified credential with clean status bits renders green, and the badge re-verifies that credential on every render.</p>
+      <p class="note">It has seven states and nothing else: <span class="tone-faint">listed</span>, <span class="tone-faint">self-reported</span>, <span class="tone-amber">in verification</span>, <span class="tone-signal">verified</span>, <span class="tone-amber">under appeal</span>, revoked, and <span class="tone-faint">unverified</span> (the fail-closed answer to any failure). Only a verified credential with clean status bits renders green. The badge served today is rebuilt from that cryptographic verification on every deploy; the worker tier, which re-verifies per request, is armed and ships on its own dispatch.</p>
       <p class="see-all"><a href="${BADGE_WORKER_DOC_URL}">how the badge worker serves this -&gt;</a></p>
     </div>
   </section>`;
@@ -186,6 +188,20 @@ ${LEVELS.map(card).join("\n")}
  * as the credential link), and the links - the repo when the entry names
  * one, else its homepage, plus the credential when a status carries one.
  */
+/**
+ * The status cell renders the badge this build emitted for the entry
+ * (dist/badge/<slug>.svg), not a separate chip: the same artifact an adopter
+ * embeds, from the same verdict, so the page cannot claim a state its own
+ * badge would not draw. badgeState() already fails closed without a verdict.
+ * The alt text carries the state for anyone who cannot see the image.
+ */
+function badgeCell(entry, verdict) {
+  const { message } = badgeState(entry, verdict);
+  const img = `<img class="ibadge-img" src="/badge/${esc(entry.slug)}.svg" alt="KYA-OS conformance: ${esc(message)}" width="195" height="20" loading="lazy" />`;
+  const href = entry.conformance.attestationUrl ?? entry.conformance.evidenceUrl;
+  return href ? `<a href="${esc(href)}">${img}</a>` : img;
+}
+
 function implementationRow(entry, verdicts) {
   const c = entry.conformance;
   const links = [entry.repo ? `<a href="${esc(entry.repo)}">repo -&gt;</a>` : `<a href="${esc(entry.homepage)}">homepage -&gt;</a>`];
@@ -194,7 +210,7 @@ function implementationRow(entry, verdicts) {
           <td class="iname"><a href="/builders/#${esc(entry.slug)}">${esc(entry.name)}</a></td>
           <td class="iclaim"><a href="${esc(conformanceLevelUrl(c))}">${esc(conformanceLabel(c))}</a></td>
           <td class="isuite">${esc(c.suiteVersion)}</td>
-          <td>${conformanceStatusChip(c, { verdict: verdicts.get(entry.slug) })}</td>
+          <td class="ibadge">${badgeCell(entry, verdicts.get(entry.slug))}</td>
           <td class="ilinks">${links.join(" ")}</td>
         </tr>`;
 }
