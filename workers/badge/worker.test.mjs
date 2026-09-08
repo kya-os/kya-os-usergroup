@@ -11,7 +11,8 @@
  * enforcement before any bit is read, every render state through the HTTP
  * handler (the non-credential rungs provably fetch nothing), the
  * unprovisioned fail-close, allowlist rejection, and the honesty rules
- * (KYA-OS label, subset never bare, no expired state).
+ * (KYA-OS label, subset never bare, no expired state). The badge's signature
+ * wave has its own file: wave.test.mjs.
  */
 import test from "node:test";
 import assert from "node:assert/strict";

@@ -18,23 +18,32 @@
  * An entry at status verified/revoked WITHOUT a build verdict refuses with
  * a build error - a verified badge can never render on trust.
  *
+ * THE SIGNATURE WAVE: a badge minted from a verified credential (verified,
+ * under appeal, revoked) carries that credential's wave - the bars seeded by
+ * its proof.proofValue, the signature the build just verified
+ * (lib/waveform.mjs's credentialWaveSeed). So the badge is visually unique
+ * per credential, identical to the wave the directory row draws for the same
+ * entry, and completely redrawn by a reissue. The rungs below the credential
+ * boundary (listed, self-reported, in verification) keep the flat badge:
+ * there is no signature to fingerprint yet. A verified badge with no
+ * seedable signature refuses the build, exactly like a missing verdict.
+ *
  * Deterministic by construction: fixed dimensions from a fixed mono advance,
- * no timestamps - each file is a pure function of its entry and the
- * committed credential state. The rendering is the design's flat two-cell
- * shields grammar in the site palette (dark side of tokens.css): canvas
- * label cell, line-tone message cell, tier-toned mono text.
+ * a seeded (never random) wave, no timestamps - each file is a pure function
+ * of its entry and the committed credential state. The rendering is the
+ * design's shields grammar in the site palette (dark side of tokens.css):
+ * canvas label cell, line-tone message cell, tier-toned mono text and bars.
+ *
+ * The render checks on the emitted bytes live in lib/badge-checks.mjs (split
+ * for the lib LOC cap), including the byte-parity assertion against the
+ * worker's independent renderer.
  */
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
-// The worker's OWN renderer, imported read-only for the parity assertion at
-// the bottom of this file - the check may look at both sides; the worker
-// itself never imports site/ or scripts/ code (deliberate redundancy rule).
-import { renderJson as workerRenderJson, renderSvg as workerRenderSvg } from "../../workers/badge/worker.mjs";
 import { assertBuild } from "./checks.mjs";
 import { conformanceLabel } from "./data.mjs";
 import { esc } from "./html.mjs";
+import { proofWaveform } from "./waveform.mjs";
 
-const LABEL = "KYA-OS";
+export const LABEL = "KYA-OS";
 const FONT = "JetBrains Mono,SFMono-Regular,Consolas,monospace";
 // Site palette (tokens.css, dark side): canvas / line cells, ink-bright /
 // tier text. Raw hex on purpose - SVG files carry no CSS layer. Verified is
@@ -68,9 +77,18 @@ export function badgeState(entry, verdict) {
       `badge for "${entry.slug}" refused: status "${c.status}" renders only from build-time cryptographic verification ` +
         `of the linked credential (site/lib/credentials.mjs) - no verdict, no badge`,
     );
-    if (verdict.state === "revoked") return { message: "revoked", color: STATE_COLORS.revoked };
-    if (verdict.state === "suspended") return { message: "◌ under appeal", color: STATE_COLORS.suspended };
-    return { message: `✓ ${conformanceLabel(c)} verified`, color: STATE_COLORS.verified };
+    // Fail closed on the wave the same way as on the verdict: a badge minted
+    // from a verified credential carries that credential's signature
+    // fingerprint or it does not render at all.
+    const wave = verdict.waveSeed;
+    assertBuild(
+      typeof wave === "string" && wave.length > 0,
+      `badge for "${entry.slug}" refused: the verdict carries no wave seed - the signature wave is derived from the ` +
+        `credential's proof.proofValue (site/lib/waveform.mjs), and a verified badge never renders without it`,
+    );
+    if (verdict.state === "revoked") return { message: "revoked", color: STATE_COLORS.revoked, wave };
+    if (verdict.state === "suspended") return { message: "◌ under appeal", color: STATE_COLORS.suspended, wave };
+    return { message: `✓ ${conformanceLabel(c)} verified`, color: STATE_COLORS.verified, wave };
   }
   const glyph = c.status === "in-verification" ? "◌" : "·";
   const suffix = c.status === "in-verification" ? "in verification" : "self-reported";
@@ -83,19 +101,56 @@ const num = (value) => {
   const rounded = value.toFixed(1);
   return rounded.replace(/\.0$/, "");
 };
-const cellWidth = (text) => [...text].length * 6.6 + 18;
+const CELL_PAD = 9;
+const cellWidth = (text) => [...text].length * 6.6 + CELL_PAD * 2;
 
-/** The flat two-cell badge SVG: KYA-OS label cell + state message cell. */
-export function renderBadgeSvg({ message, color }) {
+// The signature wave's geometry: the directory row's bars (barWidth 2, gap
+// 1.5, track 11 - CLAIM_WAVE in scripts/lib/builder-entry.mjs) at 14 of its
+// 16 bars, centered in the badge's 20px height. proofWaveform draws
+// sequentially, so these 14 ARE the row's first 14 from the same seed: the
+// badge and the row carry one wave, not two lookalikes.
+export const WAVE_BARS = 14;
+const BAR_WIDTH = 2, BAR_GAP = 1.5, TRACK = 11, HEIGHT = 20;
+const PITCH = BAR_WIDTH + BAR_GAP;
+const WAVE_WIDTH = WAVE_BARS * PITCH;
+
+/**
+ * The wave as badge <rect>s from x0. A README badge carries no CSS, so the
+ * bars take the state color as a literal fill instead of currentColor (the
+ * one deliberate difference from lib/waveform.mjs's page rendering).
+ */
+function waveRects(seed, x0, color) {
+  return proofWaveform(seed, { bars: WAVE_BARS })
+    .map((bar, i) => {
+      const height = bar.height * TRACK;
+      return (
+        `<rect x="${num(x0 + i * PITCH)}" y="${num((HEIGHT - height) / 2)}" width="${num(BAR_WIDTH)}" height="${num(height)}"` +
+        ` rx="${num(BAR_WIDTH / 2)}" fill="#${color}" fill-opacity="${bar.opacity.toFixed(2)}"/>`
+      );
+    })
+    .join("");
+}
+
+/**
+ * The badge SVG: KYA-OS label cell + state message cell, and - for the
+ * states minted from a verified credential - that credential's signature
+ * wave leading the message cell. `wave` is the seed (null below the
+ * credential rungs, where there is no signature to fingerprint).
+ */
+export function renderBadgeSvg({ message, color, wave = null }) {
   const lw = cellWidth(LABEL);
-  const mw = cellWidth(message);
+  // The wave leads the message cell: one cell pad, the bars, then the text
+  // cell whole and unshifted (so the message keeps its own padding).
+  const ww = wave === null ? 0 : CELL_PAD + WAVE_WIDTH;
+  const mw = cellWidth(message) + ww;
+  const bars = wave === null ? "" : `\n  ${waveRects(wave, lw + CELL_PAD, color)}`;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${num(lw + mw)}" height="20" role="img" aria-label="${LABEL}: ${esc(message)}">
   <title>${LABEL}: ${esc(message)}</title>
   <rect width="${num(lw)}" height="20" fill="${CELL_LABEL}"/>
-  <rect x="${num(lw)}" width="${num(mw)}" height="20" fill="${CELL_MESSAGE}"/>
+  <rect x="${num(lw)}" width="${num(mw)}" height="20" fill="${CELL_MESSAGE}"/>${bars}
   <g font-family="${FONT}" font-size="11" text-anchor="middle">
     <text x="${num(lw / 2)}" y="14" fill="${TEXT_LABEL}">${LABEL}</text>
-    <text x="${num(lw + mw / 2)}" y="14" fill="#${color}">${esc(message)}</text>
+    <text x="${num(lw + ww + cellWidth(message) / 2)}" y="14" fill="#${color}">${esc(message)}</text>
   </g>
 </svg>
 `;
@@ -115,124 +170,4 @@ export function renderBadgeFiles(rendered, verdicts) {
       [`${entry.slug}.json`, renderBadgeJson(state)],
     ];
   });
-}
-
-/**
- * The expected badge message and color for one entry, reconstructed WITHOUT
- * badgeState or the formatters (assertion philosophy: a regression in a
- * renderer cannot make its own check pass). The verdict is data from the
- * build's independent cryptographic verification, not renderer output.
- */
-function expectedBadge(entry, verdict) {
-  const c = entry.conformance;
-  const label = c && (c.scope === "subset" ? `${c.level} subset (${c.categories.join(", ")})` : `${c.level} full`);
-  if (!c) return { message: "· listed", color: "999999" };
-  if (c.status === "verified" || c.status === "revoked") {
-    if (verdict.state === "revoked") return { message: "revoked", color: "6e7681" };
-    if (verdict.state === "suspended") return { message: "◌ under appeal", color: "ffb340" };
-    return { message: `✓ ${label} verified`, color: "00c86e" };
-  }
-  if (c.status === "in-verification") return { message: `◌ ${label} in verification`, color: "ffb340" };
-  return { message: `· ${label} self-reported`, color: "999999" };
-}
-
-/**
- * Badge render checks, on the finished dist/badge/ bytes: exactly one
- * .svg + .json pair per rendered entry, each carrying the expected state.
- * "verified" may appear in a badge file ONLY for an entry whose credential
- * this build cryptographically verified with clean status bits; a subset
- * never renders as a bare level; banned terms appear nowhere.
- */
-export function assertBadges(distDir, rendered, verdicts) {
-  const badgeDir = join(distDir, "badge");
-  const emitted = readdirSync(badgeDir).sort();
-  const expectedFiles = rendered.flatMap((entry) => [`${entry.slug}.json`, `${entry.slug}.svg`]).sort();
-  assertBuild(
-    emitted.join(",") === expectedFiles.join(","),
-    `dist/badge/ must hold exactly one .svg + .json pair per rendered entry (found: ${emitted.join(", ")})`,
-  );
-  for (const entry of rendered) {
-    const c = entry.conformance;
-    const verdict = verdicts.get(entry.slug);
-    assertBuild(
-      !(c?.status === "verified" || c?.status === "revoked") || verdict !== undefined,
-      `entry "${entry.slug}" reached badge assertion at status "${c?.status}" without a build verdict - the verifier must refuse first`,
-    );
-    const { message, color } = expectedBadge(entry, verdict);
-
-    for (const ext of ["svg", "json"]) {
-      const path = join(badgeDir, `${entry.slug}.${ext}`);
-      assertBuild(statSync(path).size > 0, `dist/badge/${entry.slug}.${ext} is missing or empty`);
-    }
-    const svg = readFileSync(join(badgeDir, `${entry.slug}.svg`), "utf8");
-    assertBuild(
-      svg.startsWith('<svg xmlns="http://www.w3.org/2000/svg"') && svg.endsWith("</svg>\n") && !/&(?!amp;|lt;|gt;|quot;|#)/.test(svg),
-      `dist/badge/${entry.slug}.svg is not a well-formed standalone SVG`,
-    );
-    assertBuild(svg.includes(`>${LABEL}</text>`), `dist/badge/${entry.slug}.svg lost its ${LABEL} label cell`);
-    assertBuild(svg.includes(`>${esc(message)}</text>`), `dist/badge/${entry.slug}.svg message does not match the entry's state ("${message}")`);
-    const shields = JSON.parse(readFileSync(join(badgeDir, `${entry.slug}.json`), "utf8"));
-    assertBuild(
-      Object.keys(shields).sort().join(",") === "color,label,message,schemaVersion",
-      `dist/badge/${entry.slug}.json must carry exactly the shields endpoint keys {schemaVersion, label, message, color}`,
-    );
-    assertBuild(shields.schemaVersion === 1 && shields.label === LABEL, `dist/badge/${entry.slug}.json label/schemaVersion drifted`);
-    assertBuild(shields.message === message, `dist/badge/${entry.slug}.json message does not match the entry's state ("${message}")`);
-    assertBuild(shields.color === color, `dist/badge/${entry.slug}.json color does not match the entry's tier (${color})`);
-    for (const [ext, bytes] of [["svg", svg], ["json", JSON.stringify(shields)]]) {
-      assertBuild(!/certified|certification/i.test(bytes), `banned term leaked into dist/badge/${entry.slug}.${ext}`);
-      assertBuild(
-        bytes.includes("verified") === (verdict?.state === "verified"),
-        `"verified" in dist/badge/${entry.slug}.${ext} must appear exactly when the build verified the credential (state: ${verdict?.state ?? "none"})`,
-      );
-    }
-    if (c?.scope === "subset" && shields.message.includes(c.level)) {
-      assertBuild(shields.message.includes(`${c.level} subset (`), `subset badge for "${entry.slug}" must name its categories, never a bare level`);
-    }
-
-    // Static/worker seam: at deploy the worker takes over these exact paths,
-    // so its renderer must reproduce the SHIPPED bytes for the same state.
-    assertBuild(
-      workerRenderSvg({ message, color }) === svg,
-      `dist/badge/${entry.slug}.svg differs from the worker renderer's bytes for the same state - the /badge/ handover would flicker`,
-    );
-    assertBuild(
-      workerRenderJson({ message, color }) === readFileSync(join(badgeDir, `${entry.slug}.json`), "utf8"),
-      `dist/badge/${entry.slug}.json differs from the worker renderer's bytes for the same state`,
-    );
-  }
-  assertWorkerRenderParity();
-}
-
-/**
- * Renderer parity across the WHOLE state space, not just the states the
- * registry happens to occupy today: the worker's self-contained renderer
- * (workers/badge/worker.mjs) must emit byte-identical SVG and shields JSON
- * to this module's for every badge state either tier can produce. This is
- * the blessed form of "single source of truth" under the deliberate
- * redundancy rule: a parity assertion instead of shared code, so the worker
- * stays importable by Cloudflare with no site/ dependency while the two
- * renderers provably cannot drift apart.
- */
-function assertWorkerRenderParity() {
-  const states = [
-    { message: "· listed", color: "999999" },
-    { message: "· L2 full self-reported", color: "999999" },
-    { message: "◌ L1 subset (signed-proof, status-list) in verification", color: "ffb340" },
-    { message: "✓ L3 full verified", color: "00c86e" },
-    { message: "✓ L1 subset (signed-proof) verified", color: "00c86e" },
-    { message: "◌ under appeal", color: "ffb340" },
-    { message: "revoked", color: "6e7681" },
-    { message: `escaping & <edge> "case" 'too'`, color: "999999" },
-  ];
-  for (const state of states) {
-    assertBuild(
-      workerRenderSvg(state) === renderBadgeSvg(state),
-      `worker and static SVG renderers diverged for "${state.message}" - the /badge/ handover would change bytes`,
-    );
-    assertBuild(
-      workerRenderJson(state) === renderBadgeJson(state),
-      `worker and static shields JSON renderers diverged for "${state.message}"`,
-    );
-  }
 }
