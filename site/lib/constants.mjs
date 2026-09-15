@@ -44,12 +44,12 @@ export const DEMO_MCP_URL = "https://demo-mcp.kya-os.ai/mcp";
 // then - conformance/starter exists only on the feature branch).
 export const STARTER_URL = "https://github.com/kya-os/conformance-starter";
 export const SUITE = {
-  version: "1.0.0",
-  vectors: 44,
+  version: "1.1.0",
+  vectors: 48,
   // The nine vector files conformance/SUITE-MANIFEST.json pins, one
-  // category each (conformance/README.md: "44 vectors across nine categories").
+  // category each (conformance/README.md: "48 vectors across nine categories").
   categories: 9,
-  vectorSetHash: "sha256:81d537d4574d3f66d651a03ca41c0b18493b67ea6f3e61aba47d1bda4f3cf49b",
+  vectorSetHash: "sha256:38f34222fd91e75a162b01a81f83aa40907674f9c1bed72c46f1861cb49ceef5",
 };
 
 

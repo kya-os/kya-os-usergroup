@@ -75,9 +75,9 @@ export function credentialDocument({ id32, subjectId, level, scope, categories, 
       suite: {
         package: "@kya-os/mcp",
         packageVersion: "1.14.0",
-        suiteVersion: "1.0.0",
-        vectorSetHash: "sha256:81d537d4574d3f66d651a03ca41c0b18493b67ea6f3e61aba47d1bda4f3cf49b",
-        vectorCount: 44,
+        suiteVersion: "1.1.0",
+        vectorSetHash: "sha256:38f34222fd91e75a162b01a81f83aa40907674f9c1bed72c46f1861cb49ceef5",
+        vectorCount: 48,
       },
     },
     credentialStatus: ["revocation", "suspension"].map((statusPurpose) => ({
