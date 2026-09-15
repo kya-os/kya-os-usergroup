@@ -133,7 +133,11 @@ export function assertBadges(distDir, rendered, verdicts) {
       );
     }
     if (c?.scope === "subset" && shields.message.includes(c.level)) {
-      assertBuild(shields.message.includes(`${c.level} subset (`), `subset badge for "${entry.slug}" must name its categories, never a bare level`);
+      // The chip dropped its category list when the display label was
+      // trimmed ("L3 subset", never "L3 subset (a, b)") - categories live in
+      // the implementations table and the credential. The honesty floor
+      // stays: a subset must still say so, never render as a bare level.
+      assertBuild(shields.message.includes(`${c.level} subset`), `subset badge for "${entry.slug}" must say subset, never a bare level`);
     }
 
     // The signature wave: exactly the credential-backed badges carry bars,
@@ -196,9 +200,9 @@ function assertWorkerRenderParity() {
   const states = [
     { message: "· listed", color: "999999" },
     { message: "· L2 self-reported", color: "999999" },
-    { message: "◌ L1 subset (signed-proof, status-list) in verification", color: "ffb340" },
+    { message: "◌ L1 subset in verification", color: "ffb340" },
     { message: "✓ L3 verified", color: "00c86e", wave },
-    { message: "✓ L1 subset (signed-proof) verified", color: "00c86e", wave: "kya-os:sig:00000001" },
+    { message: "✓ L1 subset verified", color: "00c86e", wave: "kya-os:sig:00000001" },
     { message: "◌ under appeal", color: "ffb340", wave },
     { message: "revoked", color: "6e7681", wave },
     { message: "unverified", color: "999999" },
