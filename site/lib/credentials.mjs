@@ -31,6 +31,7 @@
  * workers/badge/parity.test.mjs proves the two agree.
  */
 import { CREDENTIALS_BASE, ISSUER_DID, decodeStatusList, statusBitAt, verifyCredential } from "../../scripts/lib/attest.mjs";
+import { credentialWaveSeed } from "./waveform.mjs";
 
 /** The committed key a proof's verificationMethod names, bound to a purpose:
  * did:web fragment -> program-keys entry, refusing cross-purpose use. */
@@ -56,8 +57,10 @@ function keyForProof(programKeys, verificationMethod, purpose, fail, label) {
 /**
  * Cryptographically verify every committed credential artifact. Returns the
  * per-slug verdicts the renderers consume and every failure as a named
- * error; the build must refuse on any error.
- * @returns {{ verdicts: Map<string, {state: string, attestationUrl: string}>, errors: string[] }}
+ * error; the build must refuse on any error. `waveSeed` is the credential's
+ * signature fingerprint (lib/waveform.mjs), which is what lets the badge and
+ * the directory row draw the same wave from the same proof.
+ * @returns {{ verdicts: Map<string, {state: string, attestationUrl: string, waveSeed: string}>, errors: string[] }}
  */
 export function verifyCredentialArtifacts({ programKeys, credentials, statusLists, allocations, entries }) {
   const errors = [];
@@ -136,7 +139,19 @@ export function verifyCredentialArtifacts({ programKeys, credentials, statusList
       fail(`${rel}: registry/builders/${entry.slug}.json claims "revoked" but the revocation bit is not set`);
       continue;
     }
-    verdicts.set(entry.slug, { state, attestationUrl });
+    // The verdict carries the credential's WAVE SEED as well as its state:
+    // the signature fingerprint the badge and the directory row both draw
+    // from, derived from the proofValue this function just verified. A
+    // credential with nothing to fingerprint fails the build here rather
+    // than rendering a verified badge with no wave (fail closed).
+    let waveSeed;
+    try {
+      waveSeed = credentialWaveSeed(credential);
+    } catch (err) {
+      fail(`${rel}: ${err.message}`);
+      continue;
+    }
+    verdicts.set(entry.slug, { state, attestationUrl, waveSeed });
   }
 
   // Every verified/revoked entry must have earned a verdict (its credential

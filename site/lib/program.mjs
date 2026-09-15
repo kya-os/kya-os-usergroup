@@ -86,9 +86,10 @@ function badgePreview(rendered, verdicts) {
   const example = rendered.find((entry) => entry.slug === "kya-os-mcp");
   const exampleLine = example
     ? (() => {
-        const { message } = badgeState(example, verdicts.get(example.slug));
+        const state = badgeState(example, verdicts.get(example.slug));
+        const { message } = state;
         return `<p class="micro">the badge this site serves for @kya-os/mcp right now:</p>
-        <div class="bp-real"><img class="bp-badge" src="/badge/kya-os-mcp.svg" alt="KYA-OS conformance: ${esc(message)}" width="${badgeWidth(message)}" height="20" /> <a href="/badge/kya-os-mcp.svg">the file -&gt;</a></div>`;
+        <div class="bp-real"><img class="bp-badge" src="/badge/kya-os-mcp.svg" alt="KYA-OS conformance: ${esc(message)}" width="${badgeWidth(state)}" height="20" /> <a href="/badge/kya-os-mcp.svg">the file -&gt;</a></div>`;
       })()
     : "";
   return `<div class="badge-preview">
@@ -207,8 +208,9 @@ ${LEVELS.map(card).join("\n")}
  * The alt text carries the state for anyone who cannot see the image.
  */
 function badgeCell(entry, verdict) {
-  const { message } = badgeState(entry, verdict);
-  const img = `<img class="ibadge-img" src="/badge/${esc(entry.slug)}.svg" alt="KYA-OS conformance: ${esc(message)}" width="${badgeWidth(message)}" height="20" loading="lazy" />`;
+  const state = badgeState(entry, verdict);
+  const { message } = state;
+  const img = `<img class="ibadge-img" src="/badge/${esc(entry.slug)}.svg" alt="KYA-OS conformance: ${esc(message)}" width="${badgeWidth(state)}" height="20" loading="lazy" />`;
   const href = entry.conformance.attestationUrl ?? entry.conformance.evidenceUrl;
   return href ? `<a href="${esc(href)}">${img}</a>` : img;
 }
