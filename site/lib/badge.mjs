@@ -85,6 +85,13 @@ const num = (value) => {
 };
 const cellWidth = (text) => [...text].length * 6.6 + 18;
 
+/**
+ * The exact width renderBadgeSvg writes for `message`, for <img> width
+ * attributes: message length drives SVG width, so a fixed width would
+ * stretch or squash every non-verified state.
+ */
+export const badgeWidth = (message) => num(cellWidth(LABEL) + cellWidth(message));
+
 /** The flat two-cell badge SVG: KYA-OS label cell + state message cell. */
 export function renderBadgeSvg({ message, color }) {
   const lw = cellWidth(LABEL);
