@@ -26,6 +26,7 @@ import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, wri
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { SUITE } from "../../site/lib/constants.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "..", "..");
@@ -61,6 +62,11 @@ for (const name of readdirSync(join(temp, "registry", "builders"))) {
   if (c === undefined || (c.status !== "verified" && c.status !== "revoked")) continue;
   c.status = typeof c.evidenceUrl === "string" ? "in-verification" : "self-reported";
   delete c.attestationUrl;
+  // The e2e exercises the issuance machinery against the CURRENT pin; a live
+  // entry lawfully claiming an older suite (awaiting re-attestation) would
+  // otherwise trip issue-credential's suite gate before any behavior under
+  // test runs.
+  c.suiteVersion = SUITE.version;
   writeFileSync(path, JSON.stringify(entry, null, 2) + "\n");
 }
 

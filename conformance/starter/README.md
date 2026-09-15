@@ -12,7 +12,7 @@ Conformance is two things and nothing more:
 
 Any language that can read JSON and do Ed25519 + SHA-256 can do this.
 The TypeScript adapter in this template is one door, not the door.
-The upstream repo's [`conformance/verify.py`](https://github.com/decentralized-identity/kya-os-mcp/blob/v1.14.1/conformance/verify.py) is the precedent: a pure-stdlib Python verifier that reads the same vector files and shares zero code with the reference implementation.
+The upstream repo's [`conformance/verify.py`](https://github.com/decentralized-identity/kya-os-mcp/blob/v1.15.0/conformance/verify.py) is the precedent: a pure-stdlib Python verifier that reads the same vector files and shares zero code with the reference implementation.
 
 ## What a claim is (read this before submitting)
 
@@ -52,12 +52,12 @@ npm run fetch-suite
 ```
 
 The `@kya-os/mcp` npm tarball does not ship `conformance/` (its files allowlist is `dist`, `schemas`, and docs), so the suite is fetched from GitHub into `suite/`:
-the `ConformanceAdapter` contract (`types.ts`), the loader and runner, `verify.py`, and all nine vector files (44 vectors).
-Every file is fetched at the commit SHA the release tag `v1.14.1` resolved to (tags can move, commits cannot), and each harness file is verified against its pinned sha256 before it is written.
+the `ConformanceAdapter` contract (`types.ts`), the loader and runner, `verify.py`, and all nine vector files (48 vectors).
+Every file is fetched at the commit SHA the release tag `v1.15.0` resolved to (tags can move, commits cannot), and each harness file is verified against its pinned sha256 before it is written.
 The script then computes the vector-set hash with the exact published recipe and verifies it against the pinned expectation:
 
 ```text
-vectorSetHash: sha256:81d537d4574d3f66d651a03ca41c0b18493b67ea6f3e61aba47d1bda4f3cf49b
+vectorSetHash: sha256:38f34222fd91e75a162b01a81f83aa40907674f9c1bed72c46f1861cb49ceef5
 ```
 
 Compare that hash against the signed suite manifest for the release you pin.
@@ -72,7 +72,7 @@ Implemented methods must be fail-closed: return `{ outcome: 'fail' }` on any err
 Then:
 
 ```bash
-npm run conformance   # typechecks, compiles, runs all 44 vectors, writes report.json
+npm run conformance   # typechecks, compiles, runs all 48 vectors, writes report.json
 ```
 
 **Door B - bring your own harness, any language.**
@@ -88,7 +88,7 @@ npm run claim -- --subject https://your-org.example --level L2
 
 Merges `report.json`, your package metadata, `git rev-parse HEAD`, and the verified suite hash into `claim.json`.
 It refuses a failing or malformed report, a dirty working tree, `scope: full` without full category coverage, and placeholder metadata.
-Levels (`L1` core crypto, `L2` full session, `L3` full delegation) are defined in [CONFORMANCE.md](https://github.com/decentralized-identity/kya-os-mcp/blob/v1.14.1/CONFORMANCE.md); claim the level whose requirements you meet.
+Levels (`L1` core crypto, `L2` full session, `L3` full delegation) are defined in [CONFORMANCE.md](https://github.com/decentralized-identity/kya-os-mcp/blob/v1.15.0/CONFORMANCE.md); claim the level whose requirements you meet.
 
 ### 0:55 - Submit
 
@@ -112,8 +112,8 @@ The program re-runs your suite at `implementation.digest.gitCommit` and attests 
   "categories": ["..."],
   "suite": {
     "package": "@kya-os/mcp",
-    "packageVersion": "1.14.1",
-    "suiteVersion": "1.0.0",
+    "packageVersion": "1.15.0",
+    "suiteVersion": "1.1.0",
     "vectorSetHash": "sha256:..."
   },
   "report": { "...": "the full report, embedded verbatim" },
@@ -124,11 +124,11 @@ The program re-runs your suite at `implementation.digest.gitCommit` and attests 
 The vector-set hash recipe, exactly:
 per vector file, SHA-256 of the raw committed bytes; build the array of `[filename, hexdigest]` pairs sorted by filename; canonicalize that array with RFC 8785 JCS; SHA-256 the JCS bytes; prefix `sha256:`.
 
-## The suite at v1.14.1
+## The suite at v1.15.0
 
 | category | vectors | adapter method |
 | --- | --- | --- |
-| `signed-proof` | 5 | `verifySignedProof` |
+| `signed-proof` | 9 | `verifySignedProof` |
 | `delegation-chain` | 6 | `verifyDelegationChain` |
 | `status-list` | 2 | `verifyStatusList` |
 | `did-key-resolution` | 3 | `resolveDidKey` |

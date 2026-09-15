@@ -1,0 +1,75 @@
+name: Suite watch
+
+# Daily drift check against the upstream conformance suite
+# (decentralized-identity/kya-os-mcp, conformance/SUITE-MANIFEST.json).
+#
+# Pins are attestations, so nothing is auto-bumped. On drift the script's
+# markdown report becomes ONE deduplicated issue (label: suite-drift) that a
+# human closes by walking the verify -> attest -> pin path. A stale STARTER
+# pin also fails the job — that staleness is this repo's own to fix, and it
+# should be loud (same philosophy as the probe: never invent freshness).
+# An unreachable upstream is a warning, not a failure.
+on:
+  schedule:
+    - cron: "37 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: suite-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+      - name: Compare pins and claims to the upstream manifest
+        id: watch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          REPORT="$(node scripts/suite-watch.mjs)"
+          CODE=$?
+          set -e
+          echo "$REPORT"
+          if [ "$CODE" = "2" ]; then
+            echo "::warning::Upstream SUITE-MANIFEST unreachable; cannot verify today."
+            exit 0
+          fi
+          # 0 = in sync, 1 = drift (issue below). Anything else means the
+          # watcher itself failed (e.g. the pin regex missed) - that must be
+          # RED, never mistaken for an outage, and never filed as drift.
+          if [ "$CODE" != "0" ] && [ "$CODE" != "1" ]; then
+            echo "::error::suite-watch failed (exit $CODE) - the watcher itself is broken, not the upstream."
+            exit "$CODE"
+          fi
+          case "$REPORT" in
+            "OK — "*)
+              # In sync: close any drift issue that is still open.
+              NUM=$(gh issue list --label suite-drift --state open --json number -q '.[0].number // empty')
+              if [ -n "$NUM" ]; then
+                gh issue close "$NUM" --comment "Suite watch: pins and claims are back in sync."
+              fi
+              exit 0
+              ;;
+          esac
+          # Drift: one rolling issue, refreshed in place.
+          gh label create suite-drift --description "Upstream conformance suite moved" --color D93F0B 2>/dev/null || true
+          NUM=$(gh issue list --label suite-drift --state open --json number -q '.[0].number // empty')
+          TITLE="Conformance suite drift: upstream moved past our pins"
+          if [ -n "$NUM" ]; then
+            gh issue edit "$NUM" --title "$TITLE" --body "$REPORT"
+            echo "Updated open drift issue #$NUM."
+          else
+            gh issue create --label suite-drift --title "$TITLE" --body "$REPORT"
+          fi
+          # A stale starter pin is this repo's own debt: keep the run red.
+          exit "$CODE"

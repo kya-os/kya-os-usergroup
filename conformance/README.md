@@ -13,10 +13,10 @@ The requirements live in [CONFORMANCE.md](https://github.com/decentralized-ident
 - **L2 - full session**: handshake, nonce and skew rules, detached proofs over request/response hashes.
 - **L3 - full delegation**: delegation chains, attenuation invariants, revocation.
 
-The measurement instrument is the published vector suite: suite `1.0.0`, 44 vectors across nine categories, pinned by vector-set hash
+The measurement instrument is the published vector suite: suite `1.1.0`, 48 vectors across nine categories, pinned by vector-set hash
 
 ```text
-sha256:81d537d4574d3f66d651a03ca41c0b18493b67ea6f3e61aba47d1bda4f3cf49b
+sha256:38f34222fd91e75a162b01a81f83aa40907674f9c1bed72c46f1861cb49ceef5
 ```
 
 The hash recipe and the per-release pin live in [`starter/scripts/fetch-suite.mjs`](./starter/scripts/fetch-suite.mjs), which verifies the fetched bytes against it and fails loudly on drift.
@@ -25,7 +25,7 @@ The signed per-release suite manifest (the durable home for that pin) is publish
 ## The claim flow
 
 1. **Run the suite.**
-   Wire your implementation to the 44 vectors and produce a `report.json`.
+   Wire your implementation to the 48 vectors and produce a `report.json`.
    The [starter](./starter/) automates fetch, hash-verify, run, and report through either door: the TypeScript adapter, or bring-your-own-harness in any language.
 2. **Submit the claim.**
    `npm run claim` merges your report, package metadata, git commit, and the verified suite pin into a `claim.json`.
