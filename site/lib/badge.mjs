@@ -151,6 +151,18 @@ const MARK_W = 9.6; // 197 * 0.0485, rounded to the num() grid
 const MARK_GAP = 5.4;
 
 /**
+ * The exact width renderBadgeSvg writes for a badge STATE, for <img> width
+ * attributes. Takes the full state, not just the message: the label cell
+ * carries the mark, and a credential-backed state also carries the wave -
+ * a message-only width would squash every verified badge.
+ */
+export function badgeWidth({ message, wave = null }) {
+  const lw = CELL_PAD + MARK_W + MARK_GAP + [...LABEL].length * 6.6 + CELL_PAD;
+  const ww = wave === null ? 0 : CELL_PAD + WAVE_WIDTH;
+  return num(lw + cellWidth(message) + ww);
+}
+
+/**
  * The badge SVG: KYA-OS label cell + state message cell, and - for the
  * states minted from a verified credential - that credential's signature
  * wave leading the message cell. `wave` is the seed (null below the
