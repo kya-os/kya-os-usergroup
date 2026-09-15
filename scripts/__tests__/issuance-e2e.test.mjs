@@ -177,10 +177,10 @@ test("e2e: ceremony -> issue -> verify -> suspend -> unsuspend -> revoke -> muta
 
   // The build (already run by the script) rendered the proven state.
   const badge = read("dist", "badge", `${SLUG}.svg`);
-  assert.ok(badge.includes("✓ L3 full verified"), `verified badge must render, got: ${badge.slice(0, 300)}`);
+  assert.ok(badge.includes("✓ L3 verified"), `verified badge must render, got: ${badge.slice(0, 300)}`);
   assert.ok(badge.includes("#00c86e"), "verified badge uses the signal green tier");
   const shields = JSON.parse(read("dist", "badge", `${SLUG}.json`));
-  assert.equal(shields.message, "✓ L3 full verified");
+  assert.equal(shields.message, "✓ L3 verified");
   assert.ok(existsSync(tempPath("dist", "credentials", `${id32}.json`)), "the credential is served");
   assert.ok(existsSync(tempPath("dist", "credentials", "status", "revocation-1.json")), "the revocation list is served");
   assert.ok(read("dist", "builders", "index.html").includes("&check; verified"), "the directory renders the green chip");
@@ -217,7 +217,7 @@ test("e2e: ceremony -> issue -> verify -> suspend -> unsuspend -> revoke -> muta
 
   const unsuspend = run(revokeArgs("unsuspend"), { K_STATUS_PRIVATE: secrets.K_STATUS_PRIVATE });
   assert.equal(unsuspend.status, 0, unsuspend.stderr);
-  assert.ok(read("dist", "badge", `${SLUG}.svg`).includes("✓ L3 full verified"), "unsuspend restores the verified badge");
+  assert.ok(read("dist", "badge", `${SLUG}.svg`).includes("✓ L3 verified"), "unsuspend restores the verified badge");
   verify("VERIFIED", 0);
 
   // ── revoke: terminal ──────────────────────────────────────────────────────

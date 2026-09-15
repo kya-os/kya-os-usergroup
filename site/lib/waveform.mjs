@@ -12,6 +12,10 @@
  * (never style="..."), so the pages keep the no-inline-style contract under
  * style-src 'self'. Color rides currentColor: the wrapping element's class
  * picks the token.
+ *
+ * BROWSER-SAFE BY CONTRACT: no imports, no Node builtins (asserted by
+ * lib/module-checks.mjs) - the build copies this file byte-for-byte to
+ * dist/ui/waveform.js, so the badge preview draws with the same bytes.
  */
 
 export function fnv1a(input) {
@@ -29,6 +33,33 @@ export function makeSeededRng(seed) {
     state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
     return state / 4294967296;
   };
+}
+
+/**
+ * THE SIGNATURE FINGERPRINT: the seed a credential's wave draws from, taken
+ * from the one field that IS the signature - the detached DataIntegrityProof's
+ * `proof.proofValue`, the multibase Ed25519 signature the verifiers verify
+ * (site/lib/credentials.mjs and workers/badge/verify.mjs both check exactly
+ * these bytes against the pinned key). So the wave is a genuine fingerprint
+ * of the credential: deterministic for a given credential, identical
+ * everywhere it is drawn, and completely redrawn by a reissue, because a
+ * reissue is a fresh signature.
+ *
+ * Hashed with the module's own FNV-1a rather than sha-256 on purpose: the
+ * whole downstream draw is a 32-bit LCG seeded by fnv1a(seed), so a wider
+ * digest would add no spread to the wave, and this module must stay
+ * browser-safe and synchronous (node:crypto is a Node import; WebCrypto's
+ * digest is async) - a hand-rolled sha-256 would buy nothing but bytes.
+ *
+ * Throws when there is no signature to fingerprint: callers fail closed (the
+ * build refuses, the worker renders unverified).
+ */
+export function credentialWaveSeed(credential) {
+  const proofValue = credential?.proof?.proofValue;
+  if (typeof proofValue !== "string" || proofValue.length === 0) {
+    throw new TypeError("credentialWaveSeed: no proof.proofValue to fingerprint - a signature wave needs a signature");
+  }
+  return `kya-os:sig:${fnv1a(proofValue).toString(16).padStart(8, "0")}`;
 }
 
 const HEIGHT_MIN = 0.3, HEIGHT_SPAN = 0.7, OPACITY_MIN = 0.6, OPACITY_SPAN = 0.4;
