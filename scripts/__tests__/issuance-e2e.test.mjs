@@ -67,6 +67,12 @@ for (const name of readdirSync(join(temp, "registry", "builders"))) {
   // otherwise trip issue-credential's suite gate before any behavior under
   // test runs.
   c.suiteVersion = SUITE.version;
+  // The demo-server entry doubles as the SUBSET fixture: the subset leg
+  // below mints against it, proving the trimmed chip end to end.
+  if (name === "kya-os-demo-server.json") {
+    c.scope = "subset";
+    c.categories = ["signed-proof"];
+  }
   writeFileSync(path, JSON.stringify(entry, null, 2) + "\n");
 }
 
@@ -228,6 +234,40 @@ test("e2e: ceremony -> issue -> verify -> suspend -> unsuspend -> revoke -> muta
   assert.ok(revokedBadge.includes(">revoked</text>"), "revocation renders the dark badge");
   assert.ok(!revokedBadge.includes("verified"), "a revoked badge never says verified");
   verify("REVOKED", 3);
+
+  // ── subset mint: the trimmed chip says subset, end to end ─────────────────
+  // Everything this needs already exists: issue-credential.mjs takes
+  // --scope subset --categories, and the ceremony keys mint real
+  // signatures. This leg is what proves the badge honesty floor against a
+  // REAL subset credential (not a synthetic entry, which correctly fails
+  // closed earlier at the credential-categories gate).
+  const SUBSET_SLUG = "kya-os-demo-server";
+  const subsetIssue = run(
+    [
+      tempPath("scripts", "issue-credential.mjs"),
+      "--slug", SUBSET_SLUG,
+      "--subject-id", "https://demo-mcp.kya-os.ai/health",
+      "--impl-name", "KYA-OS Demo Server",
+      "--impl-version", "1.0.0",
+      "--git-commit", GIT_COMMIT,
+      "--level", "L3",
+      "--scope", "subset",
+      "--categories", "signed-proof",
+      "--package-version", "1.14.0",
+      "--verdict-url", "https://github.com/kya-os/kya-os-usergroup/issues/7",
+      "--summary", tempPath("subset-summary.json"),
+      "--pr-body", tempPath("subset-pr-body.md"),
+    ],
+    { K_ISSUER_PRIVATE: secrets.K_ISSUER_PRIVATE, K_STATUS_PRIVATE: secrets.K_STATUS_PRIVATE },
+  );
+  assert.equal(subsetIssue.status, 0, subsetIssue.stderr);
+  const subsetBuild = run([tempPath("site", "build-pages.mjs")]);
+  assert.equal(subsetBuild.status, 0, subsetBuild.stderr);
+  const subsetBadge = read("dist", "badge", `${SUBSET_SLUG}.svg`);
+  assert.ok(subsetBadge.includes("✓ L3 subset verified"), `subset badge must say subset, got: ${subsetBadge.slice(0, 300)}`);
+  assert.ok(!subsetBadge.includes("subset ("), "the category list stays in the table and credential, not the chip");
+  const subsetShields = JSON.parse(read("dist", "badge", `${SUBSET_SLUG}.json`));
+  assert.equal(subsetShields.message, "✓ L3 subset verified");
 
   // ── mutation proofs: the build refuses, naming the credential ─────────────
   const credentialPath = tempPath("registry", "credentials", `${id32}.json`);
