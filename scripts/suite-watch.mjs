@@ -20,7 +20,10 @@
  * freshness) and prints a ready-to-file markdown report on drift; the CI
  * workflow turns that into a single deduplicated issue for a human to act on.
  *
- * Exit codes: 0 in sync, 1 starter pin drifted, 2 cannot reach upstream.
+ * Exit codes: 0 in sync, 1 starter pin drifted, 2 cannot reach upstream
+ * (transient - the workflow warns and passes), 3 local parse/contract
+ * failure (the watcher itself is broken - the workflow MUST fail, or a
+ * regex miss would wear an outage's disguise and rot silently).
  */
 
 import { readFileSync, readdirSync } from "node:fs";
@@ -56,8 +59,9 @@ async function main() {
   }
   const { suiteVersion, vectorSetHash } = manifest;
   if (!suiteVersion || !vectorSetHash) {
+    // Reachable but contract-broken is a signal, not an outage: fail hard.
     console.error("Upstream manifest is missing suiteVersion/vectorSetHash.");
-    process.exit(2);
+    process.exit(3);
   }
 
   const starterSrc = readFileSync(FETCH_SUITE, "utf8");
@@ -67,7 +71,7 @@ async function main() {
   const pinnedRef = starterSrc.match(/PINNED_REF = '([^']+)'/)?.[1];
   if (!pinnedHash || !pinnedRef) {
     console.error("Could not parse the starter pin out of fetch-suite.mjs.");
-    process.exit(2);
+    process.exit(3);
   }
 
   const staleClaims = [];

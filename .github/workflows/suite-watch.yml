@@ -44,6 +44,13 @@ jobs:
             echo "::warning::Upstream SUITE-MANIFEST unreachable; cannot verify today."
             exit 0
           fi
+          # 0 = in sync, 1 = drift (issue below). Anything else means the
+          # watcher itself failed (e.g. the pin regex missed) - that must be
+          # RED, never mistaken for an outage, and never filed as drift.
+          if [ "$CODE" != "0" ] && [ "$CODE" != "1" ]; then
+            echo "::error::suite-watch failed (exit $CODE) - the watcher itself is broken, not the upstream."
+            exit "$CODE"
+          fi
           case "$REPORT" in
             "OK — "*)
               # In sync: close any drift issue that is still open.
