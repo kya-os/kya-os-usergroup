@@ -17,7 +17,7 @@ import { CONFORMANCE_LEVELS } from "../../scripts/lib/registry-enums.mjs";
 import { BADGE_WORKER_DOC_URL, CONFORMANCE_MD_URL, MCP_REPO_URL, SUITE, STARTER_URL } from "./constants.mjs";
 import { conformanceLabel, conformanceLevelUrl, levelUrl, withConformance } from "./data.mjs";
 import { esc, promptBlock } from "./html.mjs";
-import { badgeState } from "./badge.mjs";
+import { badgeState, badgeWidth } from "./badge.mjs";
 import { BADGE_EMBED, BADGE_EMBED_SLUG, snippetText } from "./snippets.mjs";
 import { waveformSvg } from "./waveform.mjs";
 
@@ -76,10 +76,20 @@ function embedBlock() {
  * so. There is no tier toggle: the badge renders the claim from the
  * verified credential, never from a chosen tier.
  */
-function badgePreview() {
+function badgePreview(rendered, verdicts) {
   const level = CONFORMANCE_LEVELS[0];
   const seed = claimWaveSeed(BADGE_EMBED_SLUG, { level, scope: "full" });
   const levels = CONFORMANCE_LEVELS.map((l) => `<option value="${l}">${l}</option>`).join("");
+  // The real-badge example derives its caption, alt, and width from the same
+  // badgeState() the artifact renders from, so suspend/revoke can never leave
+  // the page claiming a state the SVG no longer draws.
+  const example = rendered.find((entry) => entry.slug === "kya-os-mcp");
+  const exampleLine = example
+    ? (() => {
+        const { message } = badgeState(example, verdicts.get(example.slug));
+        return `<p class="micro bp-real">the badge this site serves for @kya-os/mcp right now: <img class="bp-badge" src="/badge/kya-os-mcp.svg" alt="KYA-OS conformance: ${esc(message)}" width="${badgeWidth(message)}" height="20" /> <a href="/badge/kya-os-mcp.svg">the file</a></p>`;
+      })()
+    : "";
   return `<div class="badge-preview">
         <div class="pc-title t-static">preview your badge</div>
         <form id="badge-preview" class="eb bp-form" hidden novalidate>
@@ -92,7 +102,7 @@ function badgePreview() {
           <span class="bl-state">&middot; listed</span>
         </span>
         <p class="micro">the visual only, at the rung a new entry starts on: <span class="tone-faint">listed</span>. It turns green when the program issues your credential, never before &middot; seed <span id="bp-seed">${esc(seed)}</span> - the same derivation the directory row draws your wave from</p>
-        <p class="micro bp-real">a verified badge, served from this site right now: <img class="bp-badge" src="/badge/kya-os-mcp.svg" alt="KYA-OS conformance badge for @kya-os/mcp: L3 full verified" width="195" height="20" /> <a href="/badge/kya-os-mcp.svg">the file</a></p>
+        ${exampleLine}
         <p class="note">Paste this into your README the day you are listed - it is the same <code>/badge/&lt;slug&gt;.svg</code> the build emits and the worker serves, so it climbs as your status does:</p>
         ${embedBlock()}
       </div>`;
@@ -104,13 +114,13 @@ function badgePreview() {
  * the pointer to the ops doc that carries tiers, cache bound, and deploy
  * status.
  */
-function sectionBadge() {
+function sectionBadge(rendered, verdicts) {
   return `  <section id="the-badge" class="fx fxd-20">
     <h2>The badge</h2>
     <div class="rule"></div>
     <div class="badge-copy">
       <p class="lede-lg">The badge resolves to the signed credential behind it, so anyone can check your claim without trusting this site. Revoke the credential and every embedded badge downgrades itself.</p>
-      ${badgePreview()}
+      ${badgePreview(rendered, verdicts)}
       <p class="note">It has seven states and nothing else: <span class="tone-faint">listed</span>, <span class="tone-faint">self-reported</span>, <span class="tone-amber">in verification</span>, <span class="tone-signal">verified</span>, <span class="tone-amber">under appeal</span>, revoked, and <span class="tone-faint">unverified</span> (the fail-closed answer to any failure). Only a verified credential with clean status bits renders green. The badge served today is rebuilt from that cryptographic verification on every deploy; the worker tier, which re-verifies per request, is armed and ships on its own dispatch.</p>
       <p class="see-all"><a href="${BADGE_WORKER_DOC_URL}">how the badge worker serves this -&gt;</a></p>
     </div>
@@ -197,7 +207,7 @@ ${LEVELS.map(card).join("\n")}
  */
 function badgeCell(entry, verdict) {
   const { message } = badgeState(entry, verdict);
-  const img = `<img class="ibadge-img" src="/badge/${esc(entry.slug)}.svg" alt="KYA-OS conformance: ${esc(message)}" width="195" height="20" loading="lazy" />`;
+  const img = `<img class="ibadge-img" src="/badge/${esc(entry.slug)}.svg" alt="KYA-OS conformance: ${esc(message)}" width="${badgeWidth(message)}" height="20" loading="lazy" />`;
   const href = entry.conformance.attestationUrl ?? entry.conformance.evidenceUrl;
   return href ? `<a href="${esc(href)}">${img}</a>` : img;
 }
@@ -239,5 +249,5 @@ export function sectionsConformance(rendered, verdicts) {
     <span><b>${SUITE.vectors}</b> vectors</span>
     <span class="pin-hash">pinned <span class="hash">${esc(SUITE.vectorSetHash)}</span></span>
   </div>`;
-  return [pinStrip, sectionBadge(), sectionWhy(), sectionHow(), sectionLevels(), sectionImplementations(withConformance(rendered), verdicts)].join("\n");
+  return [pinStrip, sectionBadge(rendered, verdicts), sectionWhy(), sectionHow(), sectionLevels(), sectionImplementations(withConformance(rendered), verdicts)].join("\n");
 }
