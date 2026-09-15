@@ -223,10 +223,25 @@ export async function initPageFx() {
   });
   const main = document.querySelector("main");
   if (main) {
-    // 1:1 with kya-os.org's PageInit.js: the same class, the same flat
-    // skewAmount of 0.8, no width normalization. The reference is the single
-    // source of truth for how scroll skew feels; tuning it here is drift.
-    new ScrollSkew({ elements: [main], skewAmount: 0.8 });
+    // 1:1 with kya-os.org, measured in pixels rather than degrees.
+    //
+    // The class above is the reference's, line for line, and the reference
+    // passes skewAmount 0.8 (PageInit.js). Passing 0.8 here does NOT match
+    // it: skewY(a) maps (x,y) to (x, y + x*tan(a)), so the shear you see
+    // scales with the element's WIDTH, and the reference skews an 800px
+    // .spec-page while this site skews a 1080px main. Measured on both
+    // deployed sites: 800px and 1080px border boxes, origin centered. At a
+    // flat 0.8deg that is 11.2px of shear there against 15.1px here, which
+    // reads as a heavier, more restless page.
+    //
+    // So the DEGREES are normalized to keep the PIXELS equal, capped at the
+    // reference amount so a narrow viewport never shears more than kya-os.org
+    // does. Do not "restore" this to a flat 0.8: that reverts the feel, not
+    // the parity. Verified by measurement, not by eye.
+    const REFERENCE_COLUMN = 800;
+    const REFERENCE_SKEW = 0.8;
+    const skewAmount = Math.min(REFERENCE_SKEW, REFERENCE_SKEW * (REFERENCE_COLUMN / Math.max(main.clientWidth, 1)));
+    new ScrollSkew({ elements: [main], skewAmount });
   }
 }
 
