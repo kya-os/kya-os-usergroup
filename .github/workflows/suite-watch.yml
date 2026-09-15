@@ -15,6 +15,7 @@ on:
   workflow_dispatch:
 
 permissions:
+  contents: read
   issues: write
 
 concurrency:
@@ -46,7 +47,7 @@ jobs:
           case "$REPORT" in
             "OK — "*)
               # In sync: close any drift issue that is still open.
-              NUM=$(gh issue list --label suite-drift --state open --json number -q '.[0].number')
+              NUM=$(gh issue list --label suite-drift --state open --json number -q '.[0].number // empty')
               if [ -n "$NUM" ]; then
                 gh issue close "$NUM" --comment "Suite watch: pins and claims are back in sync."
               fi
@@ -55,7 +56,7 @@ jobs:
           esac
           # Drift: one rolling issue, refreshed in place.
           gh label create suite-drift --description "Upstream conformance suite moved" --color D93F0B 2>/dev/null || true
-          NUM=$(gh issue list --label suite-drift --state open --json number -q '.[0].number')
+          NUM=$(gh issue list --label suite-drift --state open --json number -q '.[0].number // empty')
           TITLE="Conformance suite drift: upstream moved past our pins"
           if [ -n "$NUM" ]; then
             gh issue edit "$NUM" --title "$TITLE" --body "$REPORT"
