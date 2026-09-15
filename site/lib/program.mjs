@@ -87,7 +87,8 @@ function badgePreview(rendered, verdicts) {
   const exampleLine = example
     ? (() => {
         const { message } = badgeState(example, verdicts.get(example.slug));
-        return `<p class="micro bp-real">the badge this site serves for @kya-os/mcp right now: <img class="bp-badge" src="/badge/kya-os-mcp.svg" alt="KYA-OS conformance: ${esc(message)}" width="${badgeWidth(message)}" height="20" /> <a href="/badge/kya-os-mcp.svg">the file</a></p>`;
+        return `<p class="micro">the badge this site serves for @kya-os/mcp right now:</p>
+        <div class="bp-real"><img class="bp-badge" src="/badge/kya-os-mcp.svg" alt="KYA-OS conformance: ${esc(message)}" width="${badgeWidth(message)}" height="20" /> <a href="/badge/kya-os-mcp.svg">the file -&gt;</a></div>`;
       })()
     : "";
   return `<div class="badge-preview">
