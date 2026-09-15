@@ -69,7 +69,7 @@ const waveBars = (svg) => [...svg.matchAll(/<rect [^>]*fill-opacity="[^"]*"\/>/g
 
 test("the credential-backed states carry the wave, in the state tier's color", async () => {
   const verified = await badge(happyMap());
-  assert.ok(verified.includes("✓ L1 subset (signed-proof) verified"), verified.slice(0, 200));
+  assert.ok(verified.includes("✓ L1 subset verified"), verified.slice(0, 200));
   assert.equal(waveBars(verified).length, BARS, "a verified badge carries the credential's signature wave");
   assert.ok(waveBars(verified).every((bar) => bar.includes('fill="#00c86e"')), "the bars take the state tier's color");
 
@@ -109,7 +109,7 @@ test("same credential, same bars; a reissued credential redraws them", async () 
   // bars is the signature and nothing else.
   assert.notEqual(reissued.proof.proofValue, credential.proof.proofValue, "the fixture reissue must carry a fresh signature");
   const redrawn = await badge(happyMap({ [CREDENTIAL_URL]: reissued }));
-  assert.ok(redrawn.includes("✓ L1 subset (signed-proof) verified"), "the reissue still verifies");
+  assert.ok(redrawn.includes("✓ L1 subset verified"), "the reissue still verifies");
   assert.equal(waveBars(redrawn).length, BARS);
   assert.notDeepEqual(waveBars(redrawn), waveBars(first), "a reissued credential must redraw the wave");
 });

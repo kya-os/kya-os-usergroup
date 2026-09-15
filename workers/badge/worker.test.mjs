@@ -130,9 +130,9 @@ test("verify rejects on tampered subject, tampered proofValue, wrong key", async
 // ── render states through the HTTP handler ─────────────────────────────────
 
 test("state: verified (subset claim renders categories, never a bare level)", async () => {
-  const svg = await expectBadge(happyMap(), "/badge/fixture-impl.svg", { message: "✓ L1 subset (signed-proof) verified", color: "00c86e" });
+  const svg = await expectBadge(happyMap(), "/badge/fixture-impl.svg", { message: "✓ L1 subset verified", color: "00c86e" });
   assert.ok(!/>✓ L1 verified</.test(svg), "subset must never render as a bare level");
-  await expectBadge(happyMap(), "/badge/fixture-impl.json", { message: "✓ L1 subset (signed-proof) verified", color: "00c86e" });
+  await expectBadge(happyMap(), "/badge/fixture-impl.json", { message: "✓ L1 subset verified", color: "00c86e" });
 });
 
 test("state: revoked (and precedence over a set suspension bit)", async () => {
@@ -165,8 +165,8 @@ test("non-credential rungs render from the allowlist with NO fetch at all", asyn
   const handler = createBadgeHandler({ allowlist: ALLOWLIST, issuerKeys: ISSUER_KEYS, statusKeys: STATUS_KEYS, provisioned: true, fetchImpl: neverFetch });
   const cases = [
     ["/badge/just-listed.svg", "· listed", "999999"],
-    ["/badge/self-rep.svg", "· L1 subset (signed-proof) self-reported", "999999"],
-    ["/badge/mid-rung.svg", "◌ L3 full in verification", "ffb340"],
+    ["/badge/self-rep.svg", "· L1 subset self-reported", "999999"],
+    ["/badge/mid-rung.svg", "◌ L3 in verification", "ffb340"],
   ];
   for (const [path, message, color] of cases) {
     const response = await get(handler, path);
@@ -209,7 +209,7 @@ test("rotation: a proof naming conformance-issuer-2 verifies against exactly tha
   const issuer2 = throwawayKey();
   const rotated = [...ISSUER_KEYS, { id: "conformance-issuer-2", publicKeyMultibase: issuer2.publicKeyMultibase }];
   const signedBy2 = await signDocument(credentialDocument(SUBJECT), issuer2, "conformance-issuer-2");
-  await expectBadge(happyMap({ [CREDENTIAL_URL]: signedBy2 }), "/badge/fixture-impl.svg", { message: "✓ L1 subset (signed-proof) verified" }, { issuerKeys: rotated });
+  await expectBadge(happyMap({ [CREDENTIAL_URL]: signedBy2 }), "/badge/fixture-impl.svg", { message: "✓ L1 subset verified" }, { issuerKeys: rotated });
   // Resolution is by the id the proof NAMES, never try-every-key: the same
   // signature under a proof naming issuer-1 must fail.
   const misattributed = await signDocument(credentialDocument(SUBJECT), issuer2, "conformance-issuer-1");

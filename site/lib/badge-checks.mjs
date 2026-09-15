@@ -62,7 +62,9 @@ function shippedWaveSeed(distDir, verdict, slug) {
  */
 function expectedBadge(entry, verdict, distDir) {
   const c = entry.conformance;
-  const label = c && (c.scope === "subset" ? `${c.level} subset (${c.categories.join(", ")})` : `${c.level} full`);
+  // The display form: scope shows only when it narrows the claim ("L3", or
+  // "L3 subset"); the full claim string stays in the table and credential.
+  const label = c && (c.scope === "subset" ? `${c.level} subset` : c.level);
   if (!c) return { message: "· listed", color: "999999" };
   if (c.status === "verified" || c.status === "revoked") {
     const wave = shippedWaveSeed(distDir, verdict, entry.slug);
@@ -193,9 +195,9 @@ function assertWorkerRenderParity() {
   const wave = "kya-os:sig:1a2b3c4d";
   const states = [
     { message: "· listed", color: "999999" },
-    { message: "· L2 full self-reported", color: "999999" },
+    { message: "· L2 self-reported", color: "999999" },
     { message: "◌ L1 subset (signed-proof, status-list) in verification", color: "ffb340" },
-    { message: "✓ L3 full verified", color: "00c86e", wave },
+    { message: "✓ L3 verified", color: "00c86e", wave },
     { message: "✓ L1 subset (signed-proof) verified", color: "00c86e", wave: "kya-os:sig:00000001" },
     { message: "◌ under appeal", color: "ffb340", wave },
     { message: "revoked", color: "6e7681", wave },
