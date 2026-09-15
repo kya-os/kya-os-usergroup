@@ -72,7 +72,9 @@ export function codeBlock(snippet, { copy = true, copyLabel = "[ copy ]" } = {})
   const copyPair = copy
     ? `\n      <pre id="${snippet.id}" hidden aria-hidden="true">${esc(snippetText(snippet))}</pre>\n      <button type="button" class="copy-code" data-copy-target="${snippet.id}" hidden>${copyLabel}</button>`
     : "";
-  return `<div class="code-wrap">
+  // has-copy reserves a top band inside the block for the overlaid button,
+  // so no code line can run underneath it at any viewport width.
+  return `<div class="code-wrap${copy ? " has-copy" : ""}">
       <pre class="code-block" data-snippet="${snippet.id}"><code>${code}</code></pre>${copyPair}
     </div>`;
 }
