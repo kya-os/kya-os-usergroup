@@ -115,7 +115,7 @@ h2{font-family:var(--font-sans);font-size:22px;font-weight:600;color:var(--ink);
 /* The path: three numbered rows, counter-numbered so the markup stays a
    plain <ol> (the number is the grid's first column). */
 .path{list-style:none;counter-reset:step;margin:0;max-width:760px}
-.path li{counter-increment:step;display:grid;grid-template-columns:28px 1fr;gap:0 14px;padding:16px 0;border-top:1px solid var(--line-hair);font-size:14px;line-height:1.7;color:var(--ink-muted)}
+.path li{counter-increment:step;display:grid;grid-template-columns:28px 1fr;gap:0 14px;padding:16px 0;border-top:1px solid var(--line-hair);font-size:16px;line-height:1.7;color:var(--ink-muted)}
 .path li:last-child{border-bottom:1px solid var(--line-hair)}
 .path li::before{content:"0" counter(step);font-family:var(--font-mono);font-size:11px;color:var(--ink-muted);padding-top:5px}
 .path .path-body{min-width:0}
@@ -372,7 +372,7 @@ a.pc-title{display:inline-block}
 .showcase{border:1px solid var(--line-mid);background:var(--panel-2);padding:40px;display:grid;grid-template-columns:1.2fr 1fr;gap:40px;align-items:center}
 .flag-title{font-family:var(--font-mono);font-size:24px;font-weight:700;color:var(--ink-bright);margin-bottom:14px}
 .flag-lede{font-size:15px;line-height:1.8;color:var(--ink);margin:0 0 16px}
-.flag-sub{font-size:14px;line-height:1.7;color:var(--ink-muted);margin:0 0 22px}
+.flag-sub{font-size:16px;line-height:1.7;color:var(--ink-muted);margin:0 0 22px}
 /* BEGIN revoked-console block (accompanies /ui/revoked-console.js). The
    README's beats, one line each: a 6px square dot in the beat's tone
    (currentColor, so .tone-signal / .tone-alert paint it) beside the text,
@@ -611,6 +611,6 @@ html.js-anim .fade-overlay.active{opacity:1;pointer-events:all}
 .authz-item{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--ink)}
 .authz-item .glyph{flex-shrink:0;color:var(--ink-dim)}
 .authz-type{font-size:10px;padding:0 6px;color:var(--ink-dim);border-color:var(--line-mid)}
-.panel-card .authz-note{font-size:13px;margin-top:12px}
+.panel-card .authz-note{font-size:16px;margin-top:12px}
 .panel-card .authz-cap{font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);margin:14px 0 8px}
 /* END authz-row block */
