@@ -89,10 +89,10 @@ h1{font-family:var(--font-mono);font-size:clamp(32px,7vw,48px);font-weight:100;c
 .h1-home+.lede,.h1-home~.lede{max-width:640px}
 h2{font-family:var(--font-sans);font-size:22px;font-weight:600;color:var(--ink);margin:0 0 8px}
 .rule{height:1px;background:var(--line);margin-bottom:28px}
-.section-lede{font-size:14px;line-height:1.8;color:var(--ink-muted);max-width:760px;margin:0 0 36px}
+.section-lede{font-size:16px;line-height:1.8;color:var(--ink-muted);max-width:760px;margin:0 0 36px}
 .lede-lg{font-size:16px;line-height:1.9;color:var(--ink);max-width:760px;margin:0 0 32px}
 .lede-muted{font-size:16px;line-height:1.9;color:var(--ink-muted);max-width:720px;margin:0}
-.note{font-size:14px;color:var(--ink-muted);margin:24px 0 0}
+.note{font-size:16px;color:var(--ink-muted);margin:24px 0 0}
 .micro{font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);margin:14px 0 0}
 .see-all{margin-top:28px;font-family:var(--font-mono);font-size:13px}
 
@@ -108,10 +108,10 @@ h2{font-family:var(--font-sans);font-size:22px;font-weight:600;color:var(--ink);
 /* Bullets: the site ships no other list, so the reset's zero padding is the
    baseline; a mono hyphen marker keeps the terminal grammar. */
 .bullets{list-style:none;margin:10px 0 0;max-width:760px}
-.bullets li{position:relative;padding-left:18px;font-size:14px;line-height:1.7;color:var(--ink-muted);margin-top:6px}
+.bullets li{position:relative;padding-left:18px;font-size:16px;line-height:1.7;color:var(--ink-muted);margin-top:6px}
 .bullets li::before{content:"-";position:absolute;left:0;font-family:var(--font-mono);color:var(--ink-faint)}
 .bullets strong{color:var(--ink);font-weight:600}
-.why li{font-size:15px;line-height:1.75;margin-top:12px}
+.why li{font-size:16px;line-height:1.75;margin-top:12px}
 /* The path: three numbered rows, counter-numbered so the markup stays a
    plain <ol> (the number is the grid's first column). */
 .path{list-style:none;counter-reset:step;margin:0;max-width:760px}
@@ -161,7 +161,7 @@ a.panel-card:hover{border-color:var(--line-strong);background:var(--panel-3);col
 .pc-head .pc-title{margin-bottom:0}
 .pc-lg{font-size:16px}
 .pc-tag{color:var(--ink-muted);font-size:12px}
-.panel-card p{font-size:14px;line-height:1.7;color:var(--ink-muted);margin:0}
+.panel-card p{font-size:16px;line-height:1.7;color:var(--ink-muted);margin:0}
 .panel-card p+p,.panel-card p+.pc-sub{margin-top:14px}
 .pc-sub{color:var(--ink-faint)}
 .pc-link{display:inline-block;margin-top:14px;font-family:var(--font-mono);font-size:12px}
@@ -214,7 +214,7 @@ summary.dgrid:hover{background:var(--panel-2)}
    unreachable is a faint hollow ring; the dated line lives in .dprobe. */
 .dprobe{font-family:var(--font-mono);font-size:11px;line-height:1.7;margin:0 0 12px}
 .dtype{font-family:var(--font-mono);font-size:10px;color:var(--ink-dim)}
-.dwhat{font-size:13px;line-height:1.6;color:var(--ink-dim);min-width:0}
+.dwhat{font-size:14px;line-height:1.6;color:var(--ink-dim);min-width:0}
 .dconf .chip{font-size:10px}
 .dlisted{font-family:var(--font-mono);font-size:10px;color:var(--ink-faint);white-space:nowrap}
 .caret{font-family:var(--font-mono);font-size:12px;color:var(--ink-muted)}
@@ -230,7 +230,7 @@ details[open]>summary .caret::before{content:"\2212"}
 /* The copy-ready badge embed: a plain selectable line (click selects all). */
 .dembed{font-family:var(--font-mono);font-size:11px;color:var(--ink-muted);border:1px solid var(--line);background:var(--canvas);padding:9px 12px;margin-top:8px;user-select:all;overflow-wrap:anywhere;max-width:760px}
 .dfoot{padding:15px 22px;font-family:var(--font-mono);font-size:12px;color:var(--ink-muted)}
-.dnote{font-size:13px;color:var(--ink-muted);margin:18px 0 0;line-height:1.7}
+.dnote{font-size:15px;color:var(--ink-muted);margin:18px 0 0;line-height:1.7}
 
 /* ── Conformance: pin strip, badge preview, pipeline, levels, table ───────── */
 .pin-strip{border:1px solid var(--line);background:var(--panel);padding:16px 22px;font-family:var(--font-mono);font-size:13px;color:var(--ink-muted);display:flex;flex-wrap:wrap;gap:8px 28px}
@@ -238,8 +238,8 @@ details[open]>summary .caret::before{content:"\2212"}
 .pin-hash{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:560px}
 .hash{color:var(--ink)}
 .step .step-n{font-family:var(--font-mono);font-size:11px;color:var(--ink-muted);margin-bottom:8px}
-.step .pc-title{font-size:13px;margin-bottom:8px}
-.step p{font-size:13px;line-height:1.6}
+.step .pc-title{font-size:16px;margin-bottom:8px}
+.step p{font-size:15px;line-height:1.6}
 .pipeline{position:relative;height:1px;background:var(--line);margin-top:14px}
 .pipe-dot{position:absolute;top:-2px;width:6px;height:5px;background:var(--signal);box-shadow:0 0 10px color-mix(in srgb,var(--signal) 80%,transparent);animation:pipeDot 5s linear infinite}
 .badge-copy{max-width:720px}
@@ -309,7 +309,7 @@ summary.sgrid{cursor:pointer;list-style:none}
 summary.sgrid::-webkit-details-marker{display:none}
 summary.sgrid:hover{background:var(--panel-2)}
 .sname{font-family:var(--font-mono);font-size:13px;color:var(--ink-bright);line-height:1.5}
-.sshort{font-size:13px;line-height:1.6;color:var(--ink-dim)}
+.sshort{font-size:14px;line-height:1.6;color:var(--ink-dim)}
 .slisted{font-family:var(--font-mono);font-size:10px;color:var(--ink-faint);white-space:nowrap}
 .sexpand{padding:4px 22px 22px;margin-left:250px;min-width:480px}
 .sexpand .wf-lockup{margin:0 0 12px}
@@ -358,7 +358,7 @@ a.pc-title{display:inline-block}
 .rail-row{padding:12px 0;border-top:1px solid var(--line-hair)}
 .rail-row:first-of-type{border-top:0;padding-top:0}
 .rail-row .rail-kv{display:block;margin:0 0 6px}
-.rail-val{font-size:13px;line-height:1.75;color:var(--ink-muted)}
+.rail-val{font-size:14px;line-height:1.75;color:var(--ink-muted)}
 .rail-item{display:block}
 .rail-item+.rail-item{margin-top:6px}
 .rail-val code{display:inline-block;font-size:11px;line-height:1.5;color:var(--ink);border:1px solid var(--line-mid);padding:0 6px;margin:1px 0;overflow-wrap:anywhere}
@@ -371,7 +371,7 @@ a.pc-title{display:inline-block}
 /* ── Use-cases ────────────────────────────────────────────────────────────── */
 .showcase{border:1px solid var(--line-mid);background:var(--panel-2);padding:40px;display:grid;grid-template-columns:1.2fr 1fr;gap:40px;align-items:center}
 .flag-title{font-family:var(--font-mono);font-size:24px;font-weight:700;color:var(--ink-bright);margin-bottom:14px}
-.flag-lede{font-size:15px;line-height:1.8;color:var(--ink);margin:0 0 16px}
+.flag-lede{font-size:16px;line-height:1.8;color:var(--ink);margin:0 0 16px}
 .flag-sub{font-size:16px;line-height:1.7;color:var(--ink-muted);margin:0 0 22px}
 /* BEGIN revoked-console block (accompanies /ui/revoked-console.js). The
    README's beats, one line each: a 6px square dot in the beat's tone
@@ -443,13 +443,13 @@ html.js-anim .fc-armed .fc-proof .wf-lockup{transition:color .35s ease-out,backg
 .flow-strip .wire.on{background:var(--signal)}
 .flow-strip .wire.cut{height:0;background:none;border-top:1px dashed var(--line-quiet)}
 .walk-status{font-family:var(--font-mono);font-size:10px;line-height:1.7;color:var(--ink-dim);margin:0 0 14px}
-.walk-cap{font-size:14px;line-height:1.7;color:var(--ink-muted);max-width:760px;margin:0}
+.walk-cap{font-size:16px;line-height:1.7;color:var(--ink-muted);max-width:760px;margin:0}
 .walk-line{font-family:var(--font-mono);font-size:13px;color:var(--ink);margin:14px 0 0}
-.try-note{font-size:14px;line-height:1.7;color:var(--ink-muted);max-width:760px;margin:16px 0}
+.try-note{font-size:16px;line-height:1.7;color:var(--ink-muted);max-width:760px;margin:16px 0}
 .tier p code{white-space:nowrap}
 /* Recipe cards: the target and reference lines, and the one wide card that
    carries its code sample beside the copy (the consent gate). */
-.recipe-kv{font-size:13px}
+.recipe-kv{font-size:14px}
 .recipe-kv strong{font-weight:600;color:var(--ink);margin-right:6px}
 .recipe-kv code{font-size:12px}
 .recipe-kv a{display:inline-block}
@@ -466,7 +466,7 @@ html.js-anim .fc-armed .fc-proof .wf-lockup{transition:color .35s ease-out,backg
 .ladder .chip{margin-bottom:0;padding:2px 10px}
 .rung-note{font-family:var(--font-mono);font-size:10px;color:var(--ink-faint)}
 .ladder-arrow{font-family:var(--font-mono);font-size:12px;color:var(--ink-faint);padding-top:4px}
-.ladder-copy{font-size:14px;color:var(--ink-muted);margin:0 0 28px}
+.ladder-copy{font-size:16px;color:var(--ink-muted);margin:0 0 28px}
 
 /* Solid accent button (the primary submit path). */
 .path-primary{display:flex;flex-direction:column;border-color:var(--line-mid);background:var(--panel-2)}
@@ -501,7 +501,7 @@ a.btn-solid:hover{background:var(--accent-hover);color:var(--on-accent)}
 
 /* ── Builders: the add-your-project strip + the entry builder ─────────────── */
 .cta-strip{display:flex;flex-wrap:wrap;align-items:center;gap:14px 24px;border:1px solid var(--line-mid);background:var(--panel-2);padding:16px 22px;margin-top:-36px;font-family:var(--font-mono);font-size:12px;color:var(--ink-muted)}
-.cta-lede{color:var(--ink);font-family:var(--font-sans);font-size:14px;flex:1 1 320px}
+.cta-lede{color:var(--ink);font-family:var(--font-sans);font-size:15px;flex:1 1 320px}
 .cta-strip .btn-solid{margin-top:0;padding:8px 14px;font-size:12px}
 .cta-strip+section{margin-top:44px}
 .eb-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:start}
