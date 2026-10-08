@@ -29,37 +29,37 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      # The run gates the job once the adapter is real. Until then it is
-      # informational only. "Real" means either the NotImplementedError stubs
-      # are gone from src/adapter.ts, or the repo variable REPORT_EXPECTED is
-      # set to 'true' (e.g. for a bring-your-own-harness setup that commits its
-      # own runner step).
-      - name: Detect adapter stubs
-        id: adapter
+      - name: Build
+        run: npm run build
+
+      # The runner skips categories whose adapter method is still a
+      # NotImplementedError stub, so the run gates the job as soon as any
+      # method is implemented, over the categories it covers. Exit 3 means none
+      # is implemented yet: informational until then, unless the repo variable
+      # REPORT_EXPECTED is 'true' (e.g. a bring-your-own-harness setup that
+      # commits its own runner step).
+      - name: Run conformance
+        id: run
+        env:
+          REPORT_EXPECTED: ${{ vars.REPORT_EXPECTED }}
         run: |
-          if grep -q "throw new NotImplementedError" src/adapter.ts; then
-            echo "implemented=false" >> "$GITHUB_OUTPUT"
-            echo "src/adapter.ts still throws NotImplementedError."
-          else
-            echo "implemented=true" >> "$GITHUB_OUTPUT"
+          set +e
+          node dist/src/run.js
+          code=$?
+          set -e
+          if [ "$code" -eq 3 ] && [ "$REPORT_EXPECTED" != "true" ]; then
+            echo "No adapter method is implemented yet, so there is nothing to gate."
+            exit 0
           fi
+          if [ "$code" -eq 0 ]; then echo "matched=true" >> "$GITHUB_OUTPUT"; fi
+          exit "$code"
 
-      - name: Run conformance (gating)
-        if: steps.adapter.outputs.implemented == 'true' || vars.REPORT_EXPECTED == 'true'
-        run: npm run conformance
-
-      - name: Run conformance (informational, adapter still stubbed)
-        if: steps.adapter.outputs.implemented != 'true' && vars.REPORT_EXPECTED != 'true'
-        run: npm run conformance || echo "Failures are expected until src/adapter.ts is implemented."
-
-      # Emits claim.json only from a gating (fully matching) run, and only when
-      # the repo variables CLAIM_SUBJECT and CLAIM_LEVEL are configured.
-      # make-claim refuses dishonest input on its own (failing report, dirty
-      # tree, mislabeled scope, placeholder name).
+      # Emits claim.json only from a fully matching run, and only when the repo
+      # variables CLAIM_SUBJECT and CLAIM_LEVEL are configured. make-claim
+      # refuses dishonest input on its own (failing report, dirty tree,
+      # mislabeled scope, placeholder name) and labels a partial run a subset.
       - name: Generate claim
-        if: >-
-          (steps.adapter.outputs.implemented == 'true' || vars.REPORT_EXPECTED == 'true') &&
-          vars.CLAIM_SUBJECT != '' && vars.CLAIM_LEVEL != ''
+        if: steps.run.outputs.matched == 'true' && vars.CLAIM_SUBJECT != '' && vars.CLAIM_LEVEL != ''
         run: node scripts/make-claim.mjs
         env:
           CLAIM_SUBJECT: ${{ vars.CLAIM_SUBJECT }}
@@ -81,6 +81,7 @@ jobs:
           if (existsSync('report.json')) {
             const r = read('report.json');
             lines.push('', `Report: **${r.passed}/${r.total} matched** (adapter: ${r.adapter})${r.allMatched ? '' : ' - NOT submission-ready'}`);
+            lines.push(`Categories run: ${[...new Set(r.results.map((x) => x.category))].join(', ')}`);
           } else {
             lines.push('', 'No report.json was produced.');
           }

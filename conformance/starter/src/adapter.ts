@@ -10,10 +10,14 @@
  *
  * CONTRACT (suite/types.ts): once implemented, methods MUST be fail-closed.
  * Any error, malformed input, or unmet security property returns
- * `{ outcome: 'fail' }`; implemented methods MUST NOT throw. The stubs below
- * deliberately violate that by throwing NotImplementedError, so an
- * unimplemented adapter shows up loudly as `actual: "error"` mismatches in the
- * report instead of silently passing anything.
+ * `{ outcome: 'fail' }`; implemented methods MUST NOT throw.
+ *
+ * Implement the methods for the categories your implementation covers and
+ * leave the rest as stubs. src/run.ts skips a category whose method only ever
+ * throws NotImplementedError, names it in its output, and leaves it out of
+ * report.json, so the claim is labeled a subset with the categories that ran.
+ * A method that answers any vector is reported in full, and every
+ * NotImplementedError it throws counts as a mismatch.
  *
  * Each TODO cites what the reference adapter (conformance/reference-adapter.ts
  * in decentralized-identity/kya-os-mcp at the pinned ref) does with the same
@@ -34,7 +38,10 @@ import type {
   StatusListInput,
 } from '../suite/types.js';
 
-/** Thrown by unimplemented stubs. Delete every use of this as you implement. */
+/**
+ * Thrown by unimplemented stubs. Delete each use as you implement that method.
+ * src/run.ts recognizes it by name.
+ */
 class NotImplementedError extends Error {
   constructor(method: string) {
     super(

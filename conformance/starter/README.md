@@ -66,14 +66,19 @@ To pin a newer release, update `PINNED_REF`, `PINNED_COMMIT`, `EXPECTED_VECTOR_S
 ### 0:10 - Wire your implementation (pick a door)
 
 **Door A - TypeScript adapter.**
-Implement the nine methods in [`src/adapter.ts`](./src/adapter.ts).
+[`src/adapter.ts`](./src/adapter.ts) has one method per suite category (the table [below](#the-suite-at-v1150) maps them).
+Implement the methods your implementation covers and leave the rest as their `NotImplementedError` stubs.
 Each stub's TODO cites what the reference adapter does with the same input; wire your own primitives, do not port the reference logic.
 Implemented methods must be fail-closed: return `{ outcome: 'fail' }` on any error, never throw.
 Then:
 
 ```bash
-npm run conformance   # typechecks, compiles, runs all 48 vectors, writes report.json
+npm run conformance   # typechecks, compiles, runs the vectors of every implemented method, writes report.json
 ```
+
+A category whose method is still a stub is skipped: the run names it, leaves it out of `report.json`, and `npm run claim` labels the claim a subset with the categories that ran.
+Nothing to configure: which methods you implemented decides the categories.
+A method that answers any vector is reported in full, so a `NotImplementedError` it throws for some inputs counts as a mismatch.
 
 **Door B - bring your own harness, any language.**
 Read `suite/vectors/*.json` directly (the file shape is documented at the bottom of the report contract), run each vector's `input` through your implementation, and emit `report.json` matching [examples/report.contract.md](./examples/report.contract.md) exactly.
@@ -143,7 +148,7 @@ Vectors carry fully-formed, pre-signed artifacts, so every vector reproduces aga
 ## CI
 
 [.github/workflows/conformance.yml](./.github/workflows/conformance.yml) runs on push and manual dispatch: fetch and hash-verify the suite, typecheck, run the adapter, upload `report.json` and `claim.json` as artifacts, and print the claim summary in the job summary.
-While `src/adapter.ts` still contains `NotImplementedError` stubs the conformance run is informational; once the stubs are gone (or the repo variable `REPORT_EXPECTED` is `true`) the run gates the job.
+The run gates the job as soon as any adapter method is implemented, over the categories it covers; while every method is still a stub it is informational (unless the repo variable `REPORT_EXPECTED` is `true`).
 Set repo variables `CLAIM_SUBJECT` and `CLAIM_LEVEL` (optionally `CLAIM_SCOPE`) to have CI generate `claim.json`.
 
 ## Layout
