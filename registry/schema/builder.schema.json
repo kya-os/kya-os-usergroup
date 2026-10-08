@@ -137,6 +137,12 @@
           "format": "uri",
           "pattern": "^https://",
           "description": "Public URL grounding the claim at its current status - the conformance submission issue or verification thread. The site renders non-verified status chips as links to it. Distinct from attestationUrl, which is the credential itself."
+        },
+        "supersedes": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://",
+          "description": "Re-attestation only: the attestationUrl of the credential this entry held before the claim moved back to in-verification. The next issuance revokes it as superseded in the same signed run. Allowed only at status in-verification, and only for a committed, unrevoked credential issued to this entry."
         }
       },
       "if": {
