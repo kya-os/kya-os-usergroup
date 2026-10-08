@@ -59,6 +59,11 @@ That PR is the auditable issuance record; merging deploys.
 The script refuses to sign on any mismatch: unprovisioned keys, a private key whose public half is not committed, an entry that is not `in-verification`, or a claim that differs from the entry in level, scope, or categories.
 [`revoke-credential.yml`](../.github/workflows/revoke-credential.yml) runs the same gate for revocation (terminal), suspension (renders "under appeal"), and unsuspension.
 
+A verified claim advances by re-attestation, not by editing the credential.
+The entry goes back to `in-verification` with the new claim and names its current credential in `supersedes`, which keeps that credential live and linked while the program re-runs.
+The issuance that verifies the new claim sets the superseded credential's revocation bit in the same signed status-list rebuild, so one entry never has two live credentials, and a live credential is never left without an entry.
+The issuance PR records the supersession; `verify-credential.mjs` answers `REVOKED` for the old credential from then on.
+
 Until real keys exist, `program-keys.json` carries an `unprovisioned` sentinel and everything fails closed on it: the build refuses any credential or verified entry, no `did.json` is emitted, the verifier answers `INVALID`, and nothing anywhere renders green.
 
 ### Maintainer setup (one time)

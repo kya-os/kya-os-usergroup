@@ -160,6 +160,9 @@ export function assertCredentialArtifacts({ distDir, rendered, credentialData, v
         verdicts.get(entry.slug)?.state === state,
         `shipped credential ${id32}: dist-recomputed state "${state}" disagrees with the build verdict for "${entry.slug}"`,
       );
+    } else if (rendered.some((candidate) => candidate.conformance?.supersedes?.endsWith(`/credentials/${id32}.json`))) {
+      // A re-attestation in flight: live until the reissue sets its bit.
+      assertBuild(state !== "revoked", `shipped credential ${id32} is superseded by an entry in verification but already revoked`);
     } else {
       assertBuild(state === "revoked", `shipped credential ${id32} is linked by no entry and must therefore be revoked`);
     }
