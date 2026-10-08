@@ -121,6 +121,10 @@ function conformanceErrors(c, vocab, fail) {
   }
   if (c.attestationUrl !== undefined && !isHttpsUrl(c.attestationUrl)) at('"conformance.attestationUrl" must be a valid https:// URL');
   if (c.evidenceUrl !== undefined && !isHttpsUrl(c.evidenceUrl)) at('"conformance.evidenceUrl" must be a valid https:// URL');
+  if (c.supersedes !== undefined && c.status !== "in-verification") {
+    at('"conformance.supersedes" is only allowed at status "in-verification" - it names the credential a re-attestation in flight replaces');
+  }
+  if (c.supersedes !== undefined && !isHttpsUrl(c.supersedes)) at('"conformance.supersedes" must be a valid https:// URL');
 }
 
 function deployErrors(deploy, vocab, fail) {

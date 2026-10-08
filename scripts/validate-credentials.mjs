@@ -242,6 +242,24 @@ export function validateCredentials(entries, rootDir = defaultRoot) {
     }
   }
 
+  // A re-attestation names the credential it replaces; it must be this
+  // entry's own committed credential, or the issuance would revoke someone
+  // else's.
+  for (const entry of entries) {
+    const url = entry.conformance?.supersedes;
+    if (typeof url !== "string") continue;
+    const rel = `registry/builders/${entry.slug}.json`;
+    const record = byAttestationUrl.get(url);
+    if (record === undefined) {
+      errors.push(`${rel}: supersedes does not point at a committed registry/credentials/<id32>.json credential (${url})`);
+      continue;
+    }
+    const allocation = allocationById.get(record.credential.id);
+    if (allocation === undefined || allocation.slug !== entry.slug) {
+      errors.push(`${rel}: the superseded credential ${record.credential.id} was not issued to "${entry.slug}"`);
+    }
+  }
+
   // ── fail closed on the unprovisioned sentinel ─────────────────────────────
   if (!programKeys.provisioned) {
     if (credentials.length > 0) {

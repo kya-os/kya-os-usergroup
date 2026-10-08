@@ -13,7 +13,8 @@
  *     readable
  *   - the credential state (verified / suspended / revoked, revocation
  *     winning) must agree with the registry entry that links it: a verified
- *     entry may sit on no revocation bit, a revoked entry must, and a
+ *     entry may sit on no revocation bit, a revoked entry must, a credential
+ *     an in-verification entry `supersedes` must not be revoked yet, and a
  *     credential no entry links must be revoked (a retired record) - any
  *     other combination refuses the build naming the credential
  *
@@ -95,9 +96,12 @@ export function verifyCredentialArtifacts({ programKeys, credentials, statusList
 
   // ── each credential: proof, bits, and entry agreement ─────────────────────
   const entryByUrl = new Map();
+  const supersedingEntryByUrl = new Map();
   for (const entry of entries) {
     const url = entry.conformance?.attestationUrl;
     if (typeof url === "string") entryByUrl.set(url, entry);
+    const superseded = entry.conformance?.supersedes;
+    if (typeof superseded === "string") supersedingEntryByUrl.set(superseded, entry);
   }
   for (const { id32, rel, credential } of credentials) {
     const key = keyForProof(programKeys, credential.proof?.verificationMethod, "issuer", fail, rel);
@@ -123,6 +127,15 @@ export function verifyCredentialArtifacts({ programKeys, credentials, statusList
     const attestationUrl = `${CREDENTIALS_BASE}/${id32}.json`;
     const entry = entryByUrl.get(attestationUrl);
     if (entry === undefined) {
+      // A re-attestation in flight still links the credential it replaces:
+      // it stays live until the issuance that supersedes it sets its bit.
+      const superseding = supersedingEntryByUrl.get(attestationUrl);
+      if (superseding !== undefined) {
+        if (state === "revoked") {
+          fail(`${rel}: registry/builders/${superseding.slug}.json supersedes this credential, but it is already revoked - drop "supersedes"`);
+        }
+        continue;
+      }
       // A credential no entry links is only legitimate as a retired record:
       // superseded by reissue AND revoked. A live orphan is a refusal.
       if (state !== "revoked") {

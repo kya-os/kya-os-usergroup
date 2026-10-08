@@ -269,6 +269,77 @@ test("e2e: ceremony -> issue -> verify -> suspend -> unsuspend -> revoke -> muta
   const subsetShields = JSON.parse(read("dist", "badge", `${SUBSET_SLUG}.json`));
   assert.equal(subsetShields.message, "✓ L3 subset verified");
 
+  // ── re-attestation: the subset claim advances to full ─────────────────────
+  // The entry moves back to in-verification naming its current credential in
+  // `supersedes`. The build keeps that credential live meanwhile, and the
+  // reissue revokes it in the same signed run that mints the new one.
+  const subsetSummary = JSON.parse(read("subset-summary.json"));
+  const demoPath = tempPath("registry", "builders", `${SUBSET_SLUG}.json`);
+  const demoVerified = JSON.parse(readFileSync(demoPath, "utf8"));
+  const reattest = (supersedes) => {
+    const { evidenceUrl } = demoVerified.conformance;
+    const conformance = { level: "L3", scope: "full", suiteVersion: SUITE.version, status: "in-verification", supersedes };
+    if (evidenceUrl !== undefined) conformance.evidenceUrl = evidenceUrl;
+    writeFileSync(demoPath, JSON.stringify({ ...demoVerified, conformance }, null, 2) + "\n");
+  };
+
+  // Another entry's credential (kya-os-mcp's, revoked above) is refused.
+  reattest(`https://builders.kya-os.org/credentials/${id32}.json`);
+  const foreignSupersede = run([tempPath("site", "build-pages.mjs")]);
+  assert.equal(foreignSupersede.status, 1, "superseding another entry's credential must refuse the build");
+  assert.match(foreignSupersede.stderr + foreignSupersede.stdout, /was not issued to "kya-os-demo-server"/);
+
+  // supersedes is only meaningful while a re-attestation is in flight.
+  writeFileSync(
+    demoPath,
+    JSON.stringify({ ...demoVerified, conformance: { ...demoVerified.conformance, supersedes: subsetSummary.attestationUrl } }, null, 2) + "\n",
+  );
+  const verifiedSupersede = run([tempPath("site", "build-pages.mjs")]);
+  assert.equal(verifiedSupersede.status, 1, "supersedes on a verified entry must refuse the build");
+  assert.match(verifiedSupersede.stderr + verifiedSupersede.stdout, /only allowed at status "in-verification"/);
+
+  reattest(subsetSummary.attestationUrl);
+  const inFlight = run([tempPath("site", "build-pages.mjs")]);
+  assert.equal(inFlight.status, 0, `a re-attestation in flight keeps the build green:\n${inFlight.stderr}`);
+  assert.ok(!read("dist", "badge", `${SUBSET_SLUG}.svg`).includes("verified"), "an entry back in verification renders no verified badge");
+
+  const reissue = run(
+    [
+      tempPath("scripts", "issue-credential.mjs"),
+      "--slug", SUBSET_SLUG,
+      "--subject-id", "https://demo-mcp.kya-os.ai/health",
+      "--impl-name", "KYA-OS Demo Server",
+      "--impl-version", "1.1.0",
+      "--git-commit", GIT_COMMIT,
+      "--level", "L3",
+      "--scope", "full",
+      "--package-version", "1.18.0",
+      "--verdict-url", "https://github.com/kya-os/kya-os-usergroup/issues/7",
+      "--summary", tempPath("reissue-summary.json"),
+      "--pr-body", tempPath("reissue-pr-body.md"),
+    ],
+    { K_ISSUER_PRIVATE: secrets.K_ISSUER_PRIVATE, K_STATUS_PRIVATE: secrets.K_STATUS_PRIVATE },
+  );
+  assert.equal(reissue.status, 0, reissue.stderr);
+  const reissueSummary = JSON.parse(read("reissue-summary.json"));
+  assert.equal(reissueSummary.supersedes, subsetSummary.credentialId);
+  assert.notEqual(reissueSummary.id32, subsetSummary.id32);
+  assert.match(read("reissue-pr-body.md"), new RegExp(`supersedes \\| \`${subsetSummary.credentialId}\``));
+  const reissued = JSON.parse(read("registry", "builders", `${SUBSET_SLUG}.json`)).conformance;
+  assert.equal(reissued.status, "verified");
+  assert.equal(reissued.attestationUrl, reissueSummary.attestationUrl);
+  assert.equal(reissued.supersedes, undefined, "the issuance drops supersedes");
+  assert.ok(read("dist", "badge", `${SUBSET_SLUG}.svg`).includes("✓ L3 verified"), "the reissued full claim renders verified");
+
+  const verdictOf = (credentialId32) =>
+    run([tempPath("scripts", "verify-credential.mjs"), tempPath("registry", "credentials", `${credentialId32}.json`), "--offline"]);
+  const previous = verdictOf(subsetSummary.id32);
+  assert.equal(previous.status, 3, "the superseded credential reads as revoked");
+  assert.equal(JSON.parse(previous.stdout).verdict, "REVOKED");
+  const current = verdictOf(reissueSummary.id32);
+  assert.equal(current.status, 0, current.stderr || current.stdout);
+  assert.equal(JSON.parse(current.stdout).verdict, "VERIFIED");
+
   // ── mutation proofs: the build refuses, naming the credential ─────────────
   const credentialPath = tempPath("registry", "credentials", `${id32}.json`);
   const pristine = readFileSync(credentialPath, "utf8");
