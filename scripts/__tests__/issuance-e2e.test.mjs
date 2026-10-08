@@ -59,7 +59,13 @@ for (const name of readdirSync(join(temp, "registry", "builders"))) {
   const path = join(temp, "registry", "builders", name);
   const entry = JSON.parse(readFileSync(path, "utf8"));
   const c = entry.conformance;
-  if (c === undefined || (c.status !== "verified" && c.status !== "revoked")) continue;
+  if (c === undefined) continue;
+  // A re-attestation in flight names a credential the reset above deleted.
+  if (c.supersedes !== undefined) {
+    delete c.supersedes;
+    writeFileSync(path, JSON.stringify(entry, null, 2) + "\n");
+  }
+  if (c.status !== "verified" && c.status !== "revoked") continue;
   c.status = typeof c.evidenceUrl === "string" ? "in-verification" : "self-reported";
   delete c.attestationUrl;
   // The e2e exercises the issuance machinery against the CURRENT pin; a live
