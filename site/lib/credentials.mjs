@@ -164,7 +164,10 @@ export function verifyCredentialArtifacts({ programKeys, credentials, statusList
       fail(`${rel}: ${err.message}`);
       continue;
     }
-    verdicts.set(entry.slug, { state, attestationUrl, waveSeed });
+    // id32 and the signature ride along for display only (the directory's
+    // provenance panel names the credential and the signature it was drawn
+    // from); they are the bytes this function just verified.
+    verdicts.set(entry.slug, { state, attestationUrl, waveSeed, id32, signature: credential.proof.proofValue });
   }
 
   // Every verified/revoked entry must have earned a verdict (its credential

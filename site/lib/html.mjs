@@ -76,7 +76,7 @@ export function interopStatusChip(status) {
 export function promptBlock(promptId) {
   const prompt = PROMPTS.find((p) => p.id === promptId);
   return `<div class="agent-prompt">
-        <button type="button" class="copy-btn" data-copy-target="${prompt.id}" hidden>[ copy prompt for your agent ]</button>
+        <button type="button" class="copy-btn" data-copy-target="${prompt.id}" hidden>Copy prompt for your agent</button>
         <details class="prompt-fallback"><summary>or copy manually</summary><pre id="${prompt.id}">${esc(prompt.text)}</pre></details>
       </div>`;
 }
@@ -102,6 +102,10 @@ function logoMark(cls = "") {
 }
 
 /**
+ * `still` marks a page whose only motion is its own (page-fx skips the
+ * scroll skew and the nav scramble there). Under 760px the nav links fold
+ * behind a CSS-only menu toggle, so the fixed bar stays one row.
+ *
  * The shared shell: head (meta, the two same-origin stylesheets, the ONE
  * inline script - theme toggle + js-anim gate + page-fx failsafe, CSP-pinned
  * by hash - and the module tags, covered by script-src 'self': the shell
@@ -111,7 +115,7 @@ function logoMark(cls = "") {
  * nothing. Scripts sit in <head>: the inline script's pre-paint
  * halves must run before first render, and modules are deferred by nature.
  */
-export function pageShell({ title, headExtra = "", body, current = null, modules = [] }) {
+export function pageShell({ title, headExtra = "", body, current = null, modules = [], still = false }) {
   const navLinks = NAV_PAGES.map(([href, label]) =>
     href === current
       ? `\n    <a href="${href}" data-glitch aria-current="page" class="nav-on">${label}</a>`
@@ -127,6 +131,9 @@ export function pageShell({ title, headExtra = "", body, current = null, modules
 <meta name="color-scheme" content="dark light" />
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="${THEME_COLORS.light}" />
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="${THEME_COLORS.dark}" />
+<link rel="icon" href="/img/favicon-32.png" type="image/png" sizes="32x32" />
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png" />
 ${headExtra}<link rel="stylesheet" href="/tokens.css" />
 <link rel="stylesheet" href="/hub.css" />
 <script>${THEME_SCRIPT}</script>
@@ -137,12 +144,14 @@ ${modules.map((name) => `<script type="module" src="/ui/${name}"></script>\n`).j
 <div class="page">
 <nav class="topnav">
   <a class="brand" href="/">${logoMark()}<span class="brand-name">KYA-OS</span><span class="brand-sub"> / builders</span></a>
+  <input type="checkbox" id="nav-toggle" class="nav-toggle" />
+  <label for="nav-toggle" class="nav-menu">Menu</label>
   <div class="nav-links">${navLinks}
-    <button id="theme-toggle" type="button" class="theme-btn" aria-label="Theme: system. Click to change.">[ auto ]</button>
-    <a class="nav-cta" href="${addHref}">[ add project -&gt; ]</a>
+    <button id="theme-toggle" type="button" class="theme-btn" aria-label="Theme: system. Click to change.">Theme: auto</button>
+    <a class="nav-cta" href="${addHref}">Add project</a>
   </div>
 </nav>
-<main>
+<main${still ? " data-still" : ""}>
 ${body}
   <footer>
     <span class="foot-brand">${logoMark(" mark-sm")}KYA-OS Usergroup &middot; builders.kya-os.org</span>

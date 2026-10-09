@@ -218,11 +218,17 @@ export async function initPageFx() {
     // decrypt failure - the release below must run no matter what.
     fx.forEach((el) => { el.style.animationPlayState = "running"; });
   }
-  document.querySelectorAll("[data-glitch]").forEach((el) => {
-    if (el.children.length === 0) new GlitchText(el);
-  });
+  // A still page (main[data-still], the builders directory) keeps one
+  // motion of its own - the signature wave - so the nav scramble and the
+  // scroll skew stand down there.
   const main = document.querySelector("main");
-  if (main) {
+  const still = main?.hasAttribute("data-still") ?? false;
+  if (!still) {
+    document.querySelectorAll("[data-glitch]").forEach((el) => {
+      if (el.children.length === 0) new GlitchText(el);
+    });
+  }
+  if (main && !still) {
     // 1:1 with kya-os.org, measured in pixels rather than degrees.
     //
     // The class above is the reference's, line for line, and the reference

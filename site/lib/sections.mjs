@@ -16,7 +16,7 @@ import { CLAIM_WAVE, claimWaveSeed } from "../../scripts/lib/builder-entry.mjs";
 import { conformanceLabel, conformanceLevelUrl, directorySorted } from "./data.mjs";
 import { conformanceStatusChip, esc, promptBlock } from "./html.mjs";
 import { KINDS } from "../../scripts/lib/registry-enums.mjs";
-import { waveformSvg } from "./waveform.mjs";
+import { flatWaveSvg, waveformSvg } from "./waveform.mjs";
 
 // What each entry kind means, shown under the filter strip (design copy,
 // verbatim; marketplace added for the hub's schema).
@@ -53,39 +53,19 @@ function displayState(conformance, verdict) {
 
 
 /**
- * The live signal for a service row. Without probe data: the neutral static
- * dot. With probe data: the summary dot takes the classified tone, and the
- * expanded row carries the dated, classified line - enforcement language is
- * NEVER rendered without a probe result behind it, and an open endpoint is
- * stated honestly, not shamed.
+ * The probe's dated, classified fact for the provenance panel, when the
+ * entry names a probe endpoint and the daily probe has a result for it.
+ * Enforcement language is NEVER rendered without a probe result behind it,
+ * and an open endpoint is stated honestly, not shamed.
  */
-function probeSignal(entry, probes) {
-  if (entry.kind !== "service" && entry.kind !== "implementation") return { dot: "", line: "" };
+function probeFact(entry, probes) {
+  if (entry.kind !== "service" && entry.kind !== "implementation") return "";
   const probe = probes?.results?.[entry.slug];
-  // The unproved fallback dot is a service affordance (a hosted endpoint you
-  // can point at); a library/implementation earns a signal only from a real
-  // probe result on a declared probeUrl.
-  if (!probe) {
-    if (entry.kind !== "service") return { dot: "", line: "" };
-    return { dot: "", line: "" };
-  }
+  if (!probe) return "";
   const checked = `checked ${esc(probes.probedAt)}`;
-  if (probe.status === "enforcing") {
-    return {
-      dot: "",
-      line: `<div class="dprobe tone-signal">&#9679; live &middot; enforcement verified &middot; ${checked}</div>`,
-    };
-  }
-  if (probe.status === "open") {
-    return {
-      dot: "",
-      line: `<div class="dprobe quiet">&#9679; live &middot; open (no proof required) &middot; ${checked}</div>`,
-    };
-  }
-  return {
-    dot: "",
-    line: `<div class="dprobe tone-faint">&#9675; unreachable &middot; ${checked}</div>`,
-  };
+  if (probe.status === "enforcing") return `<dd class="dprobe tone-signal">enforcement verified, ${checked}</dd>`;
+  if (probe.status === "open") return `<dd class="dprobe">open (no proof required), ${checked}</dd>`;
+  return `<dd class="dprobe tone-faint">unreachable, ${checked}</dd>`;
 }
 
 // Row marks: first-party entries carry the KYA-OS mark, partner entries their
@@ -110,85 +90,144 @@ function rowMark(entry) {
 
 /**
  * The CONFORMANCE cell: the claim's wave beside its label, the state under
- * them. The state comes from conformanceStatusChip, so a green "verified"
- * still has exactly one code path and fails closed without a verdict; it is
- * unlinked here because the expanded row carries the credential link.
+ * them, and the credential's id beside the state (revealed on hover or
+ * focus where motion is allowed, always shown otherwise). The state comes
+ * from conformanceStatusChip, so a green "verified" still has exactly one
+ * code path and fails closed without a verdict; it is unlinked here because
+ * the provenance panel carries the credential link.
  */
 function claimCell(conformance, verdict, waveSeed, state) {
+  const id = verdict?.id32 ? `<code class="dclaim-sig">${esc(verdict.id32.slice(0, 8))}</code>` : "";
   return `<span class="dclaim tone-${CONF_TONE[state]}">` +
     `<span class="dclaim-head">${waveformSvg(waveSeed, CLAIM_WAVE)}<span class="dclaim-label">${esc(conformanceLabel(conformance))}</span></span>` +
-    `${conformanceStatusChip(conformance, { link: false, verdict, bare: true })}</span>`;
+    `<span class="dclaim-foot">${conformanceStatusChip(conformance, { link: false, verdict, bare: true })}${id}</span></span>`;
+}
+
+/** No claim, no signature: the flat line where the fingerprint would be. */
+function unclaimedCell() {
+  return `<span class="dclaim dclaim-none">` +
+    `<span class="dclaim-head">${flatWaveSvg(CLAIM_WAVE)}<span class="dclaim-label">listed</span></span>` +
+    `<span class="dclaim-foot">no claim yet</span></span>`;
+}
+
+// The panel draws the row's wave longer: the same seed, so its first 16
+// bars are the row's 16.
+const PANEL_WAVE = { bars: 48, trackHeight: 30, barWidth: 3, gap: 2.2 };
+
+/** A signature shortened for display: enough to recognize, never to rely on. */
+function shortSignature(proofValue) {
+  return proofValue.length > 20 ? `${proofValue.slice(0, 10)}...${proofValue.slice(-6)}` : proofValue;
+}
+
+/**
+ * The verify command for a credential, with a copy button that
+ * /ui/copy-prompt.js reveals (no JS, no dead button: the command itself is
+ * selectable text).
+ */
+function verifyBlock(slug, attestationUrl) {
+  const id = `verify-${slug}`;
+  return `<div class="pverify">
+              <div class="pverify-head"><span>Verify it yourself from a clone of this registry's repo</span><button type="button" class="copy-cmd" data-copy-target="${esc(id)}" data-copied="Copied" hidden>Copy</button></div>
+              <pre class="pcmd" id="${esc(id)}">curl -s ${esc(attestationUrl)} | node scripts/verify-credential.mjs -</pre>
+            </div>`;
+}
+
+/**
+ * The expanded row: the provenance panel. On the left, the wave drawn large
+ * with what it was drawn from, the facts as a list, and one sentence on what
+ * the state means; on the right, the verify command and the links. The
+ * probe's reported deployment version sits beside the claim - two facts
+ * side by side, equality never asserted here (the claim's verification
+ * thread documents the tie).
+ */
+function provenancePanel(entry, { c, verdict, state, waveSeed, probeFact, provenanceVersion }) {
+  const fact = (term, value, cls = "") => `<div><dt>${term}</dt><dd${cls ? ` class="${cls}"` : ""}>${value}</dd></div>`;
+  const facts = [];
+  if (c) {
+    facts.push(fact("Claim", `<a href="${esc(conformanceLevelUrl(c))}">${esc(conformanceLabel(c))}</a>`));
+    facts.push(fact("Suite", esc(c.suiteVersion)));
+    if (provenanceVersion) facts.push(fact("Deployed", esc(provenanceVersion), "dprov"));
+  }
+  if (probeFact) facts.push(`<div><dt>Live probe</dt>${probeFact}</div>`);
+  if (verdict?.id32) facts.push(fact("Credential", `<code>${esc(verdict.id32)}</code>`));
+  if (entry.buildsOn?.length) facts.push(fact("Builds on", entry.buildsOn.map((repo) => esc(repo)).join(", ")));
+  if (entry.standards?.length) facts.push(fact("Speaks", entry.standards.map((slug) => esc(slug)).join(", ")));
+  facts.push(fact("Listed", esc(entry.listedAt)));
+
+  const signature = c
+    ? `<div class="psig tone-${CONF_TONE[state]}">${waveformSvg(waveSeed, PANEL_WAVE)}<p class="psig-cap">${
+        verdict?.signature
+          ? `Drawn from signature <code>${esc(shortSignature(verdict.signature))}</code>`
+          : "Drawn from the claim until a credential signs it"
+      }</p></div>`
+    : `<div class="psig psig-none">${flatWaveSvg(PANEL_WAVE)}<p class="psig-cap">No claim, so no signature to draw</p></div>`;
+  const note = c ? CONF_TEXT[state] : "Listed in the registry, with no conformance claim yet.";
+
+  const links = [`<a href="${esc(entry.homepage)}">homepage -&gt;</a>`];
+  if (entry.repo && entry.repo !== entry.homepage) links.push(`<a href="${esc(entry.repo)}">repo -&gt;</a>`);
+  if (c?.attestationUrl) links.push(`<a href="${esc(c.attestationUrl)}">credential -&gt;</a>`);
+  if (c?.evidenceUrl) links.push(`<a href="${esc(c.evidenceUrl)}">evidence -&gt;</a>`);
+  if (entry.contact?.github) links.push(`<a href="https://github.com/${esc(entry.contact.github)}">@${esc(entry.contact.github)} -&gt;</a>`);
+
+  return `<div class="dexpand">
+          <div class="prov">
+            ${signature}
+            <dl class="pfacts">${facts.join("")}</dl>
+          </div>
+          <div class="pactions">
+            <p class="pnote">${esc(note)}</p>
+            <div class="dlinks">${links.join("\n              ")}</div>
+          </div>
+          ${c?.attestationUrl ? verifyBlock(entry.slug, c.attestationUrl) : ""}
+        </div>`;
 }
 
 function directoryRow(entry, probes, verdicts) {
   const c = entry.conformance;
   const verdict = verdicts.get(entry.slug);
-  const { dot: liveDot, line: probeLine } = probeSignal(entry, probes);
-  // The provenance tie: the probe's reported deployment version beside the
-  // claim - two facts displayed side by side, equality never asserted here
-  // (the claim's verification thread documents the tie).
-  const provenanceVersion = probes?.results?.[entry.slug]?.provenanceVersion;
-  const deployed = c && provenanceVersion ? ` <span class="dprov">&middot; deployed ${esc(provenanceVersion)}</span>` : "";
+  const probeLine = probeFact(entry, probes);
+  const provenanceVersion = c ? probes?.results?.[entry.slug]?.provenanceVersion : undefined;
   const state = c && displayState(c, verdict);
   // The wave: seeded by the credential's SIGNATURE once there is one to
   // fingerprint (verdict.waveSeed, from proof.proofValue - the same seed the
   // entry's badge draws with, so the row and the badge are one wave), and by
   // the claim itself while the entry carries no credential.
   const waveSeed = verdict?.waveSeed ?? (c && claimWaveSeed(entry.slug, c));
-  const chip = c ? claimCell(c, verdict, waveSeed, state) : `<span class="chip st-listed">&middot; listed</span>`;
-  const confLine = c
-    ? `<div class="dconf-line tone-${CONF_TONE[state]}">${waveformSvg(waveSeed, CLAIM_WAVE)}<p>conformance: <a href="${esc(conformanceLevelUrl(c))}">${esc(conformanceLabel(c))}</a>${deployed} - ${esc(CONF_TEXT[state])}</p></div>`
-    : `<div class="dconf-line tone-faint"><p>Listed in the registry - no conformance claim yet.</p></div>`;
-  const capabilities = [];
-  if (entry.buildsOn?.length) capabilities.push(`builds on: ${entry.buildsOn.map((repo) => esc(repo)).join(", ")}`);
-  if (entry.standards?.length) capabilities.push(`speaks: ${entry.standards.map((slug) => esc(slug)).join(", ")}`);
-  const capLine = capabilities.length ? `<div class="dcap">${capabilities.join(" &middot; ")}</div>` : "";
-  const links = [`<a href="${esc(entry.homepage)}">homepage -&gt;</a>`];
-  if (entry.repo && entry.repo !== entry.homepage) links.push(`<a href="${esc(entry.repo)}">repo -&gt;</a>`);
-  if (c?.attestationUrl) links.push(`<a href="${esc(c.attestationUrl)}">credential -&gt;</a>`);
-  if (c?.evidenceUrl) links.push(`<a href="${esc(c.evidenceUrl)}">evidence -&gt;</a>`);
-  if (entry.contact?.github) links.push(`<a href="https://github.com/${esc(entry.contact.github)}">@${esc(entry.contact.github)} -&gt;</a>`);
+  const cell = c ? claimCell(c, verdict, waveSeed, state) : unclaimedCell();
   return `      <details class="drow k-${esc(entry.kind)}" id="${esc(entry.slug)}">
         <summary class="dgrid">
-          <span class="dname">${rowMark(entry)}<span class="dtitle">${esc(entry.name)}</span>${liveDot}</span>
-          <span class="dtype">${esc(entry.kind)}</span>
+          <span class="dname">${rowMark(entry)}<span class="dname-text"><span class="dtitle">${esc(entry.name)}</span><span class="dtype">${esc(entry.kind)}</span></span></span>
           <span class="dwhat">${esc(entry.description)}</span>
-          <span class="dconf">${chip}</span>
-          <span class="dlisted">${esc(entry.listedAt)}</span>
+          <span class="dconf">${cell}</span>
           <span class="caret" aria-hidden="true"></span>
         </summary>
-        <div class="dexpand">
-          ${probeLine ? `${probeLine}\n          ` : ""}${confLine}
-          ${capLine ? `${capLine}\n          ` : ""}<div class="dlinks">${links.join("\n            ")}</div>
-          
-        </div>
+        ${provenancePanel(entry, { c, verdict, state, waveSeed, probeFact: probeLine, provenanceVersion })}
       </details>`;
 }
 
-/** The compact add-your-project strip under the lede: the invitation first, the detail at the bottom. */
+/** The add-your-project strip under the lede: one invitation, one action. */
 export function sectionAddCta() {
-  return `  <div class="cta-strip fx fxd-10">
-    <span class="cta-lede">Add your project: one JSON file, one pull request, listed in five minutes.</span>
-    <a class="btn-solid" href="#build-entry">build your entry -&gt;</a>
-    <a href="${esc(ADD_PROJECT_URL)}">or open the prefilled editor -&gt;</a>
-    <a class="quiet" href="#submit">the three paths -&gt;</a>
+  return `  <div class="cta-strip">
+    <span class="cta-lede">Add your project: one JSON file and one pull request.</span>
+    <a class="btn-solid" href="#build-entry">Build your entry</a>
   </div>`;
 }
 
 /** The directory: CSS-only type filter + expandable registry rows. */
 export function sectionDirectory(rendered, probes, verdicts) {
-  const types = ["all", ...KINDS];
   const counts = { all: rendered.length };
   for (const entry of rendered) counts[entry.kind] = (counts[entry.kind] ?? 0) + 1;
+  // Only kinds with entries get a radio and a label: an empty filter is a
+  // dead end, and a radio without its label would still be reachable with
+  // the arrow keys. (The CSS filter's selectors for absent kinds simply never
+  // match.) One noun form throughout - the kind's own name, as each row
+  // prints it.
+  const types = ["all", ...KINDS].filter((t) => t === "all" || (counts[t] ?? 0) > 0);
   const inputs = types
     .map((t, i) => `    <input type="radio" name="kind-filter" id="f-${t}"${i === 0 ? " checked" : ""} />`)
     .join("\n");
   const chips = types
-    .map((t) => {
-      const count = counts[t] ?? 0;
-      const label = t === "all" ? `all ${count}` : `${t}${count > 1 ? "s" : ""} ${count}`;
-      return `      <label class="filter-chip" for="f-${t}">${esc(label)}</label>`;
-    })
+    .map((t) => `      <label class="filter-chip" for="f-${t}">${esc(`${t} ${counts[t]}`)}</label>`)
     .join("\n");
   const hints = types
     .filter((t) => TYPE_DEFS[t] !== "")
@@ -197,40 +236,68 @@ export function sectionDirectory(rendered, probes, verdicts) {
   const rows = directorySorted(rendered)
     .map((entry) => directoryRow(entry, probes, verdicts))
     .join("\n");
-  return `  <section class="dir fx fxd-15">
+  return `  <section class="dir">
 ${inputs}
     <div class="filter-row">
 ${chips}
     </div>
     <p class="filter-hint">${hints}</p>
     <div class="dtable">
-      <div class="dgrid dhead" aria-hidden="true"><span>PROJECT</span><span>TYPE</span><span>WHAT IT IS</span><span>CONFORMANCE</span><span>LISTED</span><span></span></div>
+      <div class="dgrid dhead" aria-hidden="true"><span>Project</span><span>What it is</span><span>Conformance</span><span></span></div>
 ${rows}
-      <div class="dfoot">your project here - <a href="${esc(ADD_PROJECT_URL)}">one JSON file and one pull request -&gt;</a></div>
+      <div class="dfoot">Your project here: <a href="${esc(ADD_PROJECT_URL)}">one JSON file and one pull request &rarr;</a></div>
     </div>
-    <p class="dnote">Ordered by the ladder: verified first, then in verification, then self-reported, then everything listed. A <span class="tone-signal">&#9679;</span> next to the name marks a hosted service endpoint you can point at today; where the entry names a probe endpoint, the daily probe classifies it in the expanded row - dated, from the wire, independent of any claim.</p>
+    <p class="dnote">Ordered by the ladder: verified first, then in verification, then self-reported, then everything listed. Each wave is drawn from its credential's signature; a flat line means no claim yet. Where an entry names a probe endpoint, the daily probe's dated result is in the expanded row.</p>
   </section>`;
+}
+
+/**
+ * The builders hero: the registry's own signatures. Every verified
+ * credential's wave, drawn long from the same seed its row and badge use,
+ * with what it attests; then the counts in one sentence. The page is about
+ * proof, so the first thing it shows is proof - no title decrypt, no
+ * eyebrow.
+ */
+const HERO_WAVE = { bars: 96, trackHeight: 44, barWidth: 3, gap: 2.4 };
+
+export function builderHero(rendered, verdicts) {
+  const verified = directorySorted(rendered).filter((entry) => verdicts.get(entry.slug)?.state === "verified");
+  const signatures = verified
+    .map((entry) => {
+      const verdict = verdicts.get(entry.slug);
+      return `      <a class="hsig" href="#${esc(entry.slug)}">
+        <span class="hsig-wave tone-signal">${waveformSvg(verdict.waveSeed, HERO_WAVE)}</span>
+        <span class="hsig-meta"><span class="hsig-name">${esc(entry.name)}</span><span class="hsig-claim">${esc(conformanceLabel(entry.conformance))} <code>${esc(verdict.id32.slice(0, 8))}</code></span></span>
+      </a>`;
+    })
+    .join("\n");
+  const count = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  return `  <header class="hero hero-builders">
+    <h1>Builders</h1>
+    <p class="lede">Everyone building on KYA-OS, in one registry. Conformance is measured against the pinned vector suite, never self-asserted, and every verified claim is a signed credential this site re-checks.</p>
+${verified.length > 0 ? `    <div class="hsigs">\n${signatures}\n    </div>\n` : ""}    <p class="hsig-caption"><span class="hsig-count">${esc(count(verified.length, "verified credential", "verified credentials"))}, ${esc(count(rendered.length, "project", "projects"))}.</span><span>Each wave is drawn from its credential's signature: no two match, and a reissue draws a new one.</span></p>
+  </header>`;
 }
 
 /** The three "start here" on-ramps. */
 export function sectionStartHere() {
-  return `  <section class="fx fxd-30">
+  return `  <section>
     <h2>Start here</h2>
     <div class="rule"></div>
     <div class="grid-3">
       <div class="panel-card">
-        <a class="pc-title" href="${PLAYGROUND_URL}">poke a live server</a>
+        <a class="pc-title" href="${PLAYGROUND_URL}">Poke a live server</a>
         <p>Speak MCP to a real KYA-OS endpoint before running your own - inspect the signed proof in every response.</p>
         <p class="pc-sub">raw endpoint: <code>POST ${DEMO_MCP_URL}</code></p>
         <a class="pc-link" href="${PLAYGROUND_URL}">open the playground -&gt;</a>
       </div>
       <div class="panel-card">
-        <a class="pc-title" href="${STARTER_URL}">fork the starter</a>
+        <a class="pc-title" href="${STARTER_URL}">Fork the starter</a>
         <p>From existing implementation to submission-ready conformance claim in under an hour - all ${SUITE.vectors} vectors, any language.</p>
         <a class="pc-link" href="${STARTER_URL}">conformance-starter -&gt;</a>
       </div>
       <div class="panel-card">
-        <a class="pc-title" href="${REVOKED_TREE_URL}">see it in action</a>
+        <a class="pc-title" href="${REVOKED_TREE_URL}">See it in action</a>
         <p>REVOKED: an on-chain kill switch for wallet agents. A genuinely revoked credential is anchored on-chain right now.</p>
         <a class="pc-link" href="/use-cases/">use-cases -&gt;</a>
       </div>
@@ -241,7 +308,7 @@ export function sectionStartHere() {
 /** The trust ladder plus the one primary action (prompt + prefilled link). */
 export function sectionSubmit() {
   const rung = (chip, note) => `      <span class="rung">${chip}<span class="rung-note">${note}</span></span>`;
-  return `  <section id="submit" class="fx fxd-40">
+  return `  <section id="submit">
     <h2>Join the registry</h2>
     <div class="rule"></div>
     <p class="section-lede">Getting listed and claiming conformance are not separate acts - they are rungs of one ladder, and the same registry entry climbs it in public. Corrections count too: every standards-matrix row is one file in <code>registry/interop/</code> - use the row's edit link on <a href="/standards/">the standards page</a>, or PR the file directly.</p>

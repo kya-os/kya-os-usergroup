@@ -105,6 +105,8 @@ function visibleSnippetText(block) {
   return unescapeHtml(lines.map((chunk) => chunk.replace(/<[^>]+>/g, "")).join("\n"));
 }
 
+const VERIFY_COMMAND = /^curl -s (https:\/\/builders\.kya-os\.org\/credentials\/[0-9a-f]{32}\.json) \| node scripts\/verify-credential\.mjs -$/;
+
 export function assertCopyParity(pages) {
   const seen = new Set();
   const hiddenButton = (html, target) =>
@@ -120,6 +122,18 @@ export function assertCopyParity(pages) {
       seen.add(id);
     }
     for (const [, target] of html.matchAll(/<button[^>]*data-copy-target="([^"]+)"[^>]*>/g)) {
+      // A directory row's verify command: the source must be exactly the
+      // command for a committed credential URL, and the page must link that
+      // same credential - the button can only ever copy the real check.
+      if (target.startsWith("verify-")) {
+        const source = html.match(new RegExp(`<pre class="pcmd" id="${target}">([\\s\\S]*?)</pre>`))?.[1];
+        assertBuild(source !== undefined, `${name}: copy button "${target}" has no source <pre>`);
+        const url = source.match(VERIFY_COMMAND)?.[1];
+        assertBuild(url !== undefined, `${name}: the "${target}" source is not a verify command for a credential URL`);
+        assertBuild(html.includes(`<a href="${url}">credential -&gt;</a>`), `${name}: "${target}" verifies ${url}, which the page does not link`);
+        assertBuild(hiddenButton(html, target), `${name}: the "${target}" copy button must ship hidden (no JS, no dead button)`);
+        continue;
+      }
       const prompt = PROMPTS.find((p) => p.id === target);
       const snippet = snippetById(target);
       assertBuild(prompt !== undefined || snippet !== undefined, `${name}: copy button targets unknown source "${target}"`);
@@ -213,7 +227,7 @@ export function assertLadderReadout(landingHtml, rendered) {
  * EXACTLY once per enforcing probe result, only on the builders page, and
  * nowhere else on the site - enforcement language never renders without
  * probe data behind it. Every probed service row must carry its classified
- * line dated with the committed probedAt (expected strings reconstructed
+ * fact (the provenance panel's "Live probe" entry) dated with the committed probedAt (expected strings reconstructed
  * inline, never through the renderer), and the "deployed <version>"
  * provenance display renders exactly when the probe reported a version AND
  * the entry carries a claim.
@@ -232,9 +246,9 @@ export function assertProbeHonesty(pages, rendered, probes) {
   }
   const buildersHtml = pages["builders/index.html"];
   const expectedLines = {
-    enforcing: `&#9679; live &middot; enforcement verified &middot; checked ${probes?.probedAt}`,
-    open: `&#9679; live &middot; open (no proof required) &middot; checked ${probes?.probedAt}`,
-    unreachable: `&#9675; unreachable &middot; checked ${probes?.probedAt}`,
+    enforcing: `<dt>Live probe</dt><dd class="dprobe tone-signal">enforcement verified, checked ${probes?.probedAt}</dd>`,
+    open: `<dt>Live probe</dt><dd class="dprobe">open (no proof required), checked ${probes?.probedAt}</dd>`,
+    unreachable: `<dt>Live probe</dt><dd class="dprobe tone-faint">unreachable, checked ${probes?.probedAt}</dd>`,
   };
   for (const entry of probed) {
     const probe = results[entry.slug];
@@ -244,12 +258,12 @@ export function assertProbeHonesty(pages, rendered, probes) {
     );
     if (probe.provenanceVersion !== undefined && entry.conformance !== undefined) {
       assertBuild(
-        buildersHtml.includes(`deployed ${esc(probe.provenanceVersion)}`),
+        buildersHtml.includes(`<dt>Deployed</dt><dd class="dprov">${esc(probe.provenanceVersion)}</dd>`),
         `"${entry.slug}" must render its probed deployment version (${probe.provenanceVersion}) beside its claim`,
       );
     }
   }
-  const deployedCount = (buildersHtml.match(/&middot; deployed /g) ?? []).length;
+  const deployedCount = (buildersHtml.match(/<dt>Deployed<\/dt>/g) ?? []).length;
   const expectedDeployed = probed.filter(
     (entry) => results[entry.slug].provenanceVersion !== undefined && entry.conformance !== undefined,
   ).length;
