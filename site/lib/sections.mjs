@@ -108,12 +108,21 @@ function rowMark(entry) {
   return `<span class="dmark" aria-hidden="true">${esc(entry.name.charAt(0))}</span>`;
 }
 
+/**
+ * The CONFORMANCE cell: the claim's wave beside its label, the state under
+ * them. The state comes from conformanceStatusChip, so a green "verified"
+ * still has exactly one code path and fails closed without a verdict; it is
+ * unlinked here because the expanded row carries the credential link.
+ */
+function claimCell(conformance, verdict, waveSeed, state) {
+  return `<span class="dclaim tone-${CONF_TONE[state]}">` +
+    `<span class="dclaim-head">${waveformSvg(waveSeed, CLAIM_WAVE)}<span class="dclaim-label">${esc(conformanceLabel(conformance))}</span></span>` +
+    `${conformanceStatusChip(conformance, { link: false, verdict, bare: true })}</span>`;
+}
+
 function directoryRow(entry, probes, verdicts) {
   const c = entry.conformance;
   const verdict = verdicts.get(entry.slug);
-  const chip = c
-    ? conformanceStatusChip(c, { link: false, verdict })
-    : `<span class="chip st-listed">&middot; listed</span>`;
   const { dot: liveDot, line: probeLine } = probeSignal(entry, probes);
   // The provenance tie: the probe's reported deployment version beside the
   // claim - two facts displayed side by side, equality never asserted here
@@ -126,6 +135,7 @@ function directoryRow(entry, probes, verdicts) {
   // entry's badge draws with, so the row and the badge are one wave), and by
   // the claim itself while the entry carries no credential.
   const waveSeed = verdict?.waveSeed ?? (c && claimWaveSeed(entry.slug, c));
+  const chip = c ? claimCell(c, verdict, waveSeed, state) : `<span class="chip st-listed">&middot; listed</span>`;
   const confLine = c
     ? `<div class="dconf-line tone-${CONF_TONE[state]}">${waveformSvg(waveSeed, CLAIM_WAVE)}<p>conformance: <a href="${esc(conformanceLevelUrl(c))}">${esc(conformanceLabel(c))}</a>${deployed} - ${esc(CONF_TEXT[state])}</p></div>`
     : `<div class="dconf-line tone-faint"><p>Listed in the registry - no conformance claim yet.</p></div>`;
