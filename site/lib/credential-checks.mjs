@@ -195,10 +195,14 @@ export function assertCredentialArtifacts({ distDir, rendered, credentialData, v
         assertBuild(html.includes("under appeal"), `${name}: suspended credential for "${entry.slug}" must render "under appeal"`);
       }
       if (state === "revoked") {
-        // Same state, two renderings: the builders directory draws the dark
-        // chip, the conformance table draws the emitted badge whose alt text
-        // carries the word. Either way the page must say revoked.
-        const revokedShown = html.includes('class="chip st-revoked"') || html.includes(`alt="KYA-OS conformance: revoked"`);
+        // Same state, two renderings: the builders directory draws the
+        // revoked state under the claim's wave, the conformance table draws
+        // the emitted badge whose alt text carries the word. Either way the
+        // page must say revoked.
+        const revokedShown =
+          html.includes('class="chip st-revoked"') ||
+          html.includes('class="cstate st-revoked"') ||
+          html.includes(`alt="KYA-OS conformance: revoked"`);
         assertBuild(revokedShown, `${name}: revoked credential for "${entry.slug}" must render the revoked state`);
       }
     }

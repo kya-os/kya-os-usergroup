@@ -35,23 +35,26 @@ export function esc(value) {
  * the chip links it, so the middle credibility tiers are auditable on-page.
  * Wording is fixed (verified / in verification / self-reported / under
  * appeal / revoked); the design swap restyled the chips, never the words.
+ * `bare` drops the chip's box (the directory's claim cell sets the state
+ * under its waveform); the words, classes and fail-closed rule are the same.
  */
-export function conformanceStatusChip(conformance, { link = true, verdict } = {}) {
+export function conformanceStatusChip(conformance, { link = true, verdict, bare = false } = {}) {
+  const base = bare ? "cstate" : "chip";
   if (conformance.status === "verified" || conformance.status === "revoked") {
     if (verdict === undefined) {
       throw new Error(`a "${conformance.status}" chip cannot render without the build's credential verdict (fail closed)`);
     }
     const inner =
       verdict.state === "revoked"
-        ? `<span class="chip st-revoked">revoked</span>`
+        ? `<span class="${base} st-revoked">revoked</span>`
         : verdict.state === "suspended"
-          ? `<span class="chip st-inverif">&#9676; under appeal</span>`
-          : `<span class="chip st-verified">&check; verified</span>`;
+          ? `<span class="${base} st-inverif">&#9676; under appeal</span>`
+          : `<span class="${base} st-verified">&check; verified</span>`;
     return link ? `<a class="chip-link" href="${esc(conformance.attestationUrl)}">${inner}</a>` : inner;
   }
   const [label, cls, mark] =
     conformance.status === "in-verification" ? ["in verification", "st-inverif", "&#9676;"] : ["self-reported", "st-self", "&middot;"];
-  const inner = `<span class="chip ${cls}">${mark} ${label}</span>`;
+  const inner = `<span class="${base} ${cls}">${mark} ${label}</span>`;
   if (link && conformance.evidenceUrl) {
     return `<a class="chip-link" href="${esc(conformance.evidenceUrl)}">${inner}</a>`;
   }
