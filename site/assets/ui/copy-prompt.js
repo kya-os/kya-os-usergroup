@@ -1,4 +1,4 @@
-// copy-prompt - the [ copy prompt for your agent ] buttons. Each button is
+// copy-prompt - the copy buttons (the agent prompts, the verify commands). Each button is
 // shipped with the `hidden` attribute (no JS, no dead button - the <details>
 // fallback is the always-reachable path) and copies the text of the element
 // its data-copy-target names: the SAME <pre> the fallback shows, so button
@@ -15,7 +15,7 @@ for (const button of document.querySelectorAll("button[data-copy-target]")) {
   button.addEventListener("click", async () => {
     try {
       await navigator.clipboard.writeText(source.textContent.trim());
-      button.textContent = "[ copied -> ]";
+      button.textContent = button.dataset.copied || "Copied";
       button.classList.add("copied");
     } catch {
       // Clipboard refused (permissions, insecure context): surface the

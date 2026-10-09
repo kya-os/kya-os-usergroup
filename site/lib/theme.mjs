@@ -56,7 +56,7 @@ export const THEME_SCRIPT =
   'function g(){try{var v=localStorage.getItem("theme");return v==="light"||v==="dark"?v:null}catch(e){return null}}' +
   'function s(v){try{v?localStorage.setItem("theme",v):localStorage.removeItem("theme")}catch(e){}}' +
   'function a(v){var r=d.documentElement;if(v){r.setAttribute("data-theme",v)}else{r.removeAttribute("data-theme")}' +
-  'var b=d.getElementById("theme-toggle");if(b){b.textContent="[ "+(v||"auto")+" ]";b.setAttribute("aria-label","Theme: "+(v||"system")+". Click to change.")}}' +
+  'var b=d.getElementById("theme-toggle");if(b){b.textContent="Theme: "+(v||"auto");b.setAttribute("aria-label","Theme: "+(v||"system")+". Click to change.")}}' +
   'a(g());' +
   'd.addEventListener("DOMContentLoaded",function(){a(g())});' +
   'd.addEventListener("click",function(e){var t=e.target&&e.target.closest?e.target.closest("#theme-toggle"):null;if(!t)return;' +

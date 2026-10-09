@@ -102,6 +102,25 @@ export function waveformSvg(seed, { bars = 24, opacity = true, trackHeight = 14,
 }
 
 /**
+ * The unsigned line: the waveform's geometry with every bar at its floor,
+ * drawn where an entry carries no claim - no signature, so no fingerprint.
+ * Same pitch and track as waveformSvg, so the two sit on one baseline.
+ */
+export function flatWaveSvg({ bars = 24, trackHeight = 14, barWidth = 2.4, gap = 1.6 } = {}) {
+  const count = Math.max(0, Math.floor(bars));
+  if (count === 0) return "";
+  const pitch = barWidth + gap;
+  const width = count * pitch;
+  const height = Math.max(1, barWidth * 0.75);
+  const y = (trackHeight - height) / 2;
+  const rects = Array.from(
+    { length: count },
+    (_, i) => `<rect x="${num(i * pitch)}" y="${num(y)}" width="${num(barWidth)}" height="${num(height)}" rx="${num(height / 2)}" fill="currentColor" fill-opacity="0.6"/>`,
+  ).join("");
+  return `<svg class="wf wf-flat" aria-hidden="true" viewBox="0 0 ${num(width)} ${num(trackHeight)}" width="${num(width)}" height="${num(trackHeight)}" preserveAspectRatio="none">${rects}</svg>`;
+}
+
+/**
  * The canonical "signed proof" lockup: waveform + mono label in a plain
  * (borderless) span - the artifact KYA-OS generates, used everywhere a proof
  * is represented. `tone` picks the color class (signal by default); `small`

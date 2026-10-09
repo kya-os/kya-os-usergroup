@@ -15,7 +15,7 @@ import { sectionsRails, sectionsStandards } from "./rails.mjs";
 import { sectionsUseCases } from "./use-cases.mjs";
 import { sectionEntryBuilder } from "./entry-builder.mjs";
 import { sectionsHome } from "./home.mjs";
-import { sectionAddCta, sectionDirectory, sectionStartHere, sectionSubmit } from "./sections.mjs";
+import { builderHero, sectionAddCta, sectionDirectory, sectionStartHere, sectionSubmit } from "./sections.mjs";
 
 function metaHead({ title, description, path }) {
   return `<meta name="description" content="${esc(description)}" />
@@ -39,13 +39,14 @@ function pageHero({ title, lede }) {
   </header>`;
 }
 
-function contentPage({ title, description, path, hero, sections, modules }) {
+function contentPage({ title, description, path, hero, sections, modules, still = false }) {
   return pageShell({
     title,
     headExtra: metaHead({ title, description, path }),
     body: [hero, ...sections].join("\n"),
     current: path,
     modules,
+    still,
   });
 }
 
@@ -65,12 +66,12 @@ export function renderBuildersHtml({ rendered, interopSorted, probes, verdicts }
     title: `Builders · ${TITLE}`,
     description: "Who builds on KYA-OS: implementations, services, integrations, templates, and examples - one PR to get listed.",
     path: "/builders/",
-    hero: pageHero({
-      title: "BUILDERS",
-      lede: "Everyone building on KYA-OS, in one registry. Verified implementations lead the list, and every listing is one pull request away. Conformance here is measured against the pinned vector suite, never self-asserted.",
-    }),
+    // The directory's one moving part is the signature wave; the page holds
+    // still around it (no title decrypt, no fade-ups, no scroll skew).
+    hero: builderHero(rendered, verdicts),
     sections: [sectionAddCta(), sectionDirectory(rendered, probes, verdicts), sectionStartHere(), sectionEntryBuilder(interopSorted), sectionSubmit()],
     modules: ["entry-builder.js"],
+    still: true,
   });
 }
 

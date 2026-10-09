@@ -42,7 +42,7 @@ export function sectionEntryBuilder(interopSorted) {
     .sort((a, b) => a.slug.localeCompare(b.slug, "en"))
     .map((rail) => `<option value="${esc(rail.slug)}">${esc(rail.slug)} &middot; ${esc(rail.standard)}</option>`)
     .join("");
-  return `  <section id="build-entry" class="fx fxd-35">
+  return `  <section id="build-entry">
     <h2>Build your entry</h2>
     <div class="rule"></div>
     <p class="section-lede">Fill in the fields and watch <code>registry/builders/&lt;your-slug&gt;.json</code> take shape. The checks that run here as you type are the checks CI runs on your pull request - same rules, same messages - and the pull-request button opens the GitHub editor with the finished file already in it.</p>

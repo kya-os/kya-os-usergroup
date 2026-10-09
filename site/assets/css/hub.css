@@ -41,7 +41,7 @@ b{font-weight:400;color:var(--ink)}
 /* Underline sweep: the design's link grammar. Chrome links opt out. */
 a{color:var(--ink);text-decoration:none;background-image:linear-gradient(currentColor,currentColor);background-size:0% 1px;background-repeat:no-repeat;background-position:left bottom;transition:background-size .25s ease-out,color .15s ease-out;padding-bottom:3px}
 a:hover{color:var(--ink-bright);background-size:100% 1px}
-.topnav a,a.panel-card,a.rails-panel,a.chip-link,a.btn-solid{background-image:none}
+.topnav a,a.panel-card,a.rails-panel,a.chip-link,a.btn-solid,a.hsig{background-image:none}
 .topnav a:not(.nav-cta),a.chip-link{padding-bottom:0}
 .quiet{color:var(--ink-muted)}
 
@@ -60,13 +60,18 @@ a:hover{color:var(--ink-bright);background-size:100% 1px}
 .mark-white{display:var(--mark-white)}
 .mark-black{display:var(--mark-black)}
 .mark-sm{width:12px;height:14px}
-.nav-links{display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:8px 22px;font-family:var(--font-mono);font-size:12px;letter-spacing:.06em}
+.nav-links{display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:8px 22px;font-family:var(--font-sans);font-size:14px}
 .nav-links a{color:var(--ink-muted);white-space:nowrap}
 .nav-links a:hover{color:var(--ink-bright)}
 .nav-links a.nav-on{color:var(--ink-bright)}
-.nav-cta{border:1px solid var(--line-mid);padding:7px 14px;color:var(--ink)}
+.nav-cta{border:1px solid var(--line-mid);padding:6px 14px;color:var(--ink)}
 .nav-links a.nav-cta:hover{color:var(--ink-bright);border-color:var(--line-strong);background:var(--panel-3)}
-.theme-btn{font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;color:var(--ink-muted);background:transparent;border:1px solid var(--line);padding:7px 10px;cursor:pointer;white-space:nowrap}
+.theme-btn{font-family:var(--font-sans);font-size:13px;color:var(--ink-muted);background:transparent;border:1px solid var(--line);padding:6px 12px;cursor:pointer;white-space:nowrap}
+/* Phone menu: a hidden checkbox + label, no JS needed. */
+.nav-toggle{display:none;position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%)}
+.nav-menu{display:none;font-family:var(--font-sans);font-size:14px;color:var(--ink);border:1px solid var(--line-mid);padding:6px 14px;cursor:pointer}
+.nav-toggle:focus-visible+.nav-menu{outline:1px solid var(--signal);outline-offset:2px}
+.nav-toggle:checked+.nav-menu{border-color:var(--line-strong);background:var(--panel-3)}
 .theme-btn:hover{color:var(--ink);border-color:var(--line-mid)}
 
 /* ── Frame ────────────────────────────────────────────────────────────────── */
@@ -87,6 +92,21 @@ h1{font-family:var(--font-mono);font-size:clamp(32px,7vw,48px);font-weight:100;c
 .cursor{animation:blink 1.2s step-end infinite;color:var(--ink-muted)}
 .lede{font-size:18px;line-height:1.9;color:var(--ink);max-width:660px;margin:0}
 .h1-home+.lede,.h1-home~.lede{max-width:640px}
+/* Builders hero: each verified credential's wave, drawn long. */
+.hero-builders h1{font-family:var(--font-sans);font-weight:500;font-size:clamp(44px,8vw,72px);letter-spacing:-.035em;line-height:1;margin:0 0 22px}
+.hero-builders .lede{font-size:18px;line-height:1.7;max-width:640px}
+.hsigs{display:flex;flex-direction:column;gap:16px;margin-top:48px;padding-top:28px;border-top:1px solid var(--line)}
+.hsig{display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr);align-items:center;gap:8px 28px;padding:0;color:var(--ink)}
+.hsig-wave{display:block;min-width:0}
+.hsig-wave .wf{display:block;max-width:100%;height:auto}
+.hsig-meta{display:flex;flex-direction:column;gap:3px;min-width:0}
+.hsig-name{font-size:16px;font-weight:500;color:var(--ink-bright)}
+.hsig-claim{font-family:var(--font-mono);font-size:12px;color:var(--ink-muted)}
+.hsig-claim code{font-size:12px;color:var(--ink-dim)}
+a.hsig:hover .hsig-name{color:var(--signal)}
+.hsig-caption{font-size:15px;line-height:1.7;color:var(--ink-muted);max-width:760px;margin:22px 0 0}
+.hsig-caption span{display:block}
+.hsig-count{font-size:16px;color:var(--ink);margin-bottom:2px}
 h2{font-family:var(--font-sans);font-size:22px;font-weight:600;color:var(--ink);margin:0 0 8px}
 .rule{height:1px;background:var(--line);margin-bottom:28px}
 .section-lede{font-size:16px;line-height:1.8;color:var(--ink-muted);max-width:760px;margin:0 0 36px}
@@ -186,57 +206,69 @@ a.panel-card:hover{border-color:var(--line-strong);background:var(--panel-3);col
 /* ── Directory: CSS-only filter + expandable rows ─────────────────────────── */
 .dir>input{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%)}
 .filter-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
-.filter-chip{font-family:var(--font-mono);font-size:11px;letter-spacing:.04em;color:var(--ink-dim);border:1px solid var(--line-mid);padding:6px 13px;cursor:pointer}
+.filter-chip{font-size:13px;color:var(--ink-dim);border:1px solid var(--line-mid);padding:5px 13px;cursor:pointer}
 #f-all:checked~.filter-row label[for="f-all"],#f-implementation:checked~.filter-row label[for="f-implementation"],#f-service:checked~.filter-row label[for="f-service"],#f-template:checked~.filter-row label[for="f-template"],#f-example:checked~.filter-row label[for="f-example"],#f-integration:checked~.filter-row label[for="f-integration"],#f-marketplace:checked~.filter-row label[for="f-marketplace"]{color:var(--on-accent);background:var(--accent);border-color:var(--accent)}
 #f-all:focus-visible~.filter-row label[for="f-all"],#f-implementation:focus-visible~.filter-row label[for="f-implementation"],#f-service:focus-visible~.filter-row label[for="f-service"],#f-template:focus-visible~.filter-row label[for="f-template"],#f-example:focus-visible~.filter-row label[for="f-example"],#f-integration:focus-visible~.filter-row label[for="f-integration"],#f-marketplace:focus-visible~.filter-row label[for="f-marketplace"]{outline:1px solid var(--signal);outline-offset:2px}
 #f-implementation:checked~.dtable .drow:not(.k-implementation),#f-service:checked~.dtable .drow:not(.k-service),#f-template:checked~.dtable .drow:not(.k-template),#f-example:checked~.dtable .drow:not(.k-example),#f-integration:checked~.dtable .drow:not(.k-integration),#f-marketplace:checked~.dtable .drow:not(.k-marketplace){display:none}
-.filter-hint{font-family:var(--font-mono);font-size:12px;color:var(--ink-muted);margin:0 0 22px;min-height:18px}
+.filter-hint{font-size:13px;color:var(--ink-muted);margin:0 0 22px;min-height:18px}
 .fh{display:none}
 #f-implementation:checked~.filter-hint .fh-implementation,#f-service:checked~.filter-hint .fh-service,#f-template:checked~.filter-hint .fh-template,#f-example:checked~.filter-hint .fh-example,#f-integration:checked~.filter-hint .fh-integration,#f-marketplace:checked~.filter-hint .fh-marketplace{display:inline}
 .dtable{border:1px solid var(--line);background:var(--panel);overflow-x:auto}
-.dgrid{display:grid;grid-template-columns:minmax(150px,1.4fr) 92px minmax(220px,2.4fr) minmax(130px,1fr) 84px 14px;gap:12px;padding:15px 22px;align-items:baseline;min-width:780px}
-.dhead{padding:13px 22px;border-bottom:1px solid var(--line);font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;color:var(--ink-muted)}
+.dgrid{display:grid;grid-template-columns:minmax(180px,1.25fr) minmax(220px,2.3fr) minmax(170px,1.05fr) 14px;gap:28px;padding:20px 24px;align-items:start}
+.dhead{padding:14px 24px;border-bottom:1px solid var(--line);font-size:13px;color:var(--ink-muted)}
 .drow{border-bottom:1px solid var(--line-hair)}
 summary.dgrid{cursor:pointer;list-style:none}
 summary.dgrid::-webkit-details-marker{display:none}
-summary.dgrid:hover{background:var(--panel-2)}
-.dname{display:flex;align-items:center;flex-wrap:nowrap;gap:0 9px;min-width:0}
-.dname .dtitle{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dmark{width:16px;height:16px;border:1px solid var(--line-mid);color:var(--ink-muted);font-family:var(--font-mono);font-size:9px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+summary.dgrid:hover,details[open].drow{background:var(--panel-2)}
+.dname{display:flex;align-items:flex-start;flex-wrap:nowrap;gap:0 12px;min-width:0}
+.dname-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+
+.dmark{width:16px;height:16px;margin-top:3px;border:1px solid var(--line-mid);color:var(--ink-muted);font-family:var(--font-mono);font-size:9px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
 .dmark-logo{display:inline-flex;align-items:center;justify-content:center;background:transparent;border:none}
 .dmark-wide{width:auto}
 /* Brand marks keep their own aspect but share the row's 16px cap height
    with the KYA mark, so no logo reads shorter than another; the nav's
    .mark 16x18 lock is for the square KYA mark only. */
 .dmark-wide .mark{width:auto;height:16px}
-.dtitle{font-family:var(--font-mono);font-size:13px;color:var(--ink-bright);white-space:nowrap}
-/* Probe-classified reachability signals: open is muted (honest, not shamed),
-   unreachable is a faint hollow ring; the dated line lives in .dprobe. */
-.dprobe{font-family:var(--font-mono);font-size:11px;line-height:1.7;margin:0 0 12px}
-.dtype{font-family:var(--font-mono);font-size:10px;color:var(--ink-dim)}
-.dwhat{font-size:14px;line-height:1.6;color:var(--ink-dim);min-width:0}
-.dconf .chip{font-size:10px}
-/* The claim cell: the credential's wave (currentColor, so the tone class
-   paints it) beside the claim, the state word under them. */
-.dclaim{display:inline-flex;flex-direction:column;gap:5px;font-family:var(--font-mono)}
-.dclaim-head{display:flex;align-items:center;gap:8px}
-.dclaim-label{font-size:12px;color:var(--ink-bright);overflow-wrap:anywhere}
-.cstate{font-family:var(--font-mono);font-size:10px;letter-spacing:.02em;white-space:nowrap;border:0;background:none;padding:0}
-.dlisted{font-family:var(--font-mono);font-size:10px;color:var(--ink-faint);white-space:nowrap}
-.caret{font-family:var(--font-mono);font-size:12px;color:var(--ink-muted)}
+.dtitle{font-family:var(--font-sans);font-size:16px;font-weight:500;line-height:1.4;color:var(--ink-bright)}
+.dtype{font-size:13px;color:var(--ink-muted)}
+.dwhat{font-size:14px;line-height:1.65;color:var(--ink-dim);min-width:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+details[open]>summary .dwhat{display:block;-webkit-line-clamp:unset;overflow:visible}
+/* Claim cell: wave + claim, state + credential id under them. */
+.dclaim{display:inline-flex;flex-direction:column;gap:6px;font-family:var(--font-mono);padding-top:3px}
+.dclaim-head{display:flex;align-items:center;gap:10px}
+.dclaim-label{font-size:13px;color:var(--ink-bright);overflow-wrap:anywhere}
+.dclaim-foot{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;font-size:11px}
+.dclaim-sig{font-size:11px;color:var(--ink-muted)}
+.cstate{font-family:var(--font-mono);font-size:11px;letter-spacing:.02em;white-space:nowrap;border:0;background:none;padding:0}
+.dclaim-none,.dclaim-none .dclaim-label,.psig-none{color:var(--ink-muted)}
+.caret{font-family:var(--font-mono);font-size:14px;line-height:1.6;color:var(--ink-muted)}
 .caret::before{content:"+"}
 details[open]>summary .caret::before{content:"\2212"}
-.dexpand{padding:2px 22px 20px}
-.dconf-line{display:flex;align-items:center;gap:12px;margin:0 0 14px}
-.dconf-line p{font-family:var(--font-mono);font-size:11px;line-height:1.7;margin:0}
-.dconf-line .wf{flex-shrink:0}
+/* Provenance panel: the evidence left, the actions right. */
+.dexpand{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:28px 44px;padding:22px 24px 30px 52px}
+.prov{display:flex;flex-direction:column;gap:18px;min-width:0}
+.psig .wf{display:block;max-width:100%;height:auto}
+.psig-cap{font-family:var(--font-mono);font-size:11px;color:var(--ink-muted);margin:10px 0 0}
+.psig-cap code{font-size:11px;color:var(--ink-dim)}
+.pfacts{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:7px 20px;margin:0}
+.pfacts>div{display:contents}
+.pfacts dt{font-size:13px;color:var(--ink-muted)}
+.pfacts dd{margin:0;font-family:var(--font-mono);font-size:12px;line-height:1.75;color:var(--ink);overflow-wrap:anywhere}
+.pfacts code{font-size:12px;color:var(--ink);word-break:break-all}
+.pnote{font-size:16px;line-height:1.7;color:var(--ink-dim);max-width:60ch;margin:0}
+.pactions{display:flex;flex-direction:column;gap:20px;min-width:0;padding-top:4px}
+.pverify{grid-column:1/-1;border:1px solid var(--line);background:var(--canvas);padding:12px 16px}
+.pverify-head{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:13px;color:var(--ink-muted);margin-bottom:8px}
+.pcmd{font-family:var(--font-mono);font-size:11.5px;line-height:1.6;color:var(--ink);white-space:pre;overflow-x:auto;user-select:all;margin:0}
+.copy-cmd{flex-shrink:0;font-family:var(--font-sans);font-size:13px;color:var(--ink);background:transparent;border:1px solid var(--line-mid);padding:4px 12px;cursor:pointer}
+.copy-cmd:hover{color:var(--ink-bright);border-color:var(--line-strong)}
+.copy-cmd.copied{color:var(--signal);border-color:color-mix(in srgb,var(--signal) 45%,transparent)}
 .dlinks{display:flex;flex-wrap:wrap;gap:20px;font-family:var(--font-mono);font-size:12px;align-items:baseline}
-.dcap{font-family:var(--font-mono);font-size:11px;color:var(--ink-muted);margin:0 0 12px}
-.dprov{color:var(--ink-muted)}
 /* The copy-ready badge embed: a plain selectable line (click selects all). */
 .dembed{font-family:var(--font-mono);font-size:11px;color:var(--ink-muted);border:1px solid var(--line);background:var(--canvas);padding:9px 12px;margin-top:8px;user-select:all;overflow-wrap:anywhere;max-width:760px}
-.dfoot{padding:15px 22px;font-family:var(--font-mono);font-size:12px;color:var(--ink-muted)}
-.dnote{font-size:15px;color:var(--ink-muted);margin:18px 0 0;line-height:1.7}
+.dfoot{padding:16px 24px;font-size:14px;color:var(--ink-muted)}
+.dnote{font-size:15px;color:var(--ink-muted);margin:18px 0 0;line-height:1.7;max-width:760px}
 
 /* ── Conformance: pin strip, badge preview, pipeline, levels, table ───────── */
 .pin-strip{border:1px solid var(--line);background:var(--panel);padding:16px 22px;font-family:var(--font-mono);font-size:13px;color:var(--ink-muted);display:flex;flex-wrap:wrap;gap:8px 28px}
@@ -497,7 +529,7 @@ a.btn-solid:hover{background:var(--accent-hover);color:var(--on-accent)}
 
 /* ── Copy-to-agent prompt + the generic disclosure ────────────────────────── */
 .agent-prompt{margin-top:28px}
-.copy-btn{font-family:var(--font-mono);font-size:12px;letter-spacing:.06em;color:var(--ink);background:transparent;border:1px solid var(--line-mid);padding:10px 16px;cursor:pointer}
+.copy-btn{font-family:var(--font-sans);font-size:14px;color:var(--ink);background:transparent;border:1px solid var(--line-mid);padding:9px 16px;cursor:pointer}
 .copy-btn:hover{color:var(--ink-bright);border-color:var(--line-strong);background:var(--panel-3)}
 .copy-btn.copied{color:var(--signal);border-color:color-mix(in srgb,var(--signal) 45%,transparent)}
 .prompt-fallback,.disclosure{margin-top:10px;font-family:var(--font-mono);font-size:11px;color:var(--ink-muted)}
@@ -510,9 +542,9 @@ a.btn-solid:hover{background:var(--accent-hover);color:var(--on-accent)}
 .disclosure .note{font-family:var(--font-sans);max-width:760px}
 
 /* ── Builders: the add-your-project strip + the entry builder ─────────────── */
-.cta-strip{display:flex;flex-wrap:wrap;align-items:center;gap:14px 24px;border:1px solid var(--line-mid);background:var(--panel-2);padding:16px 22px;margin-top:-36px;font-family:var(--font-mono);font-size:12px;color:var(--ink-muted)}
+.cta-strip{display:flex;flex-wrap:wrap;align-items:center;gap:14px 24px;border:1px solid var(--line-mid);background:var(--panel-2);padding:16px 22px;margin-top:-36px;font-size:14px;color:var(--ink-muted)}
 .cta-lede{color:var(--ink);font-family:var(--font-sans);font-size:15px;flex:1 1 320px}
-.cta-strip .btn-solid{margin-top:0;padding:8px 14px;font-size:12px}
+.cta-strip .btn-solid{margin-top:0;padding:9px 16px;font-family:var(--font-sans);font-size:14px;font-weight:500}
 .cta-strip+section{margin-top:44px}
 .eb-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:start}
 .eb-field{margin-bottom:16px}
@@ -559,8 +591,24 @@ footer a:hover{color:var(--ink-bright)}
   .sexpand{margin-left:0;min-width:0}
   .eb-side{position:static}
 }
+@media (max-width:760px){
+  .topnav{flex-wrap:wrap;padding:8px 20px}
+  .nav-menu,.nav-toggle{display:inline-block}
+  .nav-links{display:none;width:100%;flex-direction:column;align-items:flex-start;gap:16px;padding:14px 0 12px}
+  .nav-toggle:checked~.nav-links{display:flex}
+  .topnav:has(.nav-toggle:checked){background:var(--canvas)}
+  main{padding-top:110px}
+  .dhead{display:none}
+  .dgrid{grid-template-columns:minmax(0,1fr) 14px;gap:12px 16px;padding:18px 18px}
+  .dname{grid-column:1;grid-row:1}
+  .dconf{grid-column:1;grid-row:2;padding-left:28px}
+  .dwhat{grid-column:1;grid-row:3;padding-left:28px;-webkit-line-clamp:3}
+  .caret{grid-column:2;grid-row:1}
+  .dexpand{grid-template-columns:minmax(0,1fr);padding:18px 18px 24px 46px}
+  .hsig{grid-template-columns:1fr}
+}
 @media (max-width:640px){
-  main{padding:150px 20px 0}
+  main{padding:110px 20px 0}
   .grid-4{grid-template-columns:1fr}
   .topnav{padding:8px 20px}
 }
@@ -588,6 +636,30 @@ html.js-anim .fxd-50{animation-delay:.5s}
 html.js-anim [data-title-reveal]{visibility:hidden}
 html.js-anim .fade-overlay{position:fixed;inset:0;background:var(--canvas);z-index:9999;pointer-events:none;opacity:0;transition:opacity .4s ease-out}
 html.js-anim .fade-overlay.active{opacity:1;pointer-events:all}
+/* The signature wave: bars rise on row hover/focus, the id fades in;
+   opening a row sweeps the panel wave in. A flat line never moves. */
+html.js-anim .dclaim .wf rect{transform-box:fill-box;transform-origin:center}
+html.js-anim summary:hover .dclaim .wf:not(.wf-flat) rect,html.js-anim summary:focus-visible .dclaim .wf:not(.wf-flat) rect{animation:wfRise .55s cubic-bezier(.2,.75,.25,1) var(--d,0s) both}
+.dclaim rect:nth-child(2){--d:.025s}
+.dclaim rect:nth-child(3){--d:.05s}
+.dclaim rect:nth-child(4){--d:.075s}
+.dclaim rect:nth-child(5){--d:.1s}
+.dclaim rect:nth-child(6){--d:.125s}
+.dclaim rect:nth-child(7){--d:.15s}
+.dclaim rect:nth-child(8){--d:.175s}
+.dclaim rect:nth-child(9){--d:.2s}
+.dclaim rect:nth-child(10){--d:.225s}
+.dclaim rect:nth-child(11){--d:.25s}
+.dclaim rect:nth-child(12){--d:.275s}
+.dclaim rect:nth-child(13){--d:.3s}
+.dclaim rect:nth-child(14){--d:.325s}
+.dclaim rect:nth-child(15){--d:.35s}
+.dclaim rect:nth-child(16){--d:.375s}
+html.js-anim .dclaim-sig{opacity:0;transition:opacity .3s ease-out .15s}
+html.js-anim summary:hover .dclaim-sig,html.js-anim summary:focus-visible .dclaim-sig,html.js-anim details[open]>summary .dclaim-sig{opacity:1}
+html.js-anim details[open] .psig:not(.psig-none) .wf{animation:wfSweep .7s cubic-bezier(.3,.7,.2,1) both}
+@keyframes wfRise{0%{transform:scaleY(.15)}60%{transform:scaleY(1.12)}100%{transform:scaleY(1)}}
+@keyframes wfSweep{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
 /* Reference parity (kya-os.org main.css): letters carry a 0.3s opacity and
    transform transition so they bloom in during the glitch phase instead of
    snapping; the homepage reveal is glow-only (letterRevealHome), inner pages
