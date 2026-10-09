@@ -93,7 +93,7 @@ function probeSignal(entry, probes) {
 // keeps the first-letter box. Every mark shares one cap height (the 16px
 // .dmark box) so no brand reads shorter than another; width follows the
 // asset's own aspect. Presentation-only - no registry field.
-const KYA_MARK_SLUGS = new Set(["kya-os-mcp", "kya-os-demo-server", "kya-os-schema"]);
+const KYA_MARK_SLUGS = new Set(["kya-os-mcp", "kya-os-demo-server", "kya-os-schema", "kya-os-walkthrough"]);
 // KnowThat.ai is always the red mark: the owner wants the brand red on both
 // themes, so the theme-paired slot points at the same asset twice.
 const BRAND_LOGOS = { "knowthat-ai": { onDark: "/img/knowthat-mark-onlight.png", onLight: "/img/knowthat-mark-onlight.png" } };
