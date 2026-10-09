@@ -61,21 +61,22 @@ for (const name of readdirSync(join(temp, "registry", "builders"))) {
   const c = entry.conformance;
   if (c === undefined) continue;
   // A re-attestation in flight names a credential the reset above deleted.
-  if (c.supersedes !== undefined) {
-    delete c.supersedes;
-    writeFileSync(path, JSON.stringify(entry, null, 2) + "\n");
+  delete c.supersedes;
+  if (c.status === "verified" || c.status === "revoked") {
+    c.status = typeof c.evidenceUrl === "string" ? "in-verification" : "self-reported";
+    delete c.attestationUrl;
+    // The e2e exercises the issuance machinery against the CURRENT pin; a live
+    // entry lawfully claiming an older suite (awaiting re-attestation) would
+    // otherwise trip issue-credential's suite gate before any behavior under
+    // test runs.
+    c.suiteVersion = SUITE.version;
   }
-  if (c.status !== "verified" && c.status !== "revoked") continue;
-  c.status = typeof c.evidenceUrl === "string" ? "in-verification" : "self-reported";
-  delete c.attestationUrl;
-  // The e2e exercises the issuance machinery against the CURRENT pin; a live
-  // entry lawfully claiming an older suite (awaiting re-attestation) would
-  // otherwise trip issue-credential's suite gate before any behavior under
-  // test runs.
-  c.suiteVersion = SUITE.version;
   // The demo-server entry doubles as the SUBSET fixture: the subset leg
-  // below mints against it, proving the trimmed chip end to end.
+  // below mints against it, proving the trimmed chip end to end. It is set
+  // up whatever state the live entry is in, a re-attestation included.
   if (name === "kya-os-demo-server.json") {
+    c.status = "in-verification";
+    c.suiteVersion = SUITE.version;
     c.scope = "subset";
     c.categories = ["signed-proof"];
   }
