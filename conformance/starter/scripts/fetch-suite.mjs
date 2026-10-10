@@ -42,13 +42,13 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPO = 'decentralized-identity/kya-os-mcp';
-const PINNED_REF = 'v1.15.0';
+const PINNED_REF = 'v1.19.0';
 /**
  * The commit SHA that PINNED_REF resolved to when the pin was taken
  * (`git ls-remote` / the GitHub refs API). Every file is fetched at THIS
  * SHA, never at the tag: tags can be moved after the fact, commits cannot.
  */
-const PINNED_COMMIT = '77040d7c47149f3ebe96d4b16267b2b9a821ddd0';
+const PINNED_COMMIT = 'f443a2c7b92d7264a4e6d720300aeeb819d830d1';
 const SUITE_PACKAGE = '@kya-os/mcp';
 
 /**
@@ -58,7 +58,7 @@ const SUITE_PACKAGE = '@kya-os/mcp';
  * against the signed suite manifest for that release before trusting it.
  */
 const EXPECTED_VECTOR_SET_HASH =
-  'sha256:38f34222fd91e75a162b01a81f83aa40907674f9c1bed72c46f1861cb49ceef5';
+  'sha256:8184227c315ce5f322652d827d070ee510bcb12576aef7471521d67a04b064c6';
 
 /**
  * Harness files fetched alongside the vectors (all standalone: types-only or
@@ -67,7 +67,7 @@ const EXPECTED_VECTOR_SET_HASH =
  * its pin and any drift fails loudly.
  */
 const EXPECTED_HARNESS_HASHES = {
-  'types.ts': '96a1790146574ab169b42f0ec37225c32ac17bbee0ef4ebf5f3f2ff5192b59ac',
+  'types.ts': 'e5a0fd60188c47abfe6671e766693c1244d291dc6be916353e7467ce32db2928',
   'loader.ts': 'af4a2c76e51df257c60872bcdde248e3123e3974625f7a285fe71504410bb76f',
   'runner.ts': '6a537c40cc78cdd035e7fbdf79c1b31379ba25a8cba7cd5c90709042efa4a248',
   'verify.py': 'aabb3429df7e66cecee82b962c62aa19cc60ffbbdfbdc1ec298f613af2f19eb7',
