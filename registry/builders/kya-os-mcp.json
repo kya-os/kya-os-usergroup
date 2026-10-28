@@ -8,10 +8,10 @@
   "conformance": {
     "level": "L3",
     "scope": "full",
-    "suiteVersion": "1.1.0",
-    "status": "verified",
-    "attestationUrl": "https://builders.kya-os.org/credentials/9e47cb59a81b738ea0681848c704b547.json",
-    "evidenceUrl": "https://github.com/kya-os/kya-os-usergroup/issues/34"
+    "suiteVersion": "1.2.0",
+    "status": "in-verification",
+    "supersedes": "https://builders.kya-os.org/credentials/9e47cb59a81b738ea0681848c704b547.json",
+    "evidenceUrl": "https://github.com/kya-os/kya-os-usergroup/issues/45"
   },
   "listedAt": "2026-08-20"
 }
