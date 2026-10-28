@@ -1,0 +1,658 @@
+import { canonicalizeJson, canonicalizeJsonBytes } from '../utils/canonical-json.js';
+import { hashAuditValue } from './crypto.js';
+import { AUDIT_DIGEST_DOMAINS } from './integrity.js';
+import { Rfc9162MerkleTree } from './merkle.js';
+import { auditObservationReceiptSchema, auditAnchorReceiptSchema, auditBundleConsistencyProofSchema, auditBundleInclusionProofSchema, auditReplayBundleSchema, auditVerificationPolicySchema, parseAuditBundleManifestCore, signedAuditCheckpointSchema, signedAuditEntrySchema, } from './schemas.js';
+import { AUDIT_REASON_CODES, AuditArtifactVerifier, applyRequiredAuditProfile, mergeAuditDimensions, } from './verifier.js';
+const BUNDLE_SCHEMA = 'https://schema.kya-os.org/v1/protocol/audit/bundle-manifest/v1.0.0';
+const BUNDLE_SUITE = 'KYA-AUDIT-BUNDLE-JCS-SHA256-JWS-2026';
+export const AUDIT_BUNDLE_MEDIA_TYPES = Object.freeze({
+    entries: 'application/vnd.kya-os.audit.entries.v1+json',
+    checkpoints: 'application/vnd.kya-os.audit.checkpoints.v1+json',
+    inclusionProofs: 'application/vnd.kya-os.audit.inclusion-proofs.v1+json',
+    consistencyProofs: 'application/vnd.kya-os.audit.consistency-proofs.v1+json',
+    observations: 'application/vnd.kya-os.audit.observations.v1+json',
+    anchors: 'application/vnd.kya-os.audit.anchors.v1+json',
+    verificationReport: 'application/vnd.kya-os.audit.verification-report.v1+json',
+});
+function deepFreeze(value) {
+    if (typeof value !== 'object' || value === null || Object.isFrozen(value))
+        return value;
+    for (const child of Object.values(value))
+        deepFreeze(child);
+    return Object.freeze(value);
+}
+function cloneCanonical(value) {
+    return JSON.parse(canonicalizeJson(value));
+}
+function assertPath(path) {
+    if (path.length === 0 || path.startsWith('/') || path.includes('\\') ||
+        path.split('/').some((segment) => segment === '' || segment === '.' || segment === '..')) {
+        throw new TypeError('Bundle component path must be a safe canonical relative path');
+    }
+}
+function sameSigner(left, right) {
+    return left.did === right.did && left.kid === right.kid && left.alg === right.alg;
+}
+function atTime(input, time) {
+    return (input.validFrom === undefined || time >= input.validFrom) &&
+        (input.validUntil === undefined || time <= input.validUntil);
+}
+function dim(verdict, reasons = []) {
+    return { verdict, reasonCodes: [...new Set(reasons)].sort() };
+}
+function malformedBundleReport(policy) {
+    return {
+        schema: 'https://schema.kya-os.org/v1/protocol/audit/verification-report/v1.0.0',
+        policyId: policy.policyId,
+        cryptographicIntegrity: dim('invalid', [AUDIT_REASON_CODES.BUNDLE_SCHEMA_INVALID]),
+        chainIntegrity: dim('invalid', [AUDIT_REASON_CODES.BUNDLE_SCHEMA_INVALID]),
+        checkpointIntegrity: dim('indeterminate', [AUDIT_REASON_CODES.CHECKPOINT_MISSING]),
+        anchorIntegrity: dim('indeterminate', [AUDIT_REASON_CODES.OBSERVER_EVIDENCE_MISSING]),
+        scopeEvidenceCompleteness: dim('invalid', [AUDIT_REASON_CODES.BUNDLE_SCHEMA_INVALID]),
+        authorizedAsObserved: dim('indeterminate', [
+            AUDIT_REASON_CODES.AUTHORIZATION_COLLATERAL_NOT_VERIFIED,
+        ]),
+        currentAuthorization: dim('indeterminate', [
+            AUDIT_REASON_CODES.CURRENT_AUTHORIZATION_NOT_EVALUATED,
+        ]),
+    };
+}
+/** Produces deterministic, signed-inventory evidence bundles. */
+export class AuditReplayBundleExporter {
+    options;
+    constructor(options) {
+        this.options = options;
+    }
+    async export(input) {
+        if (!input.bundleId || !input.purpose) {
+            throw new TypeError('Bundle ID and export purpose are required');
+        }
+        const paths = new Set();
+        const sortedInputs = [...input.components].sort((left, right) => left.path.localeCompare(right.path));
+        const components = [];
+        for (const item of sortedInputs) {
+            assertPath(item.path);
+            if (paths.has(item.path))
+                throw new TypeError(`Duplicate bundle component path: ${item.path}`);
+            paths.add(item.path);
+            if (item.disposition === 'included') {
+                const content = cloneCanonical(item.content);
+                const bytes = canonicalizeJsonBytes(content);
+                components.push({
+                    path: item.path,
+                    mediaType: item.mediaType,
+                    disposition: 'included',
+                    digest: await this.options.hasher.sha256(bytes),
+                    size: String(bytes.length),
+                    content,
+                });
+            }
+            else {
+                if (!item.reasonCode)
+                    throw new TypeError('Excluded bundle items require a reason code');
+                components.push({
+                    path: item.path,
+                    mediaType: item.mediaType,
+                    disposition: item.disposition,
+                    reasonCode: item.reasonCode,
+                });
+            }
+        }
+        const inventory = components.map((component) => componentMetadata(component));
+        const core = parseAuditBundleManifestCore({
+            schema: BUNDLE_SCHEMA,
+            bundleId: input.bundleId,
+            formatVersion: '1.0.0',
+            selections: cloneCanonical([...input.selections]),
+            exporter: this.options.signer.ref,
+            purpose: input.purpose,
+            exportedAt: this.options.clock.now(),
+            verificationPolicyDigest: input.verificationPolicyDigest,
+            inventory,
+            integritySuite: BUNDLE_SUITE,
+        });
+        const manifestDigest = await hashAuditValue(this.options.hasher, AUDIT_DIGEST_DOMAINS.bundleManifest, core);
+        return deepFreeze({
+            manifest: {
+                core,
+                manifestDigest,
+                jws: await this.options.signer.sign(canonicalizeJsonBytes(core)),
+            },
+            components,
+        });
+    }
+}
+/**
+ * An export has no ledger position, so an exporter key bounded by
+ * `validFromCheckpoint` or `validUntilCheckpoint` can neither be confirmed nor
+ * refuted here: such a key leaves the exporter `unresolved`, never authorized.
+ */
+function exporterAuthorization(core, policy) {
+    let result = 'unauthorized';
+    for (const authorization of policy.authorizedExporters) {
+        if (!authorization.allowedPurposes.includes(core.purpose) ||
+            !core.selections.every((selection) => authorization.allowedLedgerIds.includes(selection.ledgerId)))
+            continue;
+        for (const key of authorization.signerKeys) {
+            if (!sameSigner(key.signer, core.exporter) || !atTime(key, core.exportedAt))
+                continue;
+            if (key.validFromCheckpoint === undefined && key.validUntilCheckpoint === undefined) {
+                return 'authorized';
+            }
+            result = 'unresolved';
+        }
+    }
+    return result;
+}
+function componentMetadata(component) {
+    return {
+        path: component.path,
+        mediaType: component.mediaType,
+        disposition: component.disposition,
+        ...(component.digest === undefined ? {} : { digest: component.digest }),
+        ...(component.size === undefined ? {} : { size: component.size }),
+        ...(component.reasonCode === undefined ? {} : { reasonCode: component.reasonCode }),
+    };
+}
+function includedArrays(bundle, mediaType) {
+    const result = [];
+    for (const component of bundle.components) {
+        if (component.disposition !== 'included' || component.mediaType !== mediaType ||
+            !Array.isArray(component.content))
+            continue;
+        result.push(...component.content);
+    }
+    return result;
+}
+function ledgerEpochKey(value) {
+    return `${value.ledgerId}\0${value.ledgerEpochId}`;
+}
+function sameLedgerEpoch(left, right) {
+    return left.ledgerId === right.ledgerId && left.ledgerEpochId === right.ledgerEpochId;
+}
+function compareDecimal(left, right) {
+    const a = BigInt(left);
+    const b = BigInt(right);
+    return a < b ? -1 : a > b ? 1 : 0;
+}
+function inclusionKey(checkpointDigest, entryDigest, sequence) {
+    return `${checkpointDigest}\0${entryDigest}\0${sequence}`;
+}
+function consistencyKey(oldCheckpointDigest, newCheckpointDigest) {
+    return `${oldCheckpointDigest}\0${newCheckpointDigest}`;
+}
+/** True when the entries are exactly the leaves 0..treeSize-1, in order. */
+function isCompletePrefix(entries, treeSize) {
+    return BigInt(entries.length) === BigInt(treeSize) &&
+        entries.every((entry, index) => entry.core.sequence === String(index));
+}
+async function verifyEntryGroups(entries, policy, artifacts, context) {
+    const groups = new Map();
+    const malformed = [];
+    for (const candidate of entries) {
+        if (!signedAuditEntrySchema.safeParse(candidate).success) {
+            malformed.push(candidate);
+            continue;
+        }
+        const entry = candidate;
+        const key = ledgerEpochKey(entry.core);
+        const group = groups.get(key) ?? [];
+        group.push(entry);
+        groups.set(key, group);
+    }
+    const reports = await Promise.all([
+        ...[...groups.values()].map((group) => artifacts.verifyEntries(group, policy, context)),
+        ...(malformed.length === 0 ? [] : [artifacts.verifyEntries(malformed, policy, context)]),
+    ]);
+    if (reports.length === 0)
+        return artifacts.verifyEntries([], policy, context);
+    const first = reports[0];
+    return {
+        ...first,
+        cryptographicIntegrity: mergeAuditDimensions(...reports.map((report) => report.cryptographicIntegrity)),
+        chainIntegrity: mergeAuditDimensions(...reports.map((report) => report.chainIntegrity)),
+        checkpointIntegrity: mergeAuditDimensions(...reports.map((report) => report.checkpointIntegrity)),
+        anchorIntegrity: mergeAuditDimensions(...reports.map((report) => report.anchorIntegrity)),
+        scopeEvidenceCompleteness: mergeAuditDimensions(...reports.map((report) => report.scopeEvidenceCompleteness)),
+        authorizedAsObserved: mergeAuditDimensions(...reports.map((report) => report.authorizedAsObserved)),
+        currentAuthorization: mergeAuditDimensions(...reports.map((report) => report.currentAuthorization)),
+    };
+}
+function verifyCheckpointHistory(checkpoints, entries, selections, verifiedConsistency) {
+    const reasons = new Set();
+    const groups = new Map();
+    for (const checkpoint of checkpoints) {
+        const key = ledgerEpochKey(checkpoint.core);
+        const group = groups.get(key) ?? [];
+        group.push(checkpoint);
+        groups.set(key, group);
+    }
+    for (const group of groups.values()) {
+        group.sort((left, right) => compareDecimal(left.core.treeSize, right.core.treeSize));
+        const included = new Set(group.map((checkpoint) => checkpoint.checkpointDigest));
+        for (let index = 1; index < group.length; index += 1) {
+            const previous = group[index - 1];
+            const current = group[index];
+            if (current.core.treeSize === previous.core.treeSize) {
+                reasons.add(AUDIT_REASON_CODES.CHECKPOINT_FORK_DETECTED);
+                continue;
+            }
+            const claimed = current.core.previousCheckpointDigest;
+            if (claimed === previous.checkpointDigest)
+                continue;
+            // A subset export may omit intermediate checkpoints. An unlinked pair is
+            // accepted only when an omitted checkpoint could sit between the two and
+            // a verified consistency proof binds them: the proof, not the chain link,
+            // is the split-view guarantee. Naming another included checkpoint, or
+            // none, is a forked checkpoint chain.
+            const omittable = claimed !== null && !included.has(claimed) &&
+                BigInt(current.core.treeSize) - BigInt(previous.core.treeSize) > 1n;
+            if (!omittable || !verifiedConsistency.has(consistencyKey(previous.checkpointDigest, current.checkpointDigest))) {
+                reasons.add(AUDIT_REASON_CODES.CHECKPOINT_CHAIN_MISMATCH);
+            }
+        }
+    }
+    for (const selection of selections) {
+        const actual = (groups.get(ledgerEpochKey(selection)) ?? [])
+            .map((checkpoint) => checkpoint.core.treeSize)
+            .sort(compareDecimal);
+        const expected = [...selection.checkpointTreeSizes]
+            .sort(compareDecimal);
+        if (canonicalizeJson(actual) !== canonicalizeJson(expected)) {
+            reasons.add(AUDIT_REASON_CODES.CHECKPOINT_MISSING);
+        }
+    }
+    for (const entry of entries) {
+        if (entry.core.sequence !== '0' || entry.core.event.eventType !== 'ledger.epoch.started' ||
+            entry.core.event.details.family !== 'ledger')
+            continue;
+        const details = entry.core.event.details;
+        if (details.previousEpochId === undefined ||
+            details.previousTerminalCheckpointDigest === undefined)
+            continue;
+        const predecessor = {
+            ledgerId: entry.core.ledgerId,
+            ledgerEpochId: details.previousEpochId,
+        };
+        if (!selections.some((selection) => sameLedgerEpoch(selection, predecessor)))
+            continue;
+        const terminal = checkpoints.find((checkpoint) => sameLedgerEpoch(checkpoint.core, predecessor) &&
+            checkpoint.checkpointDigest === details.previousTerminalCheckpointDigest);
+        if (terminal === undefined) {
+            reasons.add(AUDIT_REASON_CODES.CHECKPOINT_CHAIN_MISMATCH);
+            continue;
+        }
+        // The successor genesis commits where the predecessor epoch ends, so a
+        // predecessor checkpoint signed over a larger tree is a second authority
+        // still checkpointing after rollover. Entries past the terminal are not:
+        // the terminal checkpoint's own lifecycle event lands there legitimately.
+        const terminalSize = BigInt(terminal.core.treeSize);
+        if (checkpoints.some((checkpoint) => sameLedgerEpoch(checkpoint.core, predecessor) &&
+            BigInt(checkpoint.core.treeSize) > terminalSize)) {
+            reasons.add(AUDIT_REASON_CODES.CHECKPOINT_FORK_DETECTED);
+        }
+    }
+    return dim(reasons.size === 0 ? 'valid' : 'invalid', reasons);
+}
+async function verifyMerkleProofComponents(bundle, entries, checkpoints, hasher) {
+    const reasons = new Set();
+    const inclusions = new Set();
+    const consistencies = new Set();
+    const tree = new Rfc9162MerkleTree(hasher);
+    const inclusionCandidates = includedArrays(bundle, AUDIT_BUNDLE_MEDIA_TYPES.inclusionProofs);
+    for (const candidate of inclusionCandidates) {
+        if (!auditBundleInclusionProofSchema.safeParse(candidate).success) {
+            reasons.add(AUDIT_REASON_CODES.SCHEMA_INVALID);
+            continue;
+        }
+        const item = candidate;
+        const checkpoint = checkpoints.find((value) => value.checkpointDigest === item.checkpointDigest &&
+            value.core.ledgerId === item.ledgerId &&
+            value.core.ledgerEpochId === item.ledgerEpochId);
+        const entry = entries.find((value) => value.entryDigest === item.entryDigest &&
+            value.core.sequence === item.sequence &&
+            value.core.ledgerId === item.ledgerId &&
+            value.core.ledgerEpochId === item.ledgerEpochId);
+        const leafIndex = Number(item.proof.leafIndex);
+        const treeSize = Number(item.proof.treeSize);
+        if (checkpoint === undefined || entry === undefined ||
+            item.proof.treeSize !== checkpoint.core.treeSize ||
+            item.proof.leafIndex !== item.sequence ||
+            !(await tree.verifyInclusion({
+                leaf: item.entryDigest,
+                leafIndex,
+                treeSize,
+                root: checkpoint.core.rootDigest,
+                auditPath: item.proof.auditPath,
+            }))) {
+            reasons.add(AUDIT_REASON_CODES.MERKLE_PROOF_INVALID);
+        }
+        else {
+            inclusions.add(inclusionKey(item.checkpointDigest, item.entryDigest, item.sequence));
+        }
+    }
+    const consistencyCandidates = includedArrays(bundle, AUDIT_BUNDLE_MEDIA_TYPES.consistencyProofs);
+    for (const candidate of consistencyCandidates) {
+        if (!auditBundleConsistencyProofSchema.safeParse(candidate).success) {
+            reasons.add(AUDIT_REASON_CODES.SCHEMA_INVALID);
+            continue;
+        }
+        const item = candidate;
+        const oldCheckpoint = checkpoints.find((value) => value.checkpointDigest === item.oldCheckpointDigest &&
+            value.core.ledgerId === item.ledgerId &&
+            value.core.ledgerEpochId === item.ledgerEpochId);
+        const newCheckpoint = checkpoints.find((value) => value.checkpointDigest === item.newCheckpointDigest &&
+            value.core.ledgerId === item.ledgerId &&
+            value.core.ledgerEpochId === item.ledgerEpochId);
+        if (oldCheckpoint === undefined || newCheckpoint === undefined ||
+            item.proof.oldTreeSize !== oldCheckpoint.core.treeSize ||
+            item.proof.newTreeSize !== newCheckpoint.core.treeSize ||
+            !(await tree.verifyConsistency({
+                oldSize: Number(item.proof.oldTreeSize),
+                newSize: Number(item.proof.newTreeSize),
+                oldRoot: oldCheckpoint.core.rootDigest,
+                newRoot: newCheckpoint.core.rootDigest,
+                auditPath: item.proof.auditPath,
+            }))) {
+            reasons.add(AUDIT_REASON_CODES.MERKLE_PROOF_INVALID);
+        }
+        else {
+            consistencies.add(consistencyKey(item.oldCheckpointDigest, item.newCheckpointDigest));
+        }
+    }
+    return {
+        dimension: dim(reasons.size === 0 ? 'valid' : 'invalid', reasons),
+        inclusions,
+        consistencies,
+    };
+}
+/**
+ * Without the complete leaf prefix a checkpoint's root cannot be recomputed,
+ * so every entry it covers must instead carry a verified inclusion proof
+ * against it, and a covered head entry must be the one the checkpoint signed.
+ */
+function verifyInclusionBinding(checkpoint, covered, verifiedInclusions) {
+    const reasons = new Set();
+    const headSequence = String(BigInt(checkpoint.core.treeSize) - 1n);
+    for (const entry of covered) {
+        if (!verifiedInclusions.has(inclusionKey(checkpoint.checkpointDigest, entry.entryDigest, entry.core.sequence))) {
+            reasons.add(AUDIT_REASON_CODES.MERKLE_PROOF_MISSING);
+        }
+        if (entry.core.sequence === headSequence &&
+            entry.entryDigest !== checkpoint.core.headEntryDigest) {
+            reasons.add(AUDIT_REASON_CODES.CHECKPOINT_RANGE_MISMATCH);
+        }
+    }
+    return dim(reasons.size === 0 ? 'valid' : 'invalid', reasons);
+}
+function verifyObservationHistory(observations) {
+    const reasons = new Set();
+    const groups = new Map();
+    for (const receipt of observations) {
+        const key = `${ledgerEpochKey(receipt.core)}\0${receipt.core.observerId}`;
+        const group = groups.get(key) ?? [];
+        group.push(receipt);
+        groups.set(key, group);
+    }
+    for (const group of groups.values()) {
+        group.sort((left, right) => left.core.observedAt - right.core.observedAt ||
+            compareDecimal(left.core.treeSize, right.core.treeSize));
+        for (let index = 1; index < group.length; index += 1) {
+            if (group[index].core.previousObservationDigest !==
+                group[index - 1].observationDigest) {
+                reasons.add(AUDIT_REASON_CODES.OBSERVATION_CHAIN_MISMATCH);
+            }
+        }
+    }
+    return dim(reasons.size === 0 ? 'valid' : 'invalid', reasons);
+}
+async function verifySupportingAnchors(candidates, checkpoints, policy, verifyReceipt) {
+    const reasons = new Set();
+    let notEvaluated = false;
+    for (const candidate of candidates) {
+        if (!auditAnchorReceiptSchema.safeParse(candidate).success) {
+            reasons.add(AUDIT_REASON_CODES.SCHEMA_INVALID);
+            continue;
+        }
+        const receipt = candidate;
+        const checkpoint = checkpoints.find((value) => value.checkpointDigest === receipt.checkpointDigest);
+        const trusted = policy.trustedSupportingAnchors?.some((value) => value.kind === receipt.kind && value.providerId === receipt.providerId &&
+            atTime(value, receipt.issuedAt)) ?? false;
+        if (!trusted)
+            reasons.add(AUDIT_REASON_CODES.UNTRUSTED_SUPPORTING_ANCHOR);
+        if (checkpoint === undefined) {
+            reasons.add(AUDIT_REASON_CODES.SUPPORTING_ANCHOR_INVALID);
+        }
+        else if (verifyReceipt === undefined) {
+            reasons.add(AUDIT_REASON_CODES.NOT_EVALUATED);
+            notEvaluated = true;
+        }
+        else if (!(await verifyReceipt(checkpoint, receipt))) {
+            reasons.add(AUDIT_REASON_CODES.SUPPORTING_ANCHOR_INVALID);
+        }
+    }
+    const invalid = [...reasons].some((reason) => reason !== AUDIT_REASON_CODES.NOT_EVALUATED);
+    return dim(invalid ? 'invalid' : notEvaluated ? 'indeterminate' : 'valid', reasons);
+}
+function selectionCompleteness(selections, entries, explicitOmissions) {
+    const reasons = new Set();
+    for (const selection of selections) {
+        const selected = entries.filter((entry) => entry.core.ledgerId === selection.ledgerId &&
+            entry.core.ledgerEpochId === selection.ledgerEpochId);
+        const uniqueBySequence = new Map();
+        let hasDuplicateSequence = false;
+        for (const entry of selected) {
+            if (uniqueBySequence.has(entry.core.sequence))
+                hasDuplicateSequence = true;
+            else
+                uniqueBySequence.set(entry.core.sequence, entry);
+        }
+        const ordered = [...uniqueBySequence.values()].sort((left, right) => {
+            const leftSequence = BigInt(left.core.sequence);
+            const rightSequence = BigInt(right.core.sequence);
+            return leftSequence < rightSequence ? -1 : leftSequence > rightSequence ? 1 : 0;
+        });
+        let expectedCount;
+        try {
+            expectedCount = BigInt(selection.lastSequence) - BigInt(selection.firstSequence) + 1n;
+        }
+        catch {
+            reasons.add(AUDIT_REASON_CODES.BUNDLE_SELECTION_INCOMPLETE);
+            continue;
+        }
+        let contiguous = true;
+        for (let index = 1; index < ordered.length; index += 1) {
+            if (BigInt(ordered[index].core.sequence) !==
+                BigInt(ordered[index - 1].core.sequence) + 1n) {
+                contiguous = false;
+                break;
+            }
+        }
+        if (hasDuplicateSequence || !contiguous || expectedCount < 1n ||
+            expectedCount !== BigInt(ordered.length) ||
+            ordered[0]?.core.sequence !== selection.firstSequence ||
+            ordered[ordered.length - 1]?.core.sequence !== selection.lastSequence ||
+            ordered[ordered.length - 1]?.entryDigest !== selection.expectedHeadDigest) {
+            reasons.add(AUDIT_REASON_CODES.BUNDLE_SELECTION_INCOMPLETE);
+        }
+    }
+    for (const component of explicitOmissions) {
+        if (component.disposition === 'redacted')
+            reasons.add(AUDIT_REASON_CODES.EXPLICITLY_REDACTED);
+        if (component.disposition === 'disposed')
+            reasons.add(AUDIT_REASON_CODES.EXPLICITLY_DISPOSED);
+        if (component.disposition === 'unavailable')
+            reasons.add(AUDIT_REASON_CODES.EXPLICITLY_UNAVAILABLE);
+    }
+    if (reasons.has(AUDIT_REASON_CODES.BUNDLE_SELECTION_INCOMPLETE))
+        return dim('invalid', reasons);
+    return reasons.size === 0 ? dim('valid') : dim('indeterminate', reasons);
+}
+/** Offline bundle verification. Trust is supplied only through the policy argument. */
+export async function verifyAuditBundle(bundle, policy, dependencies) {
+    if (!auditVerificationPolicySchema.safeParse(policy).success) {
+        const policyId = typeof policy?.policyId === 'string'
+            ? policy.policyId
+            : 'invalid-policy';
+        const invalid = dim('invalid', [AUDIT_REASON_CODES.VERIFICATION_POLICY_INVALID]);
+        return {
+            schema: 'https://schema.kya-os.org/v1/protocol/audit/verification-report/v1.0.0',
+            policyId,
+            cryptographicIntegrity: invalid,
+            chainIntegrity: invalid,
+            checkpointIntegrity: invalid,
+            anchorIntegrity: invalid,
+            scopeEvidenceCompleteness: invalid,
+            authorizedAsObserved: dim('indeterminate', [AUDIT_REASON_CODES.NOT_EVALUATED]),
+            currentAuthorization: dim('indeterminate', [AUDIT_REASON_CODES.NOT_EVALUATED]),
+        };
+    }
+    if (!auditReplayBundleSchema.safeParse(bundle).success) {
+        return applyRequiredAuditProfile(malformedBundleReport(policy), policy);
+    }
+    const replayBundle = bundle;
+    const reasons = new Set();
+    const core = replayBundle.manifest.core;
+    if (core?.schema !== BUNDLE_SCHEMA || core.formatVersion !== '1.0.0') {
+        reasons.add(AUDIT_REASON_CODES.BUNDLE_SCHEMA_INVALID);
+    }
+    if (!policy.acceptedIntegritySuites.includes(core?.integritySuite ?? '')) {
+        reasons.add(AUDIT_REASON_CODES.UNSUPPORTED_SUITE);
+    }
+    if (core === undefined || !policy.acceptedAlgorithms.includes(core.exporter.alg)) {
+        reasons.add(AUDIT_REASON_CODES.UNSUPPORTED_ALGORITHM);
+    }
+    const exporter = core === undefined ? 'unauthorized' : exporterAuthorization(core, policy);
+    if (exporter === 'unauthorized')
+        reasons.add(AUDIT_REASON_CODES.BUNDLE_EXPORTER_UNAUTHORIZED);
+    if (exporter === 'unresolved')
+        reasons.add(AUDIT_REASON_CODES.KEY_BOUNDARY_UNRESOLVED);
+    if (core !== undefined) {
+        const [manifestDigest, policyDigest] = await Promise.all([
+            hashAuditValue(dependencies.hasher, AUDIT_DIGEST_DOMAINS.bundleManifest, core),
+            hashAuditValue(dependencies.hasher, 'org.kya-os.audit.verification-policy.v1', policy),
+        ]);
+        if (manifestDigest !== replayBundle.manifest.manifestDigest) {
+            reasons.add(AUDIT_REASON_CODES.BUNDLE_MANIFEST_DIGEST_MISMATCH);
+        }
+        if (policyDigest !== core.verificationPolicyDigest) {
+            reasons.add(AUDIT_REASON_CODES.VERIFICATION_POLICY_MISMATCH);
+        }
+        if (!(await dependencies.signatures.verify(canonicalizeJsonBytes(core), replayBundle.manifest.jws, core.exporter))) {
+            reasons.add(AUDIT_REASON_CODES.BUNDLE_SIGNATURE_INVALID);
+        }
+        const inventoryByPath = new Map(core.inventory.map((item) => [item.path, item]));
+        const componentsByPath = new Map(replayBundle.components.map((item) => [item.path, item]));
+        if (inventoryByPath.size !== core.inventory.length ||
+            componentsByPath.size !== replayBundle.components.length ||
+            inventoryByPath.size !== componentsByPath.size) {
+            reasons.add(AUDIT_REASON_CODES.BUNDLE_INVENTORY_MISMATCH);
+        }
+        for (const [path, item] of inventoryByPath) {
+            const component = componentsByPath.get(path);
+            if (component === undefined ||
+                canonicalizeJson(item) !== canonicalizeJson(componentMetadata(component))) {
+                reasons.add(AUDIT_REASON_CODES.BUNDLE_INVENTORY_MISMATCH);
+                continue;
+            }
+            try {
+                assertPath(path);
+            }
+            catch {
+                reasons.add(AUDIT_REASON_CODES.BUNDLE_SCHEMA_INVALID);
+            }
+            if (component.disposition === 'included') {
+                if (component.content === undefined) {
+                    reasons.add(AUDIT_REASON_CODES.BUNDLE_INVENTORY_MISMATCH);
+                    continue;
+                }
+                const bytes = canonicalizeJsonBytes(component.content);
+                if (component.size !== String(bytes.length) ||
+                    component.digest !== await dependencies.hasher.sha256(bytes)) {
+                    reasons.add(AUDIT_REASON_CODES.BUNDLE_COMPONENT_DIGEST_MISMATCH);
+                }
+            }
+            else if (component.content !== undefined || component.reasonCode === undefined) {
+                reasons.add(AUDIT_REASON_CODES.BUNDLE_INVENTORY_MISMATCH);
+            }
+        }
+    }
+    const entryCandidates = includedArrays(replayBundle, AUDIT_BUNDLE_MEDIA_TYPES.entries);
+    const checkpointCandidates = includedArrays(replayBundle, AUDIT_BUNDLE_MEDIA_TYPES.checkpoints);
+    const observationCandidates = includedArrays(replayBundle, AUDIT_BUNDLE_MEDIA_TYPES.observations);
+    const anchorCandidates = includedArrays(replayBundle, AUDIT_BUNDLE_MEDIA_TYPES.anchors);
+    const entries = entryCandidates.filter((candidate) => signedAuditEntrySchema.safeParse(candidate).success);
+    const checkpoints = checkpointCandidates.filter((candidate) => signedAuditCheckpointSchema.safeParse(candidate).success);
+    const observations = observationCandidates.filter((candidate) => auditObservationReceiptSchema.safeParse(candidate).success);
+    // The bundle's own checkpoints are what checkpoint-bounded key policies name.
+    const context = { checkpoints };
+    const artifacts = dependencies.artifacts ?? new AuditArtifactVerifier(dependencies);
+    const artifactReport = await verifyEntryGroups(entryCandidates, policy, artifacts, context);
+    let checkpointDimension = artifactReport.checkpointIntegrity;
+    if (checkpointCandidates.length > 0) {
+        const proofs = await verifyMerkleProofComponents(replayBundle, entries, checkpoints, dependencies.hasher);
+        const checkpointResults = [];
+        for (const candidate of checkpointCandidates) {
+            if (!signedAuditCheckpointSchema.safeParse(candidate).success) {
+                checkpointResults.push(dim('invalid', [AUDIT_REASON_CODES.SCHEMA_INVALID]));
+                continue;
+            }
+            const checkpoint = candidate;
+            const covered = entries.filter((entry) => sameLedgerEpoch(entry.core, checkpoint.core) &&
+                BigInt(entry.core.sequence) < BigInt(checkpoint.core.treeSize));
+            // A subset export (a sequence range, or no entries at all) cannot
+            // recompute the root, so its entries are bound by inclusion proofs.
+            checkpointResults.push(isCompletePrefix(covered, checkpoint.core.treeSize)
+                ? await artifacts.verifyCheckpoint(checkpoint, covered, policy, context)
+                : mergeAuditDimensions(await artifacts.verifySignedCheckpoint(checkpoint, policy, context), verifyInclusionBinding(checkpoint, covered, proofs.inclusions)));
+        }
+        checkpointDimension = mergeAuditDimensions(...checkpointResults, verifyCheckpointHistory(checkpoints, entries, core.selections, proofs.consistencies), proofs.dimension);
+    }
+    else if (core.selections.some((selection) => selection.checkpointTreeSizes.length > 0)) {
+        checkpointDimension = dim('invalid', [AUDIT_REASON_CODES.CHECKPOINT_MISSING]);
+    }
+    let anchorDimension = artifactReport.anchorIntegrity;
+    if (observationCandidates.length > 0) {
+        const observationResults = [];
+        for (const candidate of observationCandidates) {
+            if (!auditObservationReceiptSchema.safeParse(candidate).success) {
+                observationResults.push(dim('invalid', [AUDIT_REASON_CODES.SCHEMA_INVALID]));
+                continue;
+            }
+            const receipt = candidate;
+            const checkpoint = checkpoints.find((candidate) => candidate.checkpointDigest === receipt.core.checkpointDigest);
+            observationResults.push(checkpoint === undefined
+                ? dim('invalid', [AUDIT_REASON_CODES.OBSERVATION_SCOPE_MISMATCH])
+                : await artifacts.verifyObservation(checkpoint, receipt, policy, context));
+        }
+        anchorDimension = mergeAuditDimensions(...observationResults, verifyObservationHistory(observations));
+    }
+    if (anchorCandidates.length > 0) {
+        anchorDimension = mergeAuditDimensions(anchorDimension, await verifySupportingAnchors(anchorCandidates, checkpoints, policy, dependencies.verifySupportingAnchor));
+    }
+    // An exporter key bound that cannot be placed leaves the manifest
+    // undecided, never valid; any other manifest reason is a failure.
+    const manifestDimension = dim(reasons.size === 0
+        ? 'valid'
+        : [...reasons].every((reason) => reason === AUDIT_REASON_CODES.KEY_BOUNDARY_UNRESOLVED)
+            ? 'indeterminate'
+            : 'invalid', reasons);
+    // Entry recorder keys were already evaluated per ledger epoch group.
+    const currentKeys = artifacts.verifyCurrentKeys(policy, {
+        checkpoints,
+        observations,
+        exporter: core.exporter,
+    });
+    return applyRequiredAuditProfile({
+        ...artifactReport,
+        cryptographicIntegrity: mergeAuditDimensions(manifestDimension, artifactReport.cryptographicIntegrity),
+        checkpointIntegrity: checkpointDimension,
+        anchorIntegrity: anchorDimension,
+        scopeEvidenceCompleteness: selectionCompleteness(core?.selections ?? [], entries, replayBundle.components.filter((component) => component.disposition !== 'included')),
+        currentAuthorization: currentKeys === undefined
+            ? artifactReport.currentAuthorization
+            : mergeAuditDimensions(artifactReport.currentAuthorization, currentKeys),
+    }, policy, { supportingAnchors: anchorCandidates.length > 0 });
+}
+//# sourceMappingURL=replay-bundle.js.map
