@@ -27,7 +27,12 @@ jobs:
         run: node site/build-pages.mjs
       - name: Badge worker tests (incl. cross-implementation parity)
         run: node --test workers/badge/*.test.mjs
-      - name: Conformance program tests (attestation core + issuance e2e dry run)
+      - name: Script tests (attestation core, issuance e2e dry run, vendored verifier)
         run: node --test scripts/__tests__/*.test.mjs
+      # The one networked check: re-download the pinned npm tarballs, check
+      # them against the registry's integrity, and fail if any committed file
+      # under site/assets/vendor/ differs from what npm publishes.
+      - name: Vendored verifier matches npm
+        run: node scripts/vendor-verifier.mjs --check
       - name: Generated worker modules are committed and current
         run: git diff --exit-code workers/badge/generated-allowlist.mjs workers/badge/generated-keys.mjs

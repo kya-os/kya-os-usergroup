@@ -16,6 +16,7 @@
  * gives the clipboard bytes for either.
  */
 import { ENTRY_TEMPLATE, ORIGIN } from "./constants.mjs";
+import { VERIFIER_PACKAGE } from "./vendor.mjs";
 
 /** The "before" block: a standard MCP server with no identity or proofs. */
 export const MIGRATE_BEFORE = {
@@ -154,7 +155,21 @@ export const CONSENT_PROTECTION = {
   ],
 };
 
-export const SNIPPETS = [MIGRATE_BEFORE, MIGRATE_AFTER, ENTRY_PREVIEW, BADGE_EMBED, CARD_PROJECTIONS, REVOKED_VERIFY, REVOKED_VERDICT, CONSENT_GATE, CONSENT_PROTECTION];
+/**
+ * The /verify/ page's run-it-yourself command: the reference CLI at exactly
+ * the version the page vendors (site/assets/vendor/manifest.json), so the
+ * command and the in-browser check always run the same verifier. The CLI
+ * refuses to run without --policy and --keys: a bundle cannot vouch for itself.
+ */
+export const AUDIT_VERIFY_CLI = {
+  id: "audit-verify-cli",
+  lines: [
+    [`npx -p @kya-os/mcp@${VERIFIER_PACKAGE.version} kya-audit verify bundle.json \\`, false],
+    ["  --policy policy.json --keys keys.json", false],
+  ],
+};
+
+export const SNIPPETS = [MIGRATE_BEFORE, MIGRATE_AFTER, ENTRY_PREVIEW, BADGE_EMBED, CARD_PROJECTIONS, REVOKED_VERIFY, REVOKED_VERDICT, CONSENT_GATE, CONSENT_PROTECTION, AUDIT_VERIFY_CLI];
 
 /** The plain-text bytes of a snippet: what the clipboard receives. */
 export function snippetText(snippet) {

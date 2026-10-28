@@ -134,6 +134,18 @@ Interop entries state, with evidence, how KYA-OS relates to an external standard
 Expect maintainers to check the evidence link before merging.
 `shipping` rows should also carry `implementation`: the URL of the file in the reference implementation (or its npm module) where the behaviour lives, so a developer can go from the row straight to code; the validator accepts only github.com/decentralized-identity/kya-os-mcp and npmjs.com hosts for it.
 
+## Upgrading the vendored verifier (/verify/)
+
+The `/verify/` page runs `@kya-os/mcp`'s audit verifier from committed copies of the npm files under `site/assets/vendor/`, so the page needs no CDN and no install step.
+To move it to a new `@kya-os/mcp` release:
+
+1. Edit the pins at the top of `scripts/vendor-verifier.mjs`: `VERIFIER.version`, and in `DEPENDENCIES` the exact `jose`, `zod` and `json-canonicalize` versions to use (each must satisfy the range the new release declares; the script refuses otherwise).
+2. Run `node scripts/vendor-verifier.mjs`. It downloads each tarball, refuses any whose sha512 does not match the registry's, and rewrites `site/assets/vendor/` with only the modules the verifier reaches plus each package's license.
+3. Run `node scripts/generate-verify-samples.mjs` if the bundle format changed. It re-signs the sample bundle with a fresh throwaway key and refuses to write unless the honest sample passes and the tampered copy fails.
+4. Run `npm test`, and commit the vendored tree, the manifest and any new samples together.
+
+CI re-downloads the pinned tarballs on every PR (`node scripts/vendor-verifier.mjs --check`) and fails if a committed file differs from npm, so a hand edit under `site/assets/vendor/` cannot merge.
+
 ## Everything else
 
 Changes to the schemas, the validator, the site, the conformance program docs, or the badge worker are welcome as issues or PRs, but expect more discussion than a registry entry - and anything that changes what a listing MEANS goes to the working group first (see [GOVERNANCE.md](GOVERNANCE.md)).

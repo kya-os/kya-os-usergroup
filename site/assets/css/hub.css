@@ -696,3 +696,61 @@ html.js-anim details[open] .psig:not(.psig-none) .wf{animation:wfSweep .7s cubic
 .panel-card .authz-note{font-size:16px;margin-top:12px}
 .panel-card .authz-cap{font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);margin:14px 0 8px}
 /* END authz-row block */
+
+/* ── Verify page (/verify/) ───────────────────────────────────────────────
+   BEGIN verify block: appended as one unit. The checker form (ships hidden;
+   /ui/verify.js reveals it), its live result (a headline, one row per report
+   dimension with a status dot rather than a chip, the sources, the raw
+   JSON), and the reference lists: verdicts, dimensions, vendored packages. */
+.vf-form{max-width:860px;border:1px solid var(--line-mid);background:var(--panel);padding:24px}
+.vf-form.vf-drop{border-style:dashed;border-color:var(--signal)}
+.vf-files{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.vf-file{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0}
+.vf-label,.vf-raw summary{font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;color:var(--ink-muted)}
+.vf-file>input{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%)}
+.vf-pick{font-family:var(--font-mono);font-size:12px;color:var(--ink);border:1px solid var(--line-mid);padding:6px 12px;cursor:pointer}
+.vf-file:hover .vf-pick{border-color:var(--line-strong)}
+.vf-file>input:focus-visible+.vf-pick{outline:1px solid var(--signal);outline-offset:2px}
+.vf-source,.vf-hint{font-family:var(--font-mono);font-size:11px;line-height:1.6;color:var(--ink-faint);overflow-wrap:anywhere;margin:0}
+.vf-nojs{font-size:15px;line-height:1.7;color:var(--ink-muted);max-width:760px;margin:0}
+.vf-source.vf-loaded{color:var(--ink)}
+.vf-hint{margin-top:18px}
+.vf-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:20px}
+.vf-run,.vf-sample{font-family:var(--font-mono);font-size:13px;padding:10px 18px;border:1px solid var(--line-mid);background:transparent;color:var(--ink);cursor:pointer}
+.vf-run{color:var(--on-accent);background:var(--accent);border-color:var(--accent)}
+.vf-sample:hover{border-color:var(--line-strong)}
+.vf-actions button:disabled{opacity:.45;cursor:not-allowed}
+.vf-result{max-width:860px;margin-top:28px}
+.vf-headline{font-size:20px;font-weight:600;margin:0 0 4px}
+.vf-sub,.vf-sources{font-size:14px;line-height:1.7;color:var(--ink-muted);margin:0 0 16px}
+.vf-sources{margin:14px 0 0}
+.vf-v-valid{color:var(--signal)}
+.vf-v-invalid{color:var(--alert)}
+.vf-v-indeterminate{color:var(--amber)}
+.vf-rows,.vf-verdicts,.vf-pkgs{list-style:none;margin:0;padding:0}
+.vf-row{display:grid;grid-template-columns:220px 140px 1fr;gap:16px;align-items:baseline;padding:10px 0;border-top:1px solid var(--line);font-size:14px}
+.vf-row-verdict{font-family:var(--font-mono);font-size:12px}
+.vf-row-verdict::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor;margin-right:8px;vertical-align:1px}
+.vf-row-codes,.vf-int{font-size:11px;color:var(--ink-faint);overflow-wrap:anywhere}
+.vf-raw{margin-top:16px}
+.vf-raw summary{cursor:pointer}
+.vf-raw pre{font-family:var(--font-mono);font-size:11.5px;line-height:1.6;color:var(--ink);background:var(--panel);border:1px solid var(--line);padding:14px 16px;margin:10px 0 0;max-height:360px;overflow:auto}
+.vf-verdicts{margin-bottom:28px}
+.vf-verdicts li{font-size:15px;line-height:1.9;color:var(--ink-muted)}
+.vf-verdicts b{font-family:var(--font-mono);font-size:13px;font-weight:500}
+.vf-dims{margin:0;max-width:860px}
+.vf-dim{display:grid;grid-template-columns:260px 1fr;gap:24px;padding:14px 0;border-top:1px solid var(--line)}
+.vf-dim dt{font-size:15px;font-weight:500;color:var(--ink)}
+.vf-dim dt code{display:block;font-size:11px;color:var(--ink-faint);margin-top:4px}
+.vf-dim dd{margin:0;font-size:15px;line-height:1.7;color:var(--ink-muted)}
+.vf-note{font-size:15px;line-height:1.8;color:var(--ink-muted);max-width:760px;margin:20px 0 0}
+.vf-pkgs{margin-top:20px;max-width:860px}
+.vf-pkgs li{padding:10px 0;border-top:1px solid var(--line);font-size:14px}
+.vf-pkg-meta{display:block;font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);margin-top:4px}
+@media (max-width:800px){
+  .vf-files{grid-template-columns:1fr;gap:22px}
+  .vf-dim{grid-template-columns:1fr;gap:12px}
+  .vf-row{grid-template-columns:1fr auto;row-gap:4px}
+  .vf-row-codes{grid-column:1/-1}
+}
+/* END verify block */

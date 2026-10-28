@@ -34,8 +34,11 @@ const SLUG = "kya-os-mcp"; // the committed in-verification entry (L3 full, suit
 const GIT_COMMIT = "c0ffee0ddba11ad5c0ffee0ddba11ad5c0ffee0d";
 
 const temp = mkdtempSync(join(tmpdir(), "kya-issuance-e2e-"));
-const EXCLUDE = new Set([".git", "dist", "node_modules"]);
-cpSync(repoRoot, temp, { recursive: true, filter: (source) => !EXCLUDE.has(basename(source)) });
+const EXCLUDE = new Set([".git", "node_modules"]);
+// dist/ only at the root, where it is the build output: the npm packages
+// vendored under site/assets/vendor/ keep their own dist/ folders as source.
+const buildOutput = join(repoRoot, "dist");
+cpSync(repoRoot, temp, { recursive: true, filter: (source) => !EXCLUDE.has(basename(source)) && source !== buildOutput });
 
 // ── era normalization: the fixture starts from the canonical PRE-PROVISIONING
 // state no matter what era the live repo is in. Without this, the first real

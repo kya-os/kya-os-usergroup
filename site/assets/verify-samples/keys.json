@@ -1,0 +1,12 @@
+{
+  "keys": [
+    {
+      "kid": "did:key:z6MkjaQyx3xhLbQwNGkdY6AK2uHubsnvgPdDfxHQPFLjUY17#z6MkjaQyx3xhLbQwNGkdY6AK2uHubsnvgPdDfxHQPFLjUY17",
+      "jwk": {
+        "crv": "Ed25519",
+        "x": "TB-bC04A6LuqalXy4cf4d6CIkvgY67n-cDCtDIptmpo",
+        "kty": "OKP"
+      }
+    }
+  ]
+}
