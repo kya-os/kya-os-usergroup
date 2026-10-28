@@ -20,8 +20,13 @@ export const PAGE_MODULES = {
   "builders/index.html": ["entry-builder.js"],
   "conformance/index.html": ["badge-preview.js"],
   "use-cases/index.html": ["revoked-console.js"],
+  "verify/index.html": ["verify.js"],
 };
-export const COPIED_MODULES = { "builder-entry.js": "scripts/lib/builder-entry.mjs", "waveform.js": "site/lib/waveform.mjs" };
+export const COPIED_MODULES = {
+  "audit-dimensions.js": "scripts/lib/audit-dimensions.mjs",
+  "builder-entry.js": "scripts/lib/builder-entry.mjs",
+  "waveform.js": "site/lib/waveform.mjs",
+};
 export const GENERATED_MODULES = ["registry-enums.js"];
 
 const jsFiles = (dir) => readdirSync(dir).filter((name) => name.endsWith(".js")).sort();
@@ -119,6 +124,14 @@ export function assertClientModules({ distDir, pages, interopSorted, repoUrl }) 
   const buildersHtml = pages["builders/index.html"];
   assertBuild(/<form id="entry-builder"[^>]*\bhidden\b/.test(buildersHtml), "the entry-builder form must ship hidden (no JS, no dead form)");
   assertBuild(buildersHtml.includes('<details class="disclosure">') && buildersHtml.includes('data-snippet="entry-preview"'), "the entry builder must keep its no-JS template fallback");
+  // The verify checker ships hidden with a visible no-JS line beside it
+  // (pointing at the command, which needs no page at all); the module
+  // reveals the form and hides that line.
+  const verifyHtml = pages["verify/index.html"];
+  const verifyJs = readFileSync(join(distUi, "verify.js"), "utf8");
+  assertBuild(/<form id="vf-form"[^>]*\bhidden\b/.test(verifyHtml), "the verify form must ship hidden (no JS, no dead form)");
+  assertBuild(/<p class="vf-nojs" id="vf-nojs">[^<]*<a href="#cli">/.test(verifyHtml) && verifyHtml.includes('id="cli"'), "the verify page must ship its no-JS line pointing at the command");
+  assertBuild(verifyJs.includes("form.hidden = false") && verifyJs.includes('getElementById("vf-nojs").hidden = true'), "verify.js lost the hidden-form reveal or the no-JS line hide");
 }
 
 // The console's no-JS contract: it ships in its FINAL state (fc-killed on

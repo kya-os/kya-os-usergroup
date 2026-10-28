@@ -1,9 +1,9 @@
 /**
  * Page assembly for the community hub: one renderer per page, composing the
- * page hero + section bodies into the shared shell from lib/html.mjs. Six
- * pages, per the Builders Site design handoff: the overview (home), the
- * builders directory, conformance, the standards matrix, the protocol rails
- * diagram, and use-cases.
+ * page hero + section bodies into the shared shell from lib/html.mjs. Seven
+ * pages: the six from the Builders Site design handoff (the overview (home),
+ * the builders directory, conformance, the standards matrix, the protocol
+ * rails diagram, and use-cases) plus verify, the in-browser audit verifier.
  *
  * URL model: folder-style pages (/builders/ -> builders/index.html) so
  * Cloudflare Pages serves them clean; every internal link is root-absolute.
@@ -13,6 +13,8 @@ import { esc, pageShell } from "./html.mjs";
 import { sectionsConformance } from "./program.mjs";
 import { sectionsRails, sectionsStandards } from "./rails.mjs";
 import { sectionsUseCases } from "./use-cases.mjs";
+import { sectionsVerify } from "./verify.mjs";
+import { IMPORT_MAP } from "./vendor.mjs";
 import { sectionEntryBuilder } from "./entry-builder.mjs";
 import { sectionsHome } from "./home.mjs";
 import { builderHero, sectionAddCta, sectionDirectory, sectionStartHere, sectionSubmit } from "./sections.mjs";
@@ -50,7 +52,7 @@ function contentPage({ title, description, path, hero, sections, modules, still 
   });
 }
 
-/** The overview: the two-line hook, how it works, the path, define-once + THE RAILS panel, explore (stats strip + five cards). */
+/** The overview: the two-line hook, how it works, the path, define-once + THE RAILS panel, explore (stats strip + six cards). */
 export function renderLandingHtml({ rendered, interopSorted }) {
   return pageShell({
     title: TITLE,
@@ -130,5 +132,32 @@ export function renderUseCasesHtml() {
     }),
     sections: [sectionsUseCases()],
     modules: ["revoked-console.js"],
+  });
+}
+
+/**
+ * Verify: the reference audit verifier, run in the browser. The page's head
+ * carries the import map that resolves the module's bare specifiers
+ * ("@kya-os/mcp/audit", "jose", ...) to the vendored files under /vendor/;
+ * the _headers CSP pins its exact bytes by hash.
+ */
+export function renderVerifyHtml() {
+  const title = `Verify · ${TITLE}`;
+  return pageShell({
+    title,
+    headExtra: `${metaHead({
+      title,
+      description: "Check a KYA-OS audit bundle with the protocol's reference verifier, in your browser or as one command.",
+      path: "/verify/",
+    })}<script type="importmap">${IMPORT_MAP}</script>\n`,
+    body: [
+      pageHero({
+        title: "VERIFY",
+        lede: "Check a KYA-OS audit trail yourself. The protocol's reference verifier runs here in your browser, and nothing you load leaves it.",
+      }),
+      sectionsVerify(),
+    ].join("\n"),
+    current: "/verify/",
+    modules: ["verify.js"],
   });
 }

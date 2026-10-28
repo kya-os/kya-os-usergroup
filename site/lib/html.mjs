@@ -88,6 +88,7 @@ export const NAV_PAGES = [
   ["/", "overview"],
   ["/builders/", "builders"],
   ["/conformance/", "conformance"],
+  ["/verify/", "verify"],
   ["/standards/", "standards"],
   ["/rails/", "rails"],
   ["/use-cases/", "use-cases"],

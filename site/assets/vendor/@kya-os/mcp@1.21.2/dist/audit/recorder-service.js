@@ -1,0 +1,427 @@
+import { canonicalizeJson, canonicalizeJsonBytes } from '../utils/canonical-json.js';
+import { AUDIT_ERROR_CODES, AuditProtocolError } from './errors.js';
+import { hashAuditValue } from './crypto.js';
+import { AUDIT_DIGEST_DOMAINS, buildAuditRecorderReceiptCore, collectAuditEvidenceRefs, digestAuditEntry, digestAuditEvidenceManifest, digestAuditEvent, } from './integrity.js';
+import { AUDIT_ENTRY_SCHEMA_ID, AUDIT_EVENT_SCHEMA_ID, AUDIT_INTEGRITY_SUITE, parseAuditEntryCore, parseAuditProducerEvent, parseSignedAuditEntry, } from './schemas.js';
+function deepFreeze(value) {
+    if (typeof value !== 'object' || value === null || Object.isFrozen(value))
+        return value;
+    for (const child of Object.values(value))
+        deepFreeze(child);
+    return Object.freeze(value);
+}
+function sameHead(left, right) {
+    if (left === null || right === null)
+        return left === right;
+    return left.entryDigest === right.entryDigest && left.sequence === right.sequence;
+}
+/** The later of two heads; at an equal sequence the first one is kept. */
+function higherHead(current, candidate) {
+    if (candidate === null)
+        return current;
+    if (current === null)
+        return candidate;
+    return BigInt(candidate.sequence) > BigInt(current.sequence) ? candidate : current;
+}
+function sameSigner(left, right) {
+    return left.did === right.did && left.kid === right.kid && left.alg === right.alg;
+}
+function sameParty(left, right) {
+    return canonicalizeJson(left) === canonicalizeJson(right);
+}
+function authorityMatchesParty(authority, boundRef, claimedRef) {
+    if (boundRef !== undefined)
+        return sameParty(boundRef, claimedRef);
+    return (claimedRef.kind === 'public_did' || claimedRef.kind === 'pairwise_did') &&
+        claimedRef.did === authority;
+}
+export class AuditRecorderService {
+    config;
+    maxAppendConflicts;
+    initialization;
+    /** Highest head this recorder has itself appended in its epoch. */
+    committedHead = null;
+    /** Highest head the journal has reported in a compare-and-append result. */
+    reportedHead = null;
+    /** Write-ahead evidence objects held by submissions in flight, by object ID. */
+    heldEvidence = new Map();
+    constructor(config) {
+        this.config = config;
+        if ((config.previousEpochId === undefined) !==
+            (config.previousTerminalCheckpointDigest === undefined)) {
+            throw new AuditProtocolError(AUDIT_ERROR_CODES.INVALID_CONFIGURATION, 'Previous epoch ID and terminal checkpoint digest must be supplied together');
+        }
+        if (config.previousEpochId !== undefined && config.epochTransitionGuard === undefined) {
+            throw new AuditProtocolError(AUDIT_ERROR_CODES.INVALID_CONFIGURATION, 'Epoch transitions require an authoritative verify-and-seal guard');
+        }
+        this.maxAppendConflicts = config.maxAppendConflicts ?? 256;
+    }
+    async submitAuthenticated(submission, context) {
+        this.validateSubmissionEnvelope(submission, context);
+        const producerEvent = parseAuditProducerEvent(submission.producerEvent);
+        this.validateEventAuthority(producerEvent, context);
+        if (this.config.authorizer !== undefined &&
+            !(await this.config.authorizer.authorize({ submission, context }))) {
+            throw new AuditProtocolError(AUDIT_ERROR_CODES.UNAUTHORIZED_SUBMISSION, 'Audit producer is not authorized for this ledger');
+        }
+        const identity = await this.identifyEvent(producerEvent, context);
+        const duplicate = await this.config.journal.getByIdempotencyKey(this.config.ledgerId, identity.idempotencyKey);
+        if (duplicate !== null)
+            return this.resolveDuplicate(duplicate, identity.eventDigest);
+        // Only a new append must target the active epoch. Logical-ledger idempotency
+        // is resolved first so a redelivered submission pinned to a retained earlier
+        // epoch returns its original entry instead of wedging on EPOCH_MISMATCH.
+        if (submission.expectedLedgerEpochId !== undefined &&
+            submission.expectedLedgerEpochId !== this.config.ledgerEpochId) {
+            throw new AuditProtocolError(AUDIT_ERROR_CODES.EPOCH_MISMATCH, 'Wrong audit ledger epoch');
+        }
+        await this.ensureInitialized();
+        const held = this.holdEvidence(submission.encryptedEvidence);
+        try {
+            const stored = await this.persistSubmittedEvidence(submission.encryptedEvidence, producerEvent);
+            try {
+                return await this.appendEvent(producerEvent, context, false, identity);
+            }
+            catch (error) {
+                await this.disposeUncommittedEvidence(stored, identity);
+                throw error;
+            }
+        }
+        finally {
+            this.releaseEvidence(held);
+        }
+    }
+    /**
+     * Registers this submission as a holder of each evidence object it carries.
+     * An object two submissions hold at once is marked shared for as long as
+     * either still holds it: both may have seen it as new, and the other may
+     * already have committed a reference to it.
+     */
+    holdEvidence(evidence) {
+        const objectIds = [...new Set(evidence.map((item) => item.ref.objectId))];
+        for (const objectId of objectIds) {
+            const hold = this.heldEvidence.get(objectId);
+            if (hold === undefined)
+                this.heldEvidence.set(objectId, { holders: 1, shared: false });
+            else
+                this.heldEvidence.set(objectId, { holders: hold.holders + 1, shared: true });
+        }
+        return objectIds;
+    }
+    releaseEvidence(objectIds) {
+        for (const objectId of objectIds) {
+            const hold = this.heldEvidence.get(objectId);
+            if (hold.holders === 1)
+                this.heldEvidence.delete(objectId);
+            else
+                this.heldEvidence.set(objectId, { ...hold, holders: hold.holders - 1 });
+        }
+    }
+    /**
+     * Best-effort compensation for write-ahead evidence whose append failed. Only
+     * objects this submission newly stored are disposed: an object that already
+     * existed may be referenced by another committed entry, and so may one that
+     * a concurrent submission held at the same time. They are disposed only
+     * after re-confirming that no committed entry claims this event identity, so
+     * a raced idempotent commit is never stripped of its evidence. Failures here
+     * leave orphans for operator retention tooling.
+     */
+    async disposeUncommittedEvidence(stored, identity) {
+        if (stored.length === 0 || this.config.evidence === undefined)
+            return;
+        try {
+            const committed = await this.config.journal.getByIdempotencyKey(this.config.ledgerId, identity.idempotencyKey);
+            if (committed !== null)
+                return;
+            for (const item of stored) {
+                if (this.heldEvidence.get(item.ref.objectId)?.shared === true)
+                    continue;
+                await this.config.evidence.applyRetention({
+                    kind: 'dispose',
+                    ref: item.ref,
+                    authorizedBy: 'audit-recorder',
+                    reason: 'append_failed_uncommitted',
+                });
+            }
+        }
+        catch {
+            // Retaining an orphan is preferable to disposing racing committed evidence.
+        }
+    }
+    validateSubmissionEnvelope(submission, context) {
+        if (!context.producerAuthority || !context.tenantAuthority) {
+            throw new AuditProtocolError(AUDIT_ERROR_CODES.UNAUTHORIZED_SUBMISSION, 'Authenticated producer and tenant authority are required');
+        }
+        if (submission.ledgerId !== this.config.ledgerId) {
+            throw new AuditProtocolError(AUDIT_ERROR_CODES.LEDGER_MISMATCH, 'Wrong audit ledger');
+        }
+    }
+    validateEventAuthority(event, context) {
+        if (!authorityMatchesParty(context.producerAuthority, context.producerRef, event.source.producer)) {
+            throw new AuditProtocolError(AUDIT_ERROR_CODES.UNAUTHORIZED_SUBMISSION, 'Event producer does not match the authenticated producer authority');
+        }
+        if (!sameParty(event.tenantRef, this.config.tenantRef) ||
+            !authorityMatchesParty(context.tenantAuthority, context.tenantRef, event.tenantRef)) {
+            throw new AuditProtocolError(AUDIT_ERROR_CODES.UNAUTHORIZED_SUBMISSION, 'Event tenant does not match the authenticated tenant authority');
+        }
+    }
+    /** Persists write-ahead evidence and returns the objects that did not exist before. */
+    async persistSubmittedEvidence(evidence, event) {
+        if (evidence.length === 0)
+            return [];
+        if (this.config.evidence === undefined) {
+            throw new AuditProtocolError(AUDIT_ERROR_CODES.EVIDENCE_FAILURE, 'Encrypted evidence was submitted but no evidence provider is configured');
+        }
+        try {
+            const refs = new Map(collectAuditEvidenceRefs(event).map((ref) => [ref.objectId, ref]));
+            const submitted = new Set();
+            const stored = [];
+            for (const item of evidence) {
+                const referenced = refs.get(item.ref.objectId);
+                if (submitted.has(item.ref.objectId) || referenced === undefined ||
+                    canonicalizeJson(referenced) !== canonicalizeJson(item.ref)) {
+                    throw new AuditProtocolError(AUDIT_ERROR_CODES.EVIDENCE_FAILURE, 'Submitted evidence does not exactly match a unique frozen event reference', { objectId: item.ref.objectId });
+                }
+                submitted.add(item.ref.objectId);
+                const existed = await this.config.evidence.has(item.ref);
+                await this.config.evidence.putIfAbsent(item);
+                if (!existed)
+                    stored.push(item);
+            }
+            return stored;
+        }
+        catch (error) {
+            if (error instanceof AuditProtocolError &&
+                error.code === AUDIT_ERROR_CODES.EVIDENCE_FAILURE)
+                throw error;
+            throw new AuditProtocolError(AUDIT_ERROR_CODES.EVIDENCE_FAILURE, 'Required evidence could not be persisted', undefined, { cause: error });
+        }
+    }
+    async ensureInitialized() {
+        const ledger = this.ledgerRef();
+        const existingHead = await this.config.journal.getHead(ledger);
+        if (existingHead !== null) {
+            const first = this.config.journal.readRange({ ...ledger, limit: 1 });
+            for await (const entry of first)
+                return this.validateExistingGenesis(entry);
+            throw new AuditProtocolError(AUDIT_ERROR_CODES.JOURNAL_FAILURE, 'Ledger head exists without genesis');
+        }
+        if (this.config.previousEpochId !== undefined) {
+            const verifiedAndSealed = await this.config.epochTransitionGuard.verifyAndSeal({
+                ledgerId: this.config.ledgerId,
+                previousEpochId: this.config.previousEpochId,
+                nextEpochId: this.config.ledgerEpochId,
+                previousTerminalCheckpointDigest: this.config.previousTerminalCheckpointDigest,
+            });
+            if (!verifiedAndSealed) {
+                throw new AuditProtocolError(AUDIT_ERROR_CODES.INVALID_CONFIGURATION, 'Predecessor checkpoint could not be verified and sealed');
+            }
+        }
+        this.initialization ??= this.appendEvent(this.genesisEvent(), {
+            producerAuthority: this.config.signer.ref.did,
+            tenantAuthority: 'audit-recorder',
+            producerRef: { kind: 'public_did', did: this.config.signer.ref.did },
+            tenantRef: this.config.tenantRef,
+        }, true).finally(() => {
+            this.initialization = undefined;
+        });
+        return this.initialization;
+    }
+    validateExistingGenesis(candidate) {
+        try {
+            const entry = parseSignedAuditEntry(candidate);
+            const details = entry.core.event.details;
+            const valid = entry.core.sequence === '0' &&
+                entry.core.previousEntryDigest === null &&
+                entry.core.ledgerId === this.config.ledgerId &&
+                entry.core.ledgerEpochId === this.config.ledgerEpochId &&
+                sameSigner(entry.core.recorder, this.config.signer.ref) &&
+                entry.core.event.eventType === 'ledger.epoch.started' &&
+                entry.core.event.binding === this.config.binding &&
+                entry.core.event.source.sourceId === this.config.sourceId &&
+                entry.core.event.source.producer.kind === 'public_did' &&
+                entry.core.event.source.producer.did === this.config.signer.ref.did &&
+                sameParty(entry.core.event.tenantRef, this.config.tenantRef) &&
+                details.family === 'ledger' &&
+                details.phase === 'epoch_started' &&
+                details.previousEpochId === this.config.previousEpochId &&
+                details.previousTerminalCheckpointDigest ===
+                    this.config.previousTerminalCheckpointDigest;
+            if (!valid)
+                throw new Error('Genesis does not match recorder epoch configuration');
+            return entry;
+        }
+        catch (error) {
+            throw new AuditProtocolError(AUDIT_ERROR_CODES.JOURNAL_FAILURE, 'Existing ledger genesis does not match the authoritative recorder configuration', undefined, { cause: error });
+        }
+    }
+    genesisEvent() {
+        return parseAuditProducerEvent({
+            schema: AUDIT_EVENT_SCHEMA_ID,
+            eventId: `genesis:${this.config.ledgerId}:${this.config.ledgerEpochId}`,
+            eventType: 'ledger.epoch.started',
+            eventVersion: '1.0.0',
+            binding: this.config.binding,
+            occurredAt: this.config.clock.now(),
+            tenantRef: this.config.tenantRef,
+            source: {
+                producer: { kind: 'public_did', did: this.config.signer.ref.did },
+                sourceId: this.config.sourceId,
+                sourceSequence: '0',
+            },
+            resource: { kind: 'public_did', did: this.config.signer.ref.did },
+            action: { category: 'ledger.epoch' },
+            outcome: 'succeeded',
+            evidence: [],
+            details: {
+                family: 'ledger',
+                phase: 'epoch_started',
+                ...(this.config.previousEpochId
+                    ? {
+                        previousEpochId: this.config.previousEpochId,
+                        previousTerminalCheckpointDigest: this.config.previousTerminalCheckpointDigest,
+                    }
+                    : {}),
+            },
+            privacy: { classification: 'internal', retentionClass: 'integrity-ledger' },
+        });
+    }
+    async appendEvent(event, context, genesis = false, knownIdentity) {
+        const { eventDigest, idempotencyKey } = knownIdentity ??
+            await this.identifyEvent(event, context);
+        const duplicate = await this.config.journal.getByIdempotencyKey(this.config.ledgerId, idempotencyKey);
+        if (duplicate !== null) {
+            // A raced replica genesis differs only in recorder-authored timing, so it
+            // resolves through epoch-configuration validation, not content identity.
+            return genesis
+                ? this.validateExistingGenesis(duplicate)
+                : this.resolveDuplicate(duplicate, eventDigest);
+        }
+        const ledger = this.ledgerRef();
+        for (let attempt = 0; attempt <= this.maxAppendConflicts; attempt += 1) {
+            // A read behind this recorder's own commits (a lagging replica) is not
+            // an append position: compare-and-append against the committed head, so
+            // a stale read costs one retry and a journal that really moved backwards
+            // answers with a conflict that proves it instead of accepting a second
+            // entry at a receipted sequence.
+            const committed = this.committedHead;
+            const reported = this.reportedHead;
+            const head = higherHead(committed, await this.config.journal.getHead(ledger));
+            if (genesis && head !== null) {
+                const raced = await this.config.journal.getByIdempotencyKey(this.config.ledgerId, idempotencyKey);
+                if (raced !== null)
+                    return this.validateExistingGenesis(raced);
+            }
+            const candidate = await this.buildCandidate(event, eventDigest, head, genesis);
+            let result;
+            try {
+                result = await this.config.journal.compareAndAppend({
+                    ledger,
+                    expectedHead: head,
+                    entry: candidate,
+                    idempotencyKey,
+                });
+            }
+            catch (error) {
+                throw new AuditProtocolError(AUDIT_ERROR_CODES.JOURNAL_FAILURE, 'Audit journal append failed', undefined, { cause: error });
+            }
+            if (result.kind === 'appended') {
+                const appended = {
+                    ...ledger,
+                    sequence: result.entry.core.sequence,
+                    entryDigest: result.entry.entryDigest,
+                };
+                this.committedHead = higherHead(this.committedHead, appended);
+                this.reportedHead = higherHead(this.reportedHead, appended);
+                return result.entry;
+            }
+            if (result.kind === 'duplicate' || result.kind === 'idempotency_conflict') {
+                const existing = result.kind === 'duplicate' ? result.entry : result.existing;
+                // A replica that lost the cold-start genesis race finds a genesis that
+                // differs only in recorder-authored timing; it is accepted on epoch
+                // configuration, never as an event-identity conflict.
+                return genesis
+                    ? this.validateExistingGenesis(existing)
+                    : this.resolveDuplicate(existing, eventDigest);
+            }
+            this.assertNoRegression(result.actualHead, committed, reported);
+            this.reportedHead = higherHead(this.reportedHead, result.actualHead);
+            if (sameHead(head, result.actualHead)) {
+                throw new AuditProtocolError(AUDIT_ERROR_CODES.JOURNAL_FAILURE, 'Audit journal reported a head conflict without advancing its head');
+            }
+        }
+        throw new AuditProtocolError(AUDIT_ERROR_CODES.APPEND_CONFLICT_EXHAUSTED, 'Audit append conflict retry budget exhausted');
+    }
+    /**
+     * The compare-and-append result is the journal's authoritative head. One
+     * below a head this recorder had committed before issuing the append, or a
+     * different digest at a sequence the journal already reported, means a
+     * failover to a lagging primary or a restore. Retrying there would sign a
+     * second entry at a receipted sequence, so the recorder fails closed. The
+     * heads compared are the ones known when the append was issued, so a
+     * concurrent submission's later commit never makes a correct answer look
+     * stale.
+     */
+    assertNoRegression(actual, committed, reported) {
+        const forks = (known) => known !== null && actual !== null &&
+            known.sequence === actual.sequence && known.entryDigest !== actual.entryDigest;
+        if ((committed !== null &&
+            (actual === null || BigInt(actual.sequence) < BigInt(committed.sequence))) ||
+            forks(committed) || forks(reported)) {
+            throw new AuditProtocolError(AUDIT_ERROR_CODES.JOURNAL_FAILURE, 'Audit journal head moved behind a head this recorder already committed or saw', { committedSequence: committed?.sequence, reportedSequence: actual?.sequence });
+        }
+    }
+    async identifyEvent(event, context) {
+        const eventDigest = await digestAuditEvent(this.config.hasher, event);
+        const idempotencyKey = await hashAuditValue(this.config.hasher, AUDIT_DIGEST_DOMAINS.idempotency, {
+            ledgerId: this.config.ledgerId,
+            producerAuthority: context.producerAuthority,
+            sourceId: event.source.sourceId,
+            eventId: event.eventId,
+        });
+        return { eventDigest, idempotencyKey };
+    }
+    resolveDuplicate(existing, digest) {
+        if (existing.eventDigest !== digest) {
+            throw new AuditProtocolError(AUDIT_ERROR_CODES.EVENT_ID_CONFLICT, 'Authenticated producer event identity was reused with different content', { eventId: existing.core.event.eventId });
+        }
+        return existing;
+    }
+    async buildCandidate(event, eventDigest, head, genesis) {
+        const sequence = head === null ? '0' : (BigInt(head.sequence) + 1n).toString();
+        if (genesis !== (sequence === '0')) {
+            throw new AuditProtocolError(AUDIT_ERROR_CODES.JOURNAL_FAILURE, genesis ? 'Genesis must be the first epoch entry' : 'Producer event cannot replace genesis');
+        }
+        const recordedAt = this.config.clock.now();
+        const evidenceManifestDigest = await digestAuditEvidenceManifest(this.config.hasher, event);
+        const core = parseAuditEntryCore({
+            schema: AUDIT_ENTRY_SCHEMA_ID,
+            ledgerId: this.config.ledgerId,
+            ledgerEpochId: this.config.ledgerEpochId,
+            sequence,
+            previousEntryDigest: head?.entryDigest ?? null,
+            recordedAt,
+            recorder: this.config.signer.ref,
+            eventDigest,
+            event,
+            evidenceManifestDigest,
+            integritySuite: AUDIT_INTEGRITY_SUITE,
+        });
+        const entryDigest = await digestAuditEntry(this.config.hasher, core);
+        const receiptCore = buildAuditRecorderReceiptCore(core, entryDigest);
+        const jws = await this.config.signer.sign(canonicalizeJsonBytes(receiptCore));
+        return deepFreeze({
+            core,
+            eventDigest,
+            entryDigest,
+            recorderReceipt: { core: receiptCore, jws },
+        });
+    }
+    ledgerRef() {
+        return {
+            ledgerId: this.config.ledgerId,
+            ledgerEpochId: this.config.ledgerEpochId,
+        };
+    }
+}
+//# sourceMappingURL=recorder-service.js.map

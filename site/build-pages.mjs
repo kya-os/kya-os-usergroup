@@ -17,6 +17,17 @@
  *   - standards/index.html     the rails matrix grouped by category
  *   - rails/index.html         the protocol rails diagram page
  *   - use-cases/index.html     the REVOKED flagship and the recipe grid
+ *   - verify/index.html        the in-browser audit verifier: the checker,
+ *                              the kya-audit command, what the report
+ *                              means, and what runs on the page
+ *   - verify/samples/          byte copies of site/assets/verify-samples/
+ *                              (an honest bundle, its tampered copy, the
+ *                              policy and the keys; open-CORS JSON)
+ *   - vendor/                  byte copies of site/assets/vendor/: the
+ *                              reference verifier (@kya-os/mcp) and its
+ *                              dependencies exactly as npm publishes them,
+ *                              plus manifest.json (scripts/vendor-verifier.mjs);
+ *                              the verify page's import map points here
  *   - 404.html                 real not-found page linking every page
  *   - builders.json            machine-readable merged builder registry (open CORS)
  *   - interop.json             machine-readable standards-rail registry (open CORS)
@@ -55,7 +66,10 @@
  *                              from the exact THEME_SCRIPT bytes), covers the
  *                              same-origin modules with script-src 'self',
  *                              keeps style-src at 'self' (no inline styles
- *                              anywhere), and allows font-src 'self'
+ *                              anywhere), and allows font-src 'self'; the
+ *                              verify page's import map is pinned by a
+ *                              second hash, and connect-src lets that page
+ *                              fetch its samples and linked HTTPS files
  * plus one COMMITTED artifact outside dist/: the badge worker's slug
  * allowlist (workers/badge/generated-allowlist.mjs).
  *
@@ -125,8 +139,11 @@ import {
   renderRailsHtml,
   renderStandardsHtml,
   renderUseCasesHtml,
+  renderVerifyHtml,
 } from "./lib/pages.mjs";
 import { THEME_SCRIPT } from "./lib/theme.mjs";
+import { IMPORT_MAP, VENDOR_SRC_DIR } from "./lib/vendor.mjs";
+import { SAMPLE_FILES } from "./lib/verify.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "..");
@@ -135,6 +152,7 @@ const fontsSrcDir = join(here, "assets", "fonts");
 const imgSrcDir = join(here, "assets", "img");
 const cssSrcDir = join(here, "assets", "css");
 const uiSrcDir = join(here, "assets", "ui");
+const samplesSrcDir = join(here, "assets", "verify-samples");
 
 function renderHeaders({ withDid }) {
   // Security headers for every route; content type + open CORS for the
@@ -151,6 +169,14 @@ function renderHeaders({ withDid }) {
   // and, once the program keys are provisioned, /.well-known/did.json are
   // open-CORS JSON: external verifiers and DID resolvers must be able to
   // fetch them cross-origin - that is the whole point of publishing them.
+  //
+  // The verify page adds exactly two things. Its import map (an inline
+  // <script type="importmap">, which script-src governs) is pinned by a
+  // second hash, computed from the same IMPORT_MAP constant the page embeds.
+  // And connect-src opens to 'self' plus https: so the page can fetch its
+  // samples and the files a link names; every script that could use it is
+  // still same-origin or hash-pinned. The samples are open-CORS JSON so any
+  // other verifier can fetch them too.
   const sha256 = (script) => createHash("sha256").update(script, "utf8").digest("base64");
   const jsonBlock = (route) => [
     route,
@@ -163,10 +189,11 @@ function renderHeaders({ withDid }) {
     "  X-Content-Type-Options: nosniff",
     "  X-Frame-Options: DENY",
     "  Referrer-Policy: strict-origin-when-cross-origin",
-    `  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-${sha256(THEME_SCRIPT)}'; style-src 'self'; img-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
+    `  Content-Security-Policy: default-src 'none'; script-src 'self' 'sha256-${sha256(THEME_SCRIPT)}' 'sha256-${sha256(IMPORT_MAP)}'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self' https:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
     ...jsonBlock("/builders.json"),
     ...jsonBlock("/interop.json"),
     ...jsonBlock("/credentials/*"),
+    ...jsonBlock("/verify/samples/*"),
     ...(withDid ? jsonBlock("/.well-known/did.json") : []),
     "",
   ].join("\n");
@@ -197,7 +224,7 @@ if (credentialErrors.length > 0) {
 
 rmSync(distDir, { recursive: true, force: true });
 mkdirSync(distDir, { recursive: true });
-for (const page of ["builders", "conformance", "standards", "rails", "use-cases"]) {
+for (const page of ["builders", "conformance", "standards", "rails", "use-cases", "verify"]) {
   mkdirSync(join(distDir, page), { recursive: true });
 }
 
@@ -207,6 +234,7 @@ writeFileSync(join(distDir, "conformance", "index.html"), renderConformanceHtml(
 writeFileSync(join(distDir, "standards", "index.html"), renderStandardsHtml({ interopSorted }));
 writeFileSync(join(distDir, "rails", "index.html"), renderRailsHtml({ interopSorted }));
 writeFileSync(join(distDir, "use-cases", "index.html"), renderUseCasesHtml());
+writeFileSync(join(distDir, "verify", "index.html"), renderVerifyHtml());
 writeFileSync(join(distDir, "404.html"), render404Html());
 writeFileSync(join(distDir, "builders.json"), renderBuildersJson(rendered));
 writeFileSync(join(distDir, "interop.json"), renderInteropJson(interopSorted));
@@ -247,6 +275,21 @@ const didJson = renderDidJson(programKeys);
 if (didJson !== null) {
   mkdirSync(join(distDir, ".well-known"), { recursive: true });
   writeFileSync(join(distDir, ".well-known", "did.json"), didJson);
+}
+
+// The verify page's assets: the vendored verifier tree (manifest included)
+// and the sample files, deterministic byte copies in sorted order.
+// lib/verify-checks.mjs re-hashes every vendored file against the manifest.
+for (const entry of readdirSync(VENDOR_SRC_DIR, { recursive: true, withFileTypes: true })
+  .filter((dirent) => dirent.isFile())
+  .map((dirent) => join(dirent.parentPath ?? dirent.path, dirent.name).slice(VENDOR_SRC_DIR.length + 1))
+  .sort()) {
+  mkdirSync(dirname(join(distDir, "vendor", entry)), { recursive: true });
+  copyFileSync(join(VENDOR_SRC_DIR, entry), join(distDir, "vendor", entry));
+}
+mkdirSync(join(distDir, "verify", "samples"), { recursive: true });
+for (const name of SAMPLE_FILES) {
+  copyFileSync(join(samplesSrcDir, name), join(distDir, "verify", "samples", name));
 }
 
 // Fonts and logo marks: deterministic byte copies of the committed binaries,
@@ -307,5 +350,5 @@ writeFileSync(join(badgeDir, "generated-keys.mjs"), renderGeneratedKeys(credenti
 runRenderChecks({ distDir, rendered, interopSorted, probes, credentialData, verdicts });
 
 console.log(
-  `Built Pages artifact: ${rendered.length} entr${rendered.length === 1 ? "y" : "ies"}, ${interopSorted.length} standards rails -> dist/ (6 pages, static + one hashed inline script + same-origin ui modules and stylesheets, build-time waveforms, self-hosted fonts, real 404.html, no worker)`,
+  `Built Pages artifact: ${rendered.length} entr${rendered.length === 1 ? "y" : "ies"}, ${interopSorted.length} standards rails -> dist/ (7 pages, static + one hashed inline script (+ the verify page's hashed import map) + same-origin ui modules, the vendored verifier, and stylesheets, build-time waveforms, self-hosted fonts, real 404.html, no worker)`,
 );

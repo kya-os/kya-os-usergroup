@@ -87,7 +87,7 @@ ${railsPanel()}
   </section>`;
 }
 
-/** Explore: the live stats strip (every number recomputed and asserted in lib/assertions.mjs) and the five page cards. */
+/** Explore: the live stats strip (every number recomputed and asserted in lib/assertions.mjs) and the six page cards. */
 export function sectionExplore({ rendered, interopSorted }) {
   const stat = (href, html) => `      <a href="${href}">${html}</a>`;
   const card = (href, title, copy, chip = "") => `      <div class="panel-card">
@@ -117,6 +117,11 @@ ${[
       "conformance",
       "Verified, not self-asserted. Run the pinned vector suite, submit your claim, and an independent re-run attests exactly the bytes it observed.",
       `<span class="chip st-shipping pulse">verifiable</span>`,
+    ),
+    card(
+      "/verify/",
+      "verify",
+      "Check a KYA-OS audit trail yourself. The protocol's reference verifier runs in your browser, and nothing you load leaves it.",
     ),
     card("/rails/", "rails", "Define your Entity Card once; it projects onto MCP, A2A, and NANDA."),
     card(

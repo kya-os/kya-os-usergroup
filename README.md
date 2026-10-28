@@ -7,13 +7,14 @@ Everything here is a public pull request away, and nothing here requires touchin
 
 ## The hub
 
-The site renders as six pages at **builders.kya-os.org**:
+The site renders as seven pages at **builders.kya-os.org**:
 
 | Page | What it shows | Backed by |
 | --- | --- | --- |
 | `/` | The overview: hero, live stats strip (suite pin, vectors, rails, projects), the THE RAILS panel, four navigation cards | build-time counts |
 | `/builders/` | The directory: every registry entry as a filterable, expandable row (CSS-only filter, native `<details>`), the on-ramps, and the three submission paths | `registry/builders/` |
 | `/conformance/` | The program: the suite pin, the four-step pipeline, badge anatomy, levels, the verification state machine, and the implementations table with honest status chips | `registry/builders/` entries with a `conformance` claim |
+| `/verify/` | The audit-trail checker: load a KYA-OS replay bundle, its verification policy and the signers' keys, and the protocol's reference verifier (`@kya-os/mcp`, vendored byte for byte from npm) checks it in the browser, nothing uploaded; plus the same check as a `kya-audit` command and what each report dimension means | `site/assets/vendor/` + `site/assets/verify-samples/` |
 | `/standards/` | The standards rails matrix: what KYA-OS provides, carries, and projects onto, every row grounded, dated, and expandable to its evidence | `registry/interop/` |
 | `/rails/` | The protocol rails diagram: one identity in, one signed proof, every surface out | static + live rail count |
 | `/use-cases/` | The REVOKED flagship and the recipe grid | static |
@@ -25,6 +26,7 @@ Every page ships exactly one inline script: the theme toggle (system, light, dar
 The motion itself - title decrypt, staggered fadeUp entries, hover glitch, scroll skew, the 400ms fade page transition - runs from the same-origin `/ui/page-fx.js` module; without JavaScript (or with reduced motion) the site is fully visible with native navigation.
 Key sections also carry `[ copy prompt for your agent ]` buttons (`/ui/copy-prompt.js`): curated onboarding prompts for coding agents, each with an always-reachable `<details>` fallback that the build asserts carries exactly the text the button copies.
 The inline script is sha256-pinned in the CSP (`script-src 'self' 'sha256-...'`), and build assertions fail if script and policy drift or if any `dist/ui/` module is not a byte copy of its committed source.
+The one other inline element is the `/verify/` page's import map, which points the bare specifiers the verifier imports (`@kya-os/mcp/audit`, `jose`, `zod`, ...) at the vendored files under `/vendor/`; it is pinned by a second CSP hash, and the build fails if it drifts from `site/assets/vendor/manifest.json`.
 Typography is self-hosted: the two brand faces (Space Grotesk, JetBrains Mono) ship as committed variable woff2 files under `site/assets/fonts/` with their OFL licenses, copied to `/fonts/` at build time.
 
 Machine-readable mirrors ship next to the pages: [`/builders.json`](https://builders.kya-os.org/builders.json) and [`/interop.json`](https://builders.kya-os.org/interop.json), both with open CORS.
@@ -39,6 +41,7 @@ Machine-readable mirrors ship next to the pages: [`/builders.json`](https://buil
 - `workers/badge/` - the Phase B badge worker, taking over `builders.kya-os.org/badge/*` from the static tiers with request-time verification (deployment staged behind key provisioning; see its README for the runbook).
 - `site/build-pages.mjs` - renders both registries into the static site. Zero npm dependencies, deterministic output.
 - `scripts/validate.mjs` - dependency-free structural validation of both registries, run by CI and by the build.
+- `site/assets/vendor/` - the reference audit verifier the `/verify/` page runs: the modules it reaches from the `@kya-os/mcp`, `jose` and `zod` npm tarballs, copied byte for byte by `scripts/vendor-verifier.mjs` after checking each tarball against the registry's integrity, with a `manifest.json` of every file's sha256. Committed, never edited by hand (see CONTRIBUTING.md to upgrade it).
 
 ## Get listed: three paths
 

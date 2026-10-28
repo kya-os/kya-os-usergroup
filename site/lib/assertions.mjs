@@ -40,6 +40,7 @@ import {
 } from "./checks.mjs";
 import { assertConformanceStructure, assertCopyFacts } from "./copy-checks.mjs";
 import { assertClientModules } from "./module-checks.mjs";
+import { assertVerifyPage } from "./verify-checks.mjs";
 import { THEME_COLORS } from "./theme.mjs";
 
 const PAGE_FILES = [
@@ -49,6 +50,7 @@ const PAGE_FILES = [
   "standards/index.html",
   "rails/index.html",
   "use-cases/index.html",
+  "verify/index.html",
   "404.html",
 ];
 const FONT_FILES = ["fonts/space-grotesk-latin-wght.woff2", "fonts/jetbrains-mono-latin-wght.woff2"];
@@ -126,19 +128,26 @@ export function runRenderChecks({ distDir, rendered, interopSorted, probes, cred
   // 40KB -> 44KB with the rails restructure (rail rows, projection flow) and
   // the authorization-methods row on the gated-tools recipe; both are
   // content, not chrome, and the emitted total landed at 41.2KB.
-  assertBuild(cssBytes <= 44 * 1024, `emitted CSS is ${cssBytes} bytes; the budget is 44KB total`);
+  // 44KB -> 48KB with the verify page (main had 64 bytes of headroom left):
+  // a seventh page of content - the checker form, the result rows, the
+  // dimension and package lists - and 3.5KB emitted.
+  assertBuild(cssBytes <= 48 * 1024, `emitted CSS is ${cssBytes} bytes; the budget is 48KB total`);
   assertThemeIntegrity(sheets);
   assertAnimGating(sheets);
 
-  // The CSP must be exactly 'self' (the same-origin /ui/ modules) plus ONE
-  // script hash (the theme script) - nothing else in script-src - style-src
+  // The CSP must be exactly 'self' (the same-origin /ui/ modules) plus TWO
+  // script hashes - the theme script, then the verify page's import map
+  // (checked in lib/verify-checks.mjs) - nothing else in script-src; style-src
   // exactly 'self' (all CSS is the two same-origin stylesheets), img-src
   // exactly 'self' (the logo marks; nothing external, no data:), plus
   // self-hosted fonts; every page's inline script must hash to it.
   const scriptSrc = headers.match(/script-src ([^;]+);/)?.[1] ?? "";
   const cspHashes = [...scriptSrc.matchAll(/'sha256-([A-Za-z0-9+/=]+)'/g)].map((m) => m[1]);
-  assertBuild(cspHashes.length === 1, `_headers must pin exactly one script-src hash, found ${cspHashes.length}`);
-  assertBuild(scriptSrc.trim() === `'self' 'sha256-${cspHashes[0]}'`, "script-src must be exactly 'self' plus the theme script hash");
+  assertBuild(cspHashes.length === 2, `_headers must pin exactly two script-src hashes (theme script, import map), found ${cspHashes.length}`);
+  assertBuild(
+    scriptSrc.trim() === `'self' 'sha256-${cspHashes[0]}' 'sha256-${cspHashes[1]}'`,
+    "script-src must be exactly 'self' plus the theme script hash and the verify page's import-map hash",
+  );
   assertBuild((headers.match(/style-src ([^;]+);/)?.[1] ?? "").trim() === "'self'", "style-src must be exactly 'self'");
   assertBuild((headers.match(/img-src ([^;]+);/)?.[1] ?? "").trim() === "'self'", "img-src must be exactly 'self'");
   assertBuild(headers.includes("font-src 'self'"), "the CSP must allow the self-hosted fonts via font-src 'self'");
@@ -156,6 +165,10 @@ export function runRenderChecks({ distDir, rendered, interopSorted, probes, cred
   // Client modules: byte copies, the generated vocabulary, the import graph,
   // per-page module tags, and the no-JS guard lines (lib/module-checks.mjs).
   assertClientModules({ distDir, pages, interopSorted, repoUrl: REPO_URL });
+
+  // The verify page: import map, vendored verifier, samples, and what the
+  // page says it runs (lib/verify-checks.mjs).
+  assertVerifyPage({ distDir, pages, headers, importMapHash: cspHashes[1] });
 
   // Fonts and marks: dist copies must be exact byte copies of the committed
   // sources, each font must really be woff2 (leading wOF2 magic), and the
@@ -326,7 +339,7 @@ export function runRenderChecks({ distDir, rendered, interopSorted, probes, cred
   // The 404 page really is one, and it hands the reader every page.
   const notFoundHtml = pages["404.html"];
   assertBuild(notFoundHtml.includes("NOT FOUND"), "dist/404.html is not a not-found page");
-  for (const path of ["/", "/builders/", "/conformance/", "/standards/", "/rails/", "/use-cases/"]) {
+  for (const path of ["/", "/builders/", "/conformance/", "/verify/", "/standards/", "/rails/", "/use-cases/"]) {
     assertBuild(notFoundHtml.includes(`href="${path}"`), `dist/404.html must link ${path}`);
   }
 }

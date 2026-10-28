@@ -1,0 +1,174 @@
+{
+  "name": "@kya-os/mcp",
+  "version": "1.21.2",
+  "description": "Reference implementation of the KYA-OS protocol for Model Context Protocol servers: identity, delegation, proofs, sessions, and verifiable audit trails",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": [
+    "./dist/**/index.js"
+  ],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "kya-audit": "./dist/audit/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./card": {
+      "types": "./dist/card/index.d.ts",
+      "default": "./dist/card/index.js"
+    },
+    "./delegation": {
+      "types": "./dist/delegation/index.d.ts",
+      "default": "./dist/delegation/index.js"
+    },
+    "./auth": {
+      "types": "./dist/auth/index.d.ts",
+      "default": "./dist/auth/index.js"
+    },
+    "./proof": {
+      "types": "./dist/proof/index.d.ts",
+      "default": "./dist/proof/index.js"
+    },
+    "./session": {
+      "types": "./dist/session/index.d.ts",
+      "default": "./dist/session/index.js"
+    },
+    "./providers": {
+      "types": "./dist/providers/index.d.ts",
+      "default": "./dist/providers/index.js"
+    },
+    "./logging": {
+      "types": "./dist/logging/index.d.ts",
+      "default": "./dist/logging/index.js"
+    },
+    "./types": {
+      "types": "./dist/types/protocol.d.ts",
+      "default": "./dist/types/protocol.js"
+    },
+    "./middleware": {
+      "types": "./dist/middleware/index.d.ts",
+      "default": "./dist/middleware/index.js"
+    },
+    "./policy": {
+      "types": "./dist/policy/index.d.ts",
+      "default": "./dist/policy/index.js"
+    },
+    "./authz": {
+      "types": "./dist/authz/index.d.ts",
+      "default": "./dist/authz/index.js"
+    },
+    "./audit": {
+      "types": "./dist/audit/index.d.ts",
+      "default": "./dist/audit/index.js"
+    },
+    "./audit/testing": {
+      "types": "./dist/audit/testing/index.d.ts",
+      "default": "./dist/audit/testing/index.js"
+    },
+    "./cheqd": {
+      "types": "./dist/integrations/cheqd/index.d.ts",
+      "default": "./dist/integrations/cheqd/index.js"
+    },
+    "./schemas/*.json": "./schemas/*.json",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "schemas",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md",
+    "AUDITABILITY.md",
+    "CONFORMANCE.md",
+    "SPEC.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:e2e:cheqd:testnet": "vitest run src/integrations/cheqd/__tests__/registrar.live.test.ts",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "conformance": "tsx conformance/bin.ts",
+    "conformance:generate": "tsx conformance/generate-vectors.ts",
+    "conformance:generate:card": "tsx conformance/card-vectors.ts",
+    "conformance:verify:crosslang": "python3 conformance/verify.py",
+    "conformance:typecheck": "tsc --noEmit -p conformance/tsconfig.json",
+    "lint": "eslint src --ext .ts",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build && npm run test",
+    "demo": "bash scripts/demo.sh",
+    "example:server": "npx tsx --tsconfig tsconfig.examples.json examples/node-server/server.ts",
+    "example:inspector": "npx @modelcontextprotocol/inspector npx tsx --tsconfig tsconfig.examples.json examples/node-server/server.ts --stdio",
+    "example:verify-proof": "npx tsx --tsconfig tsconfig.examples.json examples/verify-proof/verify.ts",
+    "example:anti-mitm": "npx tsx --tsconfig tsconfig.examples.json examples/verify-proof/anti-mitm-demo.ts",
+    "example:entity-card": "npx tsx --tsconfig tsconfig.examples.json examples/entity-card/walkthrough.ts",
+    "example:entity-card:server": "npx tsx --tsconfig tsconfig.examples.json examples/entity-card/server.ts",
+    "example:embedded-agent": "npx tsx --tsconfig tsconfig.examples.json examples/embedded-agent/walkthrough.ts",
+    "example:authz-inspector": "npx @modelcontextprotocol/inspector npx tsx --tsconfig tsconfig.examples.json examples/authz-inspector/src/stdio.ts",
+    "example:authz-inspector:http": "npx tsx --tsconfig tsconfig.examples.json examples/authz-inspector/src/inspector-http.ts",
+    "example:authz-inspector:http:server": "npx tsx --tsconfig tsconfig.examples.json examples/authz-inspector/src/http.ts",
+    "example:authz-inspector:stdio:server": "npx tsx --tsconfig tsconfig.examples.json examples/authz-inspector/src/stdio.ts",
+    "example:cheqd-dlr": "npx tsx --tsconfig tsconfig.examples.json examples/cheqd-dlr/operator-flow.ts",
+    "example:audit-trail": "npx tsx --tsconfig tsconfig.examples.json examples/audit-trail/walkthrough.ts",
+    "example:consent-persistence:cross-instance": "npx tsx --tsconfig tsconfig.examples.json examples/consent-persistence/scripts/scenario-cross-instance.ts",
+    "example:consent-persistence:restart": "npx tsx --tsconfig tsconfig.examples.json examples/consent-persistence/scripts/scenario-restart.ts"
+  },
+  "dependencies": {
+    "jose": "^6.2.8",
+    "json-canonicalize": "3.0.1",
+    "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "@modelcontextprotocol/sdk": ">=1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@modelcontextprotocol/sdk": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@kya-os/consent": "^0.1.47",
+    "@modelcontextprotocol/client": "^2.3.1",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@modelcontextprotocol/server": "^2.3.1",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.2.0",
+    "@typescript-eslint/eslint-plugin": "^8.67.0",
+    "@typescript-eslint/parser": "^8.67.0",
+    "@vitest/coverage-v8": "^5.0.3",
+    "ajv": "^8.20.0",
+    "commander": "^15.0.0",
+    "esbuild": "^0.28.1",
+    "eslint": "^10.8.1",
+    "express": "^5.2.1",
+    "tsx": "^4.23.12",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.67.0",
+    "vitest": "^5.0.3"
+  },
+  "keywords": [
+    "kya-os",
+    "mcp",
+    "delegation",
+    "verifiable-credentials",
+    "did",
+    "protocol",
+    "identity",
+    "audit",
+    "transparency-log",
+    "dif"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/decentralized-identity/kya-os-mcp"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
