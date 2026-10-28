@@ -712,7 +712,7 @@ html.js-anim details[open] .psig:not(.psig-none) .wf{animation:wfSweep .7s cubic
 .vf-file:hover .vf-pick{border-color:var(--line-strong)}
 .vf-file>input:focus-visible+.vf-pick{outline:1px solid var(--signal);outline-offset:2px}
 .vf-source,.vf-hint{font-family:var(--font-mono);font-size:11px;line-height:1.6;color:var(--ink-faint);overflow-wrap:anywhere;margin:0}
-.vf-nojs{font-size:15px;line-height:1.7;color:var(--ink-muted);max-width:760px;margin:0}
+.vf-nojs{font-size:16px;line-height:1.7;color:var(--ink-muted);max-width:760px;margin:0}
 .vf-source.vf-loaded{color:var(--ink)}
 .vf-hint{margin-top:18px}
 .vf-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:20px}
@@ -736,14 +736,14 @@ html.js-anim details[open] .psig:not(.psig-none) .wf{animation:wfSweep .7s cubic
 .vf-raw summary{cursor:pointer}
 .vf-raw pre{font-family:var(--font-mono);font-size:11.5px;line-height:1.6;color:var(--ink);background:var(--panel);border:1px solid var(--line);padding:14px 16px;margin:10px 0 0;max-height:360px;overflow:auto}
 .vf-verdicts{margin-bottom:28px}
-.vf-verdicts li{font-size:15px;line-height:1.9;color:var(--ink-muted)}
+.vf-verdicts li{font-size:16px;line-height:1.7;color:var(--ink-muted);margin-top:6px}
 .vf-verdicts b{font-family:var(--font-mono);font-size:13px;font-weight:500}
 .vf-dims{margin:0;max-width:860px}
 .vf-dim{display:grid;grid-template-columns:260px 1fr;gap:24px;padding:14px 0;border-top:1px solid var(--line)}
-.vf-dim dt{font-size:15px;font-weight:500;color:var(--ink)}
+.vf-dim dt{font-size:16px;font-weight:500;color:var(--ink)}
 .vf-dim dt code{display:block;font-size:11px;color:var(--ink-faint);margin-top:4px}
-.vf-dim dd{margin:0;font-size:15px;line-height:1.7;color:var(--ink-muted)}
-.vf-note{font-size:15px;line-height:1.8;color:var(--ink-muted);max-width:760px;margin:20px 0 0}
+.vf-dim dd{margin:0;font-size:16px;line-height:1.7;color:var(--ink-muted)}
+.vf-note{font-size:16px;line-height:1.8;color:var(--ink-muted);max-width:760px;margin:20px 0 0}
 .vf-pkgs{margin-top:20px;max-width:860px}
 .vf-pkgs li{padding:10px 0;border-top:1px solid var(--line);font-size:14px}
 .vf-pkg-meta{display:block;font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);margin-top:4px}
