@@ -184,9 +184,16 @@ export function verifyCredentialArtifacts({ programKeys, credentials, statusList
 /**
  * The did:web:builders.kya-os.org DID document, rendered from the committed
  * program public keys: one Multikey verification method per issuer/status
- * key (fragment = the key id), assertionMethod listing the issuer keys. The
- * reserved log keys carry no DID fragment yet. Returns null (nothing to
- * emit) on the unprovisioned sentinel - asserted by the render checks.
+ * key (fragment = the key id), and assertionMethod listing both. A status
+ * list is a credential too, signed for assertionMethod, and a verifier that
+ * follows W3C Controlled Identifiers 1.0 section 3.3 accepts such a proof
+ * only from a key listed under assertionMethod. Which key signs what is the
+ * program's own rule, held by its verifiers, which bind each proof to a key
+ * of its purpose: this build (verifyCredentialArtifacts and the checks in
+ * credential-checks.mjs), the badge worker's separate pins, and
+ * scripts/verify-credential.mjs. The reserved log keys carry no DID
+ * fragment yet. Returns null (nothing to emit) on the unprovisioned
+ * sentinel - asserted by the render checks.
  */
 export function renderDidJson(programKeys) {
   if (!programKeys.provisioned) return null;
@@ -202,7 +209,7 @@ export function renderDidJson(programKeys) {
           controller: ISSUER_DID,
           publicKeyMultibase: key.publicKeyMultibase,
         })),
-        assertionMethod: published.filter((key) => key.purpose === "issuer").map((key) => `${ISSUER_DID}#${key.id}`),
+        assertionMethod: published.map((key) => `${ISSUER_DID}#${key.id}`),
       },
       null,
       2,

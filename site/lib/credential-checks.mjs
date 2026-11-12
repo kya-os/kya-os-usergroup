@@ -115,9 +115,8 @@ export function assertCredentialArtifacts({ distDir, rendered, credentialData, v
     "did.json verification methods must be Multikey entries controlled by the issuer DID",
   );
   assertBuild(
-    (did.assertionMethod ?? []).sort().join(",") ===
-      publishable.filter((k) => k.purpose === "issuer").map((k) => `${did.id}#${k.id}`).sort().join(","),
-    "did.json assertionMethod must list exactly the issuer keys",
+    (did.assertionMethod ?? []).sort().join(",") === publishable.map((k) => `${did.id}#${k.id}`).sort().join(","),
+    "did.json assertionMethod must list exactly the issuer and status keys",
   );
   assertBuild(
     !committedKeys.some((key) => key.purpose === "log" && methods.some((m) => m.id.endsWith(`#${key.id}`))),
