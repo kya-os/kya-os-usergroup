@@ -12,13 +12,23 @@
  * workers/badge/parity.test.mjs proves a credential signed here verifies
  * there, a status list built here reads there, and tampering fails both.
  *
- * The signing input matches the W3C DI eddsa-jcs-2022 cryptosuite exactly as
- * the worker verifies it: sha256(JCS(proof config)) || sha256(JCS(unsecured
- * document)), with the document's @context copied into the proof config.
+ * Signing and verification follow VC Data Integrity EdDSA Cryptosuites v1.0,
+ * section 3.3 (eddsa-jcs-2022): the signer stores the document's @context in
+ * the proof (3.3.1 step 2) and signs sha256(JCS(proof without proofValue)) ||
+ * sha256(JCS(unsecured document)); the verifier takes the proof
+ * configuration from the stored proof alone and, when that proof carries an
+ * @context, requires the document's @context to start with it and hashes
+ * the document under the proof's (3.3.2 step 4). Both refuse a proof whose
+ * created is not an [XMLSCHEMA11-2] dateTimeStamp (datetime.mjs, the rule
+ * the shape check applies too): an invalid datetime, such as 2023-02-29, is
+ * an error under EdDSA Cryptosuites v1.0 section 3.3.5 step 3, and refusing
+ * a valid one with no Z or offset, which VC Data Integrity 1.0 section 2.1
+ * lets a processor accept, is this program's choice under that section.
  */
 import { createHash, sign as edSign, verify as edVerify } from "node:crypto";
 import { gzipSync, gunzipSync } from "node:zlib";
 import { ORIGIN, SUITE } from "../../site/lib/constants.mjs";
+import { isDateTimeStamp } from "./datetime.mjs";
 import { canonicalize } from "./jcs.mjs";
 import {
   base58btcDecode,
@@ -40,6 +50,11 @@ export const STATUS_LIST_URLS = {
   revocation: `${CREDENTIALS_BASE}/status/revocation-1.json`,
   suspension: `${CREDENTIALS_BASE}/status/suspension-1.json`,
 };
+// The program's one JSON-LD context: every credential and status list
+// carries exactly this @context, and so does its proof (scripts/lib/shape.mjs
+// holds them to it). The badge worker keeps its own copy, pinned equal by
+// workers/badge/parity.test.mjs.
+export const PROGRAM_CONTEXT = Object.freeze(["https://www.w3.org/ns/credentials/v2"]);
 // W3C Bitstring Status List minimum uncompressed size: 16 KiB = 131072 bits.
 export const STATUS_LIST_BYTES = 16384;
 export const STATUS_LIST_BITS = STATUS_LIST_BYTES * 8;
@@ -120,7 +135,7 @@ export function buildCredential({ subjectId, implementation, level, scope, categ
     categories: sortedCategories,
   });
   return {
-    "@context": ["https://www.w3.org/ns/credentials/v2"],
+    "@context": [...PROGRAM_CONTEXT],
     id,
     type: ["VerifiableCredential", CREDENTIAL_TYPE],
     issuer: ISSUER_DID,
@@ -157,23 +172,46 @@ export function buildCredential({ subjectId, implementation, level, scope, categ
 
 // ── eddsa-jcs-2022 sign / verify ────────────────────────────────────────────
 
-/** The cryptosuite's hashData: sha256(JCS(proof config)) || sha256(JCS(doc)),
- * the proof config carrying the document's @context when present. */
-export function signingInput(unsecuredDocument, proofOptions) {
-  const config = { ...proofOptions };
+/**
+ * The cryptosuite's hashData (sections 3.3.3 to 3.3.5): sha256(JCS(proof
+ * configuration)) || sha256(JCS(unsecured document)), the configuration
+ * being `proof` exactly as given minus its proofValue. Nothing is added to
+ * it: the @context it hashes is the one the proof itself carries. A set
+ * created that is not an [XMLSCHEMA11-2] dateTimeStamp throws, so it can be
+ * neither signed nor verified: EdDSA Cryptosuites v1.0 section 3.3.5 step 3
+ * requires the error for an invalid datetime, such as 2023-02-29, and for a
+ * valid one with no Z or offset it is this program's choice under VC Data
+ * Integrity 1.0 section 2.1.
+ */
+export function signingInput(unsecuredDocument, proof) {
+  const config = { ...proof };
   delete config.proofValue;
-  if (unsecuredDocument["@context"] !== undefined) config["@context"] = unsecuredDocument["@context"];
+  if (config.created !== undefined && !isDateTimeStamp(config.created)) {
+    throw new Error(
+      "proof.created must be an XMLSCHEMA11-2 dateTimeStamp: EdDSA Cryptosuites v1.0 section 3.3.5 step 3 makes an invalid datetime an error, " +
+        "and refusing a datetime with no Z or offset is this program's choice under VC Data Integrity 1.0 section 2.1",
+    );
+  }
   const proofHash = sha256(Buffer.from(canonicalize(config), "utf8"));
   const docHash = sha256(Buffer.from(canonicalize(unsecuredDocument), "utf8"));
   return Buffer.concat([proofHash, docHash]);
 }
 
 /**
- * Attach an eddsa-jcs-2022 DataIntegrityProof to `document`, signed with an
- * Ed25519 private key given as a z-multibase Multikey string or 32 raw seed
- * bytes. `created` defaults to the document's validFrom so committed
- * artifacts stay a pure function of their inputs.
+ * Section 3.3.2 step 4.1: does the document's @context start with every
+ * value of the proof's, in the same order? A single context counts as a list
+ * of one and a missing one as an empty list. Values compare by their JCS
+ * form, in order, so the first that differs decides; a value with no JCS
+ * form throws when the walk reaches it, and the verifier refuses with that
+ * canonicalization failure as its reason, as the badge worker does.
  */
+function contextStartsWith(documentContext, proofContext) {
+  const asList = (context) => (context === undefined ? [] : [context].flat());
+  const documentList = asList(documentContext);
+  const prefix = asList(proofContext);
+  return prefix.length <= documentList.length && prefix.every((value, i) => canonicalize(documentList[i]) === canonicalize(value));
+}
+
 /**
  * Verify an EXISTING status list against the committed status key its own
  * proof names - not against whichever key the current environment holds.
@@ -193,25 +231,38 @@ export function verifyStatusListAgainstCommittedKey(list, programKeys) {
   return verifyCredential(list, key.publicKeyMultibase);
 }
 
+/**
+ * Attach an eddsa-jcs-2022 DataIntegrityProof to `document` (section 3.3.1),
+ * signed with an Ed25519 private key given as a z-multibase Multikey string
+ * or 32 raw seed bytes. The proof carries its own copy of the document's
+ * @context whenever the document has the key, whatever its value (step 2),
+ * so a verifier can rebuild what was signed from the stored proof alone.
+ * `created` defaults to the document's validFrom so committed artifacts stay
+ * a pure function of their inputs.
+ */
 export function signCredential(document, privateKeyMultibaseOrSeed, verificationMethod, { created, proofPurpose = "assertionMethod" } = {}) {
   const seed =
     typeof privateKeyMultibaseOrSeed === "string" ? decodePrivateKeyMultibase(privateKeyMultibaseOrSeed) : privateKeyMultibaseOrSeed;
-  const proofOptions = {
+  const proof = {
     type: "DataIntegrityProof",
     cryptosuite: "eddsa-jcs-2022",
     created: created ?? document.validFrom,
     verificationMethod,
     proofPurpose,
+    ...(document["@context"] !== undefined ? { "@context": structuredClone(document["@context"]) } : {}),
   };
-  const signature = edSign(null, signingInput(document, proofOptions), privateKeyObject(seed));
-  return { ...document, proof: { ...proofOptions, proofValue: `z${base58btcEncode(new Uint8Array(signature))}` } };
+  const signature = edSign(null, signingInput(document, proof), privateKeyObject(seed));
+  return { ...document, proof: { ...proof, proofValue: `z${base58btcEncode(new Uint8Array(signature))}` } };
 }
 
 /**
  * Verify a DataIntegrityProof / eddsa-jcs-2022 proof on `document` against
- * an Ed25519 public key (z-multibase Multikey string or 32 raw bytes).
+ * an Ed25519 public key (z-multibase Multikey string or 32 raw bytes), per
+ * section 3.3.2: the configuration is the stored proof minus its proofValue,
+ * and a proof that carries an @context requires the document's @context to
+ * start with it, the document then being hashed under the proof's.
  * Returns { ok, reason? } and never throws on malformed input - callers fail
- * closed. Mirrors the worker's independent implementation check for check.
+ * closed. workers/badge/verify.mjs implements the same section independently.
  */
 export function verifyCredential(document, publicKeyMultibaseOrRaw) {
   try {
@@ -226,6 +277,19 @@ export function verifyCredential(document, publicKeyMultibaseOrRaw) {
     const signature = base58btcDecode(proof.proofValue.slice(1));
     const unsecured = { ...document };
     delete unsecured.proof;
+    // Step 4 runs "if proofOptions.@context exists", read as the key being
+    // present, whatever its value: a stored null, "", false, 0 or {} must
+    // prefix the document's @context like any other value. Digital Bazaar's
+    // eddsa-jcs-2022 cryptosuite 1.0.0 tests truthiness instead, and skips
+    // step 4 for null, "", false and 0;
+    // workers/badge/spec-conformance.test.mjs holds both verifiers here to
+    // the cases.
+    if (proof["@context"] !== undefined) {
+      if (!contextStartsWith(document["@context"], proof["@context"])) {
+        return { ok: false, reason: 'the document\'s "@context" does not start with the proof\'s "@context"' };
+      }
+      unsecured["@context"] = proof["@context"];
+    }
     const ok = edVerify(null, signingInput(unsecured, proof), publicKeyObject(raw), signature);
     return ok ? { ok: true } : { ok: false, reason: "signature verification failed" };
   } catch (err) {
@@ -273,7 +337,7 @@ export function buildStatusListCredential({ purpose, encodedList, validFrom }) {
   if (!STATUS_PURPOSES.includes(purpose)) throw new Error(`statusPurpose must be one of ${STATUS_PURPOSES.join(", ")}`);
   const id = STATUS_LIST_URLS[purpose];
   return {
-    "@context": ["https://www.w3.org/ns/credentials/v2"],
+    "@context": [...PROGRAM_CONTEXT],
     id,
     type: ["VerifiableCredential", "BitstringStatusListCredential"],
     issuer: ISSUER_DID,

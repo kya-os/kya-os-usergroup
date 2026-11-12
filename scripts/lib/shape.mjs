@@ -6,7 +6,7 @@
  * changes). Shared by the validator, the site build, and the public
  * verifier, so one implementation decides what "well-formed" means on this
  * side of the deliberate-redundancy boundary (the badge worker keeps its own
- * independent checks - see workers/badge/verify.mjs).
+ * independent checks - see workers/badge/verify.mjs and worker.mjs).
  *
  * Every check fails closed: unknown properties, a validUntil in any
  * position, a drifted terms statement, an id that does not recompute from
@@ -15,6 +15,7 @@
 import {
   CREDENTIAL_TYPE,
   ISSUER_DID,
+  PROGRAM_CONTEXT,
   SCHEMA_URL,
   STATUS_LIST_BITS,
   STATUS_LIST_URLS,
@@ -23,17 +24,18 @@ import {
   credentialIdFor,
   isSubjectId,
 } from "./attest.mjs";
+import { isDateTimeStamp, isProgramTimestamp } from "./datetime.mjs";
+import { jcsEqual } from "./jcs.mjs";
 
 const CREDENTIAL_KEYS = ["@context", "id", "type", "issuer", "validFrom", "credentialSchema", "credentialSubject", "credentialStatus", "termsOfUse", "proof"];
 const SUBJECT_KEYS = ["id", "implementation", "level", "scope", "categories", "suite"];
 const IMPLEMENTATION_KEYS = ["name", "version", "repo", "digest"];
 const SUITE_KEYS = ["package", "packageVersion", "suiteVersion", "vectorSetHash", "vectorCount"];
 const STATUS_ENTRY_KEYS = ["type", "statusPurpose", "statusListIndex", "statusListCredential"];
-const PROOF_KEYS = ["type", "cryptosuite", "created", "verificationMethod", "proofPurpose", "proofValue"];
+const PROOF_KEYS = ["type", "cryptosuite", "created", "verificationMethod", "proofPurpose", "@context", "proofValue"];
 const LIST_KEYS = ["@context", "id", "type", "issuer", "validFrom", "credentialSubject", "proof"];
 const LIST_SUBJECT_KEYS = ["id", "type", "statusPurpose", "encodedList"];
 
-const DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 const SEMVER_RE = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/;
 const VECTOR_HASH_RE = /^sha256:[0-9a-f]{64}$/;
 const INDEX_RE = /^(0|[1-9][0-9]*)$/;
@@ -56,26 +58,47 @@ function checkExactKeys(value, allowed, label, fail, { optional = [] } = {}) {
   return true;
 }
 
+/**
+ * A program document's @context is exactly the program's, compared by JCS
+ * content. Its proof binds only the proof's own @context, as a prefix of the
+ * document's (VC Data Integrity EdDSA Cryptosuites v1.0, section 3.3.2 step
+ * 4), so a context appended after signing still verifies: this check is
+ * what refuses it (VC Data Integrity 1.0, section 2.4.1). Its validFrom is
+ * the program's own timestamp (datetime.mjs), proof.created the
+ * specification's dateTimeStamp (checkProof).
+ */
 function checkContextAndIssuer(document, fail) {
-  const context = document["@context"];
-  if (!Array.isArray(context) || context.length !== 1 || context[0] !== "https://www.w3.org/ns/credentials/v2") {
-    fail('"@context" must be exactly ["https://www.w3.org/ns/credentials/v2"]');
+  if (!jcsEqual(document["@context"], PROGRAM_CONTEXT)) {
+    fail(`"@context" must be exactly ${JSON.stringify(PROGRAM_CONTEXT)}`);
   }
   if (document.issuer !== ISSUER_DID) fail(`"issuer" must be ${ISSUER_DID}`);
-  if (!DATETIME_RE.test(document.validFrom ?? "") || !Number.isFinite(Date.parse(document.validFrom))) {
-    fail('"validFrom" must be an ISO 8601 UTC datetime (YYYY-MM-DDTHH:MM:SSZ)');
+  if (!isProgramTimestamp(document.validFrom)) {
+    fail('"validFrom" must be the program\'s timestamp, YYYY-MM-DDThh:mm:ssZ on a day its month has');
   }
   if (document.validUntil !== undefined) {
     fail('"validUntil" is forbidden: the credential design has no expiry (currency lives in suite supersession)');
   }
 }
 
-function checkProof(proof, expectedVerificationMethod, fail) {
+/**
+ * The proof of a credential or status list. Its @context must be the
+ * document's own, compared by JCS content: the signer stores the context it
+ * signs over in the proof (VC Data Integrity EdDSA Cryptosuites v1.0,
+ * section 3.3.1 step 2), and a program document never changes its context
+ * after signing. A value with no canonical form matches nothing. A missing
+ * @context or created is reported once, by checkExactKeys, as missing.
+ */
+function checkProof(proof, documentContext, expectedVerificationMethod, fail) {
   if (!checkExactKeys(proof, PROOF_KEYS, "proof", fail)) return;
+  if (proof["@context"] !== undefined && !jcsEqual(proof["@context"], documentContext)) {
+    fail('proof["@context"] must equal the document\'s "@context" (the proof carries the context it was signed over)');
+  }
   if (proof.type !== "DataIntegrityProof") fail('proof.type must be "DataIntegrityProof"');
   if (proof.cryptosuite !== "eddsa-jcs-2022") fail('proof.cryptosuite must be "eddsa-jcs-2022"');
   if (proof.proofPurpose !== "assertionMethod") fail('proof.proofPurpose must be "assertionMethod"');
-  if (!DATETIME_RE.test(proof.created ?? "")) fail("proof.created must be an ISO 8601 UTC datetime");
+  if (proof.created !== undefined && !isDateTimeStamp(proof.created)) {
+    fail("proof.created must be an XMLSCHEMA11-2 dateTimeStamp, its timezone included: Z or an offset (VC Data Integrity 1.0 section 2.1)");
+  }
   const escapedDid = ISSUER_DID.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const vmRe = new RegExp(`^${escapedDid}#${expectedVerificationMethod}-[1-9][0-9]*$`);
   if (typeof proof.verificationMethod !== "string" || !vmRe.test(proof.verificationMethod)) {
@@ -185,7 +208,7 @@ export function checkCredentialShape(credential, label) {
     fail('"termsOfUse" must be exactly [{type: "KyaOsConformanceTerms", statement: <the pinned terms statement>}]');
   }
 
-  if (credential.proof !== undefined) checkProof(credential.proof, "conformance-issuer", fail);
+  if (credential.proof !== undefined) checkProof(credential.proof, credential["@context"], "conformance-issuer", fail);
   return errors;
 }
 
@@ -212,6 +235,6 @@ export function checkStatusListShape(list, purpose, label) {
       fail("credentialSubject.encodedList must be multibase base64url (u-prefixed)");
     }
   }
-  checkProof(list.proof, "conformance-status", fail);
+  checkProof(list.proof, list["@context"], "conformance-status", fail);
   return errors;
 }

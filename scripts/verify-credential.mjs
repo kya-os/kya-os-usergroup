@@ -7,16 +7,23 @@
  *   node scripts/verify-credential.mjs registry/credentials/<id32>.json
  *   curl -s https://builders.kya-os.org/credentials/<id32>.json | node scripts/verify-credential.mjs -
  *
- * Checks, all fail-closed:
- *   schema  the credential matches the published shape exactly - including
- *           NO validUntil (a validUntil is a schema violation by design, so
- *           there is no "expired" state to invent) and a deterministic id
- *           that recomputes from the subject fields
- *   proof   the eddsa-jcs-2022 DataIntegrityProof verifies against the
- *           committed program ISSUER key its verificationMethod names
- *   status  both signed status lists fetch (or load with --offline), their
- *           proofs verify against the committed STATUS keys - a separate key
- *           set, so a stolen issuer key cannot clear its own bits - and the
+ * Checks, in this order, all fail-closed (scripts/lib/verdict.mjs):
+ *   schema  the credential matches the published shape exactly: NO
+ *           validUntil (a validUntil is a schema violation by design, so
+ *           there is no "expired" state to invent), validFrom in the
+ *           program's timestamp form, YYYY-MM-DDThh:mm:ssZ on a day its
+ *           month has, a deterministic id that recomputes from the subject
+ *           fields, and a proof that carries the credential's own @context;
+ *           and validFrom is less than the 300 second clock skew ahead of
+ *           this machine's clock, so one 300 seconds ahead or more is refused
+ *   proof   the eddsa-jcs-2022 DataIntegrityProof verifies, as VC Data
+ *           Integrity EdDSA Cryptosuites v1.0 section 3.3.2 defines, against
+ *           the committed program ISSUER key its verificationMethod names
+ *   status  both signed status lists fetch (or load with --offline); each
+ *           is held to the program's status list shape, its validFrom to
+ *           the same form and the same 300 second skew, before its proof
+ *           verifies against the committed STATUS keys (a separate key set,
+ *           so a stolen issuer key cannot clear its own bits); then the
  *           credential's bits are read
  *
  * TRUST ROOT: the public keys committed at registry/keys/program-keys.json
@@ -30,20 +37,20 @@
  *
  * Flags:
  *   --keys <path>     program key file (default: this repo's committed file)
- *   --offline [dir]   read status lists from local files by URL basename
- *                     (default dir: registry/credentials/status)
+ *   --offline [--status-dir <dir>]
+ *                     read status lists from local files by URL basename,
+ *                     in <dir> (default: registry/credentials/status)
+ * Any argument besides the one credential is refused with the usage line.
  */
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { ISSUER_DID, decodeStatusList, statusBitAt, verifyCredential } from "./lib/attest.mjs";
 import { readProgramKeys } from "./lib/keys.mjs";
-import { checkCredentialShape, checkStatusListShape } from "./lib/shape.mjs";
+import { credentialVerdict } from "./lib/verdict.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "..");
-const CLOCK_SKEW_MS = 300_000; // the protocol's skew allowance, as in the badge worker
 
 const EXIT = { VERIFIED: 0, INVALID: 1, SUSPENDED: 2, REVOKED: 3 };
 
@@ -89,89 +96,23 @@ async function loadJson(source, what) {
 }
 
 const source = positionals[0] ?? (process.stdin.isTTY ? undefined : "-");
-if (source === undefined) {
+// One credential: --offline takes no value, so a folder typed after it would
+// otherwise be passed over, or read as the credential.
+if (source === undefined || positionals.length > 1) {
   console.error("usage: node scripts/verify-credential.mjs <credential-url-or-path | -> [--keys <path>] [--offline [--status-dir <dir>]]");
   process.exit(EXIT.INVALID);
 }
 
-const checks = { schema: { ok: false }, proof: { ok: false }, status: { ok: false } };
-let credential = null;
-try {
-  credential = await loadJson(source, "credential");
-} catch (err) {
-  checks.schema.errors = [err.message];
-  finish("INVALID", checks, null);
-}
+// Each status list from the URL its credentialStatus entry names, or, with
+// --offline, from the file of the same name in the status folder.
+const statusDir = flags["status-dir"] ?? join(repoRoot, "registry", "credentials", "status");
+const loadStatusList = (entry) =>
+  loadJson(flags.offline ? join(statusDir, entry.statusListCredential.split("/").at(-1)) : entry.statusListCredential, `${entry.statusPurpose} status list`);
 
-// ── keys: the committed trust root, refusing the sentinel ───────────────────
-const keysPath = flags.keys ?? join(repoRoot, "registry", "keys", "program-keys.json");
-const programKeys = readProgramKeys(keysPath);
-if (!programKeys.provisioned) {
-  checks.proof.reason =
-    programKeys.errors.length > 0
-      ? `program key file is unusable: ${programKeys.errors.join("; ")}`
-      : "program keys are unprovisioned (the committed sentinel) - nothing can verify yet";
-  finish("INVALID", checks, credential);
-}
-const keyByFragment = new Map(programKeys.keys.map((key) => [key.id, key]));
-const keyFor = (document, purpose, label) => {
-  const fragment = String(document?.proof?.verificationMethod ?? "").split("#")[1];
-  const key = keyByFragment.get(fragment);
-  if (key === undefined || key.purpose !== purpose) {
-    throw new Error(`${label}: proof.verificationMethod does not name a committed "${purpose}" key (got "${fragment ?? "none"}")`);
-  }
-  return key;
-};
-
-// ── schema ──────────────────────────────────────────────────────────────────
-const schemaErrors = checkCredentialShape(credential, "credential");
-if (credential?.proof === undefined) schemaErrors.push("credential: proof is missing");
-const validFromMs = Date.parse(credential?.validFrom ?? "");
-if (Number.isFinite(validFromMs) && validFromMs > Date.now() + CLOCK_SKEW_MS) {
-  schemaErrors.push("credential: validFrom sits in the future beyond the 300s clock skew");
-}
-if (schemaErrors.length > 0) {
-  checks.schema.errors = schemaErrors;
-  finish("INVALID", checks, credential);
-}
-checks.schema.ok = true;
-
-// ── proof ───────────────────────────────────────────────────────────────────
-try {
-  const issuerKey = keyFor(credential, "issuer", "credential");
-  const { ok, reason } = verifyCredential(credential, issuerKey.publicKeyMultibase);
-  if (!ok) {
-    checks.proof.reason = reason;
-    finish("INVALID", checks, credential);
-  }
-  checks.proof.ok = true;
-  checks.proof.verificationMethod = credential.proof.verificationMethod;
-} catch (err) {
-  checks.proof.reason = err.message;
-  finish("INVALID", checks, credential);
-}
-
-// ── status: both lists, proof-verified before any bit is read ───────────────
-try {
-  const statusDir = flags["status-dir"] ?? join(repoRoot, "registry", "credentials", "status");
-  const bits = {};
-  for (const entry of credential.credentialStatus) {
-    const listSource = flags.offline ? join(statusDir, entry.statusListCredential.split("/").at(-1)) : entry.statusListCredential;
-    const list = await loadJson(listSource, `${entry.statusPurpose} status list`);
-    const listErrors = checkStatusListShape(list, entry.statusPurpose, `${entry.statusPurpose} list`);
-    if (listErrors.length > 0) throw new Error(listErrors.join("; "));
-    const statusKeyEntry = keyFor(list, "status", `${entry.statusPurpose} list`);
-    const { ok, reason } = verifyCredential(list, statusKeyEntry.publicKeyMultibase);
-    if (!ok) throw new Error(`${entry.statusPurpose} list proof did not verify (${reason})`);
-    bits[entry.statusPurpose] = statusBitAt(decodeStatusList(list.credentialSubject.encodedList), Number(entry.statusListIndex));
-  }
-  checks.status.ok = true;
-  checks.status.revoked = bits.revocation === true;
-  checks.status.suspended = bits.suspension === true;
-  if (checks.status.revoked) finish("REVOKED", checks, credential);
-  if (checks.status.suspended) finish("SUSPENDED", checks, credential);
-  finish("VERIFIED", checks, credential);
-} catch (err) {
-  checks.status.reason = err.message;
-  finish("INVALID", checks, credential);
-}
+const { verdict, checks, credential } = await credentialVerdict({
+  loadCredential: () => loadJson(source, "credential"),
+  programKeys: readProgramKeys(flags.keys ?? join(repoRoot, "registry", "keys", "program-keys.json")),
+  loadStatusList,
+  now: Date.now(),
+});
+finish(verdict, checks, credential);

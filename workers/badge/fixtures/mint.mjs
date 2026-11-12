@@ -15,8 +15,17 @@
  * field; parity.test.mjs proves the real builders' output verifies under
  * the worker, so a drift here fails tests rather than hiding one.
  */
-import { generateKeyPairSync, sign as edSign } from "node:crypto";
-import { base64urlDecode, base64urlEncode, base58btcEncode, ed25519KeyToMultibase, eddsaJcs2022HashData, gzip } from "../verify.mjs";
+import { createPrivateKey, generateKeyPairSync, sign as edSign } from "node:crypto";
+import {
+  base58btcDecode,
+  base64urlDecode,
+  base64urlEncode,
+  base58btcEncode,
+  ed25519KeyFromMultibase,
+  ed25519KeyToMultibase,
+  eddsaJcs2022HashData,
+  gzip,
+} from "../verify.mjs";
 
 export const ISSUER_DID = "did:web:builders.kya-os.org";
 export const CREDENTIALS_BASE = "https://builders.kya-os.org/credentials";
@@ -36,21 +45,71 @@ export function throwawayKey() {
 }
 
 /**
+ * A signing key from a published Multikey pair (the specification's test
+ * vector), in the same shape as throwawayKey(). The secret's two multicodec
+ * prefix bytes (ed25519-priv) are dropped; a wrong decode cannot hide, since
+ * the vector's pinned signature would not reproduce.
+ */
+export function keyFromMultikeyPair({ publicKeyMultibase, secretKeyMultibase }) {
+  const seed = base58btcDecode(secretKeyMultibase.slice(1)).slice(2);
+  const jwk = { kty: "OKP", crv: "Ed25519", d: base64urlEncode(seed), x: base64urlEncode(ed25519KeyFromMultibase(publicKeyMultibase)) };
+  return { privateKey: createPrivateKey({ key: jwk, format: "jwk" }), publicKeyMultibase };
+}
+
+/** `document` with a proof of exactly `configuration`, signed over the worker's own hashData. */
+async function signOver(document, privateKey, configuration) {
+  const signature = edSign(null, await eddsaJcs2022HashData(document, configuration), privateKey);
+  return { ...document, proof: { ...configuration, proofValue: `z${base58btcEncode(new Uint8Array(signature))}` } };
+}
+
+/**
+ * Attach an eddsa-jcs-2022 DataIntegrityProof to `document` (VC Data
+ * Integrity EdDSA Cryptosuites v1.0, section 3.3.1): the proof is `options`
+ * plus its own copy of the document's @context whenever the document has
+ * the key, whatever its value (step 2), signed over the worker's own
+ * hashData, and returned on the document with its proofValue. This test
+ * fixture is the worker side's only signer (the worker itself never signs);
+ * spec-conformance.test.mjs holds it to the specification's vector beside
+ * the scripts side's signCredential.
+ */
+export async function createProof(document, privateKey, options) {
+  const proof = { ...options, ...(document["@context"] === undefined ? {} : { "@context": structuredClone(document["@context"]) }) };
+  return signOver(document, privateKey, proof);
+}
+
+/** The program's proof options for a throwaway key under a did:web:builders.kya-os.org#<fragment> method. */
+const programProofOptions = (document, fragment, proofPurpose) => ({
+  type: "DataIntegrityProof",
+  cryptosuite: "eddsa-jcs-2022",
+  created: document.validFrom ?? "2026-01-01T00:00:00Z",
+  verificationMethod: `${ISSUER_DID}#${fragment}`,
+  proofPurpose,
+});
+
+/**
  * Attach an eddsa-jcs-2022 DataIntegrityProof to `document`, signed by a
  * throwaway key under a did:web:builders.kya-os.org#<fragment> method (the
  * Phase A verification-method shape the worker resolves pinned keys by).
  */
 export async function signDocument(document, key, fragment, { proofPurpose = "assertionMethod" } = {}) {
-  const proofOptions = {
-    type: "DataIntegrityProof",
-    cryptosuite: "eddsa-jcs-2022",
-    created: document.validFrom ?? "2026-01-01T00:00:00Z",
-    verificationMethod: `${ISSUER_DID}#${fragment}`,
-    proofPurpose,
-  };
-  const hashData = await eddsaJcs2022HashData(document, proofOptions);
-  const signature = edSign(null, hashData, key.privateKey);
-  return { ...document, proof: { ...proofOptions, proofValue: `z${base58btcEncode(new Uint8Array(signature))}` } };
+  return createProof(document, key.privateKey, programProofOptions(document, fragment, proofPurpose));
+}
+
+/**
+ * `document` signed as signDocument signs it, but over a proof
+ * configuration with no @context: a proof that verifies, since section
+ * 3.3.2 runs step 4 only when the proof carries one, and that the
+ * program's context policy must still refuse.
+ */
+export async function signWithoutProofContext(document, key, fragment) {
+  return signOver(document, key.privateKey, programProofOptions(document, fragment, "assertionMethod"));
+}
+
+/** The form a verifier must refuse: the same signature, the proof without the @context it was signed over. */
+export function withoutProofContext(document) {
+  const copy = structuredClone(document);
+  delete copy.proof["@context"];
+  return copy;
 }
 
 /**

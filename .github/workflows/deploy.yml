@@ -9,8 +9,16 @@ name: Deploy
 #   1. Create a Pages project named `kya-os-usergroup` in the DIF Cloudflare
 #      account (Workers & Pages -> Create -> Pages, direct upload).
 #   2. Bind builders.kya-os.org as a custom domain on that project.
-#   3. Set repository secrets CLOUDFLARE_API_TOKEN (a token with the
-#      "Cloudflare Pages: Edit" permission) and CLOUDFLARE_ACCOUNT_ID.
+#   3. A repository admin sets up the `production` environment: deployment
+#      branch `main` only, with the secrets CLOUDFLARE_API_TOKEN (a token
+#      with the "Cloudflare Pages: Edit" permission) and
+#      CLOUDFLARE_ACCOUNT_ID, and no repository-level copies of them
+#      (workers/badge/README.md, "Deploy runbook", step 3).
+#
+# The guards this job carries, and what they do not check, are listed once,
+# in workers/badge/README.md ("What the workflows check"), after the deploy
+# and rollback order ("Deploy order"); workers/badge/deploy-guards.test.mjs
+# pins them in this file.
 on:
   push:
     branches: [main]
@@ -25,18 +33,39 @@ on:
 permissions:
   contents: read
 
+# Scoped to the ref, so a run of this workflow on another ref cannot cancel
+# main's deploy.
 concurrency:
-  group: deploy-pages
+  group: deploy-pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      # A failing step rather than a job-level if: a run on another ref must
+      # show as failed, never as a skipped run that looks green.
+      - name: Deploy from main only
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::This workflow deploys from refs/heads/main only, and this run is on $GITHUB_REF."
+          exit 1
+      # No later step pushes or calls GitHub, so the checkout leaves no
+      # token in the working copy for them to read.
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
-          node-version: 20
+          persist-credentials: false
+      # Node 24, an LTS line; the locked wrangler needs Node 22 or later.
+      # Caching off, so no npm cache saved by another run reaches the install.
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      # Installs exactly what tools/deploy/package-lock.json locks, or fails,
+      # with no secret in this step's environment and install scripts off.
+      - name: Install the locked deploy toolchain
+        run: npm ci --ignore-scripts --prefix tools/deploy
       # Re-run the same validation gates as the Validate workflow INSIDE the
       # deploy job, before any upload. A push to main runs Validate and this
       # workflow concurrently, so a workflow_run/needs dependency would still
@@ -48,12 +77,10 @@ jobs:
         run: node scripts/validate.mjs
       - name: Build Pages artifact
         run: node site/build-pages.mjs
-      # A plain wrangler invocation instead of cloudflare/wrangler-action: the
-      # action's internal npx install cancels on a lockfile-less repo (this one
-      # is zero-dependency by design), which is exactly how both first deploy
-      # runs died before auth. npx --yes installs wrangler ephemerally.
+      # The only step whose environment holds the Cloudflare token: it runs
+      # the toolchain installed above and installs nothing.
       - name: Deploy to Cloudflare Pages
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: npx --yes wrangler@4 pages deploy dist --project-name=kya-os-usergroup --branch=main
+        run: tools/deploy/node_modules/.bin/wrangler pages deploy dist --project-name=kya-os-usergroup --branch=main

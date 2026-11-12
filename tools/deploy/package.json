@@ -1,0 +1,9 @@
+{
+  "name": "kya-os-usergroup-deploy-tools",
+  "private": true,
+  "description": "The deploy jobs' toolchain, locked with integrity hashes and installed by npm ci --ignore-scripts --prefix tools/deploy. Nothing the repository builds or serves depends on it.",
+  "license": "MIT",
+  "dependencies": {
+    "wrangler": "4.156.0"
+  }
+}

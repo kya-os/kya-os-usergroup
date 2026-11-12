@@ -98,6 +98,17 @@ curl -s https://builders.kya-os.org/credentials/<id>.json | node scripts/verify-
 
 The verdict JSON reports `VERIFIED`, `SUSPENDED`, `REVOKED`, or `INVALID` (exit codes 0, 2, 3, 1) with per-check detail: schema (including the deliberate absence of `validUntil` - a credential asserts a test result at a pinned suite version and code digest, and currency is judged against the suite manifest, not a clock), proof (against the committed issuer key), and status (both signed lists, verified before any bit is read).
 
+The proof is a standard `eddsa-jcs-2022` Data Integrity proof as [VC Data Integrity EdDSA Cryptosuites v1.0](https://www.w3.org/TR/vc-di-eddsa/#eddsa-jcs-2022) defines it.
+It carries the `@context` it was signed over, so any verifier that implements that specification can check a credential's signature against the issuer key the proof names, not only `verify-credential.mjs`.
+The published schema has required `proof.@context` since November 2026 (issue #52); credentials committed before then gained it in place, their signatures unchanged, because the signer had always signed over it.
+
+Copies from either side of that change do not mix.
+Once the status lists served after it are live, a copy of `scripts/verify-credential.mjs` from before it answers `INVALID` for every credential, those issued before it included.
+It refuses any credential or status list whose proof carries an `@context` (`proof: unexpected property "@context"`).
+A credential downloaded before it fails the current verifier with `proof: "@context" is required`.
+Pull this repository and fetch your credential again.
+For up to an hour after the change's Pages deploy, an edge may still serve a status list from before it beside a credential from after it, so an online check in that hour may answer `INVALID` and should be retried.
+
 ### Threat note, honestly
 
 A GitHub org admin who compromises the org can add themselves as an environment reviewer, or remove the protection, and trigger a signing run.

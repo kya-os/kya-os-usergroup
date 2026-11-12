@@ -37,6 +37,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CREDENTIALS_BASE, STATUS_LIST_BITS, STATUS_PURPOSES } from "./lib/attest.mjs";
+import { isProgramTimestamp } from "./lib/datetime.mjs";
 import { readProgramKeys } from "./lib/keys.mjs";
 import { checkCredentialShape, checkStatusListShape } from "./lib/shape.mjs";
 
@@ -45,7 +46,6 @@ const defaultRoot = join(here, "..");
 
 const ID32_FILE_RE = /^[0-9a-f]{32}\.json$/;
 const ALLOCATION_KEYS = ["index", "credentialId", "slug", "allocatedAt"];
-const DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 
 function readJson(path, rel, errors) {
   try {
@@ -102,8 +102,8 @@ function readAllocations(credentialsDir, errors) {
     if (typeof allocation.slug !== "string" || !/^[a-z0-9-]{2,40}$/.test(allocation.slug)) {
       fail(`allocations[${i}].slug must be a registry slug`);
     }
-    if (typeof allocation.allocatedAt !== "string" || !DATETIME_RE.test(allocation.allocatedAt)) {
-      fail(`allocations[${i}].allocatedAt must be an ISO 8601 UTC datetime`);
+    if (!isProgramTimestamp(allocation.allocatedAt)) {
+      fail(`allocations[${i}].allocatedAt must be the program's timestamp, YYYY-MM-DDThh:mm:ssZ on a day its month has`);
     }
   });
   // Sequential-from-zero allocation: indexes are exactly 0..n-1 and nextIndex
