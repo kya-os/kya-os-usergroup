@@ -106,6 +106,10 @@ The design does not pretend otherwise; it bounds the blast radius instead:
 - **Publication in git**: a signature only reaches anyone through a public PR on this repository, every issuance names its verdict thread, and the workflow approval log records who approved what.
   A forged credential that never lands on `main` verifies against the keys but is served nowhere and linked by no entry; the build refuses orphan credentials that are not revoked.
 - **Revocation**: the status lists are signed by a separate key and re-signed through the same gated workflow, so a discovered forgery is revocable in one PR.
+- **Two keys, one relationship**: `did.json` lists the issuer and status keys under `assertionMethod`, because a status list is a credential too, so a verifier outside the program accepts either key on a credential.
+  The program's own verifiers keep the keys apart: the site build, the badge worker, and `scripts/verify-credential.mjs` accept a credential only from an issuer key and a status list only from a status key.
+  The status key therefore needs the same custody as the issuer key.
+  If it is ever suspected compromised, the PR that re-signs both lists under a new status key also drops the old key's public half from `program-keys.json`, since the lists are all it signs.
 - **Semantics**: a credential asserts one observed test result, nothing more - not an endorsement, not an audit, not a warranty.
   The worst a stolen key can mint is a false test report with a public paper trail.
 - **What one reviewer does and does not give you**: with a single required reviewer, the gate is an auditable pause plus GitHub's approval record, not two-person control; the settings-only upgrade at charter closes that gap.
