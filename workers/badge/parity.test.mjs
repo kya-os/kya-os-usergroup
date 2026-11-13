@@ -141,7 +141,7 @@ test("tamper rejects on BOTH sides: subject, proofValue, wrong key", async () =>
   assert.equal(verifyCredential(promoted, issuer.public).ok, false);
 
   const flipped = structuredClone(signed);
-  flipped.proof.proofValue = `z1${flipped.proof.proofValue.slice(2)}`;
+  flipped.proof.proofValue = flipped.proof.proofValue.replace(/.$/, (last) => (last === "2" ? "3" : "2"));
   assert.equal((await verifyEddsaJcs2022(flipped, workerKey)).ok, false);
   assert.equal(verifyCredential(flipped, issuer.public).ok, false);
 

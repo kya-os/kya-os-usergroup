@@ -366,7 +366,7 @@ test("e2e: ceremony -> issue -> verify -> suspend -> unsuspend -> revoke -> muta
   writeFileSync(credentialPath, pristine);
 
   const proofTamper = JSON.parse(pristine);
-  proofTamper.proof.proofValue = `z1${proofTamper.proof.proofValue.slice(2)}`;
+  proofTamper.proof.proofValue = proofTamper.proof.proofValue.replace(/.$/, (last) => (last === "2" ? "3" : "2"));
   writeFileSync(credentialPath, JSON.stringify(proofTamper, null, 2) + "\n");
   const proofTamperBuild = run([tempPath("site", "build-pages.mjs")]);
   assert.equal(proofTamperBuild.status, 1, "a tampered proof must refuse the build");
