@@ -13,4 +13,5 @@ export const BADGE_ALLOWLIST = {
   "kya-os-schema": { name: "KYA-OS Schema Registry", claim: null, status: null, credentialUrl: null },
   "kya-os-walkthrough": { name: "KYA-OS Walkthrough", claim: null, status: null, credentialUrl: null },
   "revoked-demo": { name: "REVOKED", claim: null, status: null, credentialUrl: null },
+  "stillos-kyaos-verifier": { name: "StillOS KYA-OS Verifier", claim: "L3 subset (signed-proof, delegation-chain, status-list, did-key-resolution, did-web-resolution, card-proof, entity-card, audit-integrity, negotiation)", status: "in-verification", credentialUrl: null },
 };
