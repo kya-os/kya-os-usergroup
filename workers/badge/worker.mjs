@@ -20,23 +20,31 @@
  *   2. fetch the credential from its canonical URL
  *      (https://builders.kya-os.org/credentials/<id32>.json, carried by the
  *      allowlist from the entry's attestationUrl)
- *   3. verify its Ed25519 eddsa-jcs-2022 DataIntegrityProof against the
- *      pinned issuer key its proof NAMES (did:web fragment -> pinned id;
+ *   3. verify its Ed25519 eddsa-jcs-2022 DataIntegrityProof (VC Data
+ *      Integrity EdDSA Cryptosuites v1.0, section 3.3.2: the configuration
+ *      is the stored proof, its @context included) against the pinned
+ *      issuer key its proof NAMES (did:web fragment -> pinned id;
  *      rotation-aware, purpose-restricted: issuer proofs resolve only in
- *      PINNED_ISSUER_KEYS) - never against keys the credential brings along
- *   4. schema + binding checks: proofPurpose must be assertionMethod;
- *      validFrom must exist and not sit in the future beyond 300s skew; any
- *      validUntil is a schema violation (the credential design has no
- *      expiry - currency lives in suite supersession, per its termsOfUse);
- *      the credential id must recompute from the fetched URL's id32; the
- *      subject's claim must reproduce the allowlist's honest label (a
- *      subset never renders as a bare level)
+ *      PINNED_ISSUER_KEYS) - never against keys the credential brings along;
+ *      then hold it to the program's policy for every document it signs:
+ *      exactly PROGRAM_CONTEXT as its @context and its proof's (the
+ *      signature binds only the proof's @context, as a prefix of the
+ *      document's, so this is what refuses a context changed after
+ *      signing), proofPurpose assertionMethod, a proof.created, validFrom in
+ *      the program's own timestamp form and less than the 300s clock skew
+ *      in the future, and no validUntil (the design has no expiry - currency
+ *      lives in suite supersession, per its termsOfUse - so a validUntil is
+ *      a schema violation, never an "expired" state)
+ *   4. binding checks: the credential id must recompute from the fetched
+ *      URL's id32; the subject's claim must reproduce the allowlist's honest
+ *      label (a subset never renders as a bare level)
  *   5. read the revocation and suspension bits: both Bitstring status lists
  *      (https://builders.kya-os.org/credentials/status/{purpose}-1.json,
  *      which the credential's own status entries must name) are signed
  *      credentials, each verified against the pinned STATUS key its proof
  *      names - a key set separate from the issuer keys, so a stolen issuer
- *      key can never clear its own revocation bits - before any bit is read
+ *      key can never clear its own revocation bits - and held to the same
+ *      policy, before any bit is read
  *   6. render: revoked > suspended ("under appeal") > verified, each with
  *      the credential's SIGNATURE WAVE - bars seeded by the proofValue this
  *      request just verified (wave.mjs), so the badge carries a fingerprint
@@ -50,20 +58,24 @@
  *
  * DELIBERATE REDUNDANCY RULE: this worker never imports scripts/ or site/
  * code (it must stay self-contained for Cloudflare bundling); the scripts
- * side implements the same cryptosuite independently. parity.test.mjs is
- * where the two implementations cross-prove, and the build's render checks
- * import THIS module's renderer read-only to assert badge-byte parity.
+ * side implements the same cryptosuite and policy independently. README.md
+ * ("Independence note") names the tests where the two implementations
+ * cross-prove, and the build's render checks import THIS module's renderer
+ * read-only to assert badge-byte parity.
+ *
+ * Deploy order: preflight.mjs runs this module's own checks against the
+ * live documents before every deploy (README.md, "Deploy order").
  *
  * Caching: path-only cache key (query string stripped), s-maxage 300;
  * failure responses cache 60s so an outage cannot pin a stale answer.
  */
-import { verifyEddsaJcs2022, ed25519KeyFromMultibase, bitstringStatusAt } from "./verify.mjs";
+import { verifyEddsaJcs2022, ed25519KeyFromMultibase, bitstringStatusAt, isDateTimeStamp, jcsCanonicalize } from "./verify.mjs";
 import { WAVE_WIDTH, credentialWaveSeed, waveRects } from "./wave.mjs";
 import { BADGE_ALLOWLIST } from "./generated-allowlist.mjs";
 import { PINNED_ISSUER_KEYS, PINNED_STATUS_KEYS, PROVISIONED } from "./generated-keys.mjs";
 
-// Program identity and canonical URLs, self-contained on purpose (the
-// deliberate redundancy rule); parity.test.mjs asserts these equal the
+// Program identity, canonical URLs and context, self-contained on purpose
+// (the deliberate redundancy rule); parity.test.mjs asserts these equal the
 // scripts side's constants so neither copy can drift alone.
 export const ISSUER_DID = "did:web:builders.kya-os.org";
 export const CREDENTIALS_BASE = "https://builders.kya-os.org/credentials";
@@ -71,10 +83,21 @@ export const STATUS_LIST_URLS = {
   revocation: `${CREDENTIALS_BASE}/status/revocation-1.json`,
   suspension: `${CREDENTIALS_BASE}/status/suspension-1.json`,
 };
+export const PROGRAM_CONTEXT = Object.freeze(["https://www.w3.org/ns/credentials/v2"]);
+const PROGRAM_CONTEXT_JCS = jcsCanonicalize(PROGRAM_CONTEXT);
 const CREDENTIAL_URL_RE = /^https:\/\/builders\.kya-os\.org\/credentials\/([0-9a-f]{32})\.json$/;
 
-/** Allowed clock skew for validFrom: 300s, mirroring the protocol's skew rules. */
-const CLOCK_SKEW_MS = 300_000;
+// The clock skew this worker allows a validFrom ahead of its own clock: 300s,
+// the scripts side's too (pinned equal in parity.test.mjs).
+export const CLOCK_SKEW_MS = 300_000;
+
+/**
+ * Is a validFrom at `validFromMs` beyond the clock skew ahead of `nowMs`? It
+ * is from exactly CLOCK_SKEW_MS ahead on, where Digital Bazaar's verifier
+ * draws the same line. The one skew rule here, for the credential and both
+ * status lists (verifyAgainstPinned).
+ */
+export const beyondSkew = (validFromMs, nowMs) => validFromMs >= nowMs + CLOCK_SKEW_MS;
 
 // ── rendering: byte-identical to site/lib/badge.mjs (build-asserted) ────────
 
@@ -171,12 +194,52 @@ function pinnedKeyBytes(document, pinnedKeys) {
   return ed25519KeyFromMultibase(key.publicKeyMultibase);
 }
 
+/** Is `context` exactly the program's, by JCS content? A value with no JCS
+ * form (undefined, a non-finite number) is not. */
+function isProgramContext(context) {
+  try {
+    return jcsCanonicalize(context) === PROGRAM_CONTEXT_JCS;
+  } catch {
+    return false;
+  }
+}
+
+// The program's own timestamp, lexically, as it writes validFrom: a four-digit
+// year, each field in range, whole seconds and Z.
+const PROGRAM_TIMESTAMP_RE = /^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T(([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]|24:00:00)Z$/;
+
+/** Is `value` the program's own timestamp, YYYY-MM-DDThh:mm:ssZ: a
+ * dateTimeStamp (verify.mjs) in UTC to the second, on a day its month has? */
+const isProgramTimestamp = (value) => isDateTimeStamp(value) && PROGRAM_TIMESTAMP_RE.test(value);
+
+/**
+ * Verify a program document's proof against the pinned key it names, then
+ * the program's policy for every document it signs, credential or status
+ * list: exactly the program's @context in the document and in its proof,
+ * purpose assertionMethod, a created (the cryptosuite checks one only when
+ * it is set, and the program sets it on every proof), validFrom the
+ * program's own timestamp and less than the clock skew in the future, and
+ * no validUntil. The signature binds only the proof's @context, as a prefix
+ * of the document's, so the context check after it is what refuses a
+ * context appended or reshaped after signing. The scripts side holds the
+ * same policy (scripts/lib/shape.mjs, scripts/lib/verdict.mjs).
+ */
 async function verifyAgainstPinned(document, pinnedKeys, what) {
   const { ok, reason } = await verifyEddsaJcs2022(document, pinnedKeyBytes(document, pinnedKeys));
   if (!ok) throw new Error(`${what} proof did not verify against the pinned key it names (${reason})`);
+  if (!isProgramContext(document["@context"]) || !isProgramContext(document.proof["@context"])) {
+    throw new Error(`${what} @context, and its proof's, must be exactly ${PROGRAM_CONTEXT_JCS}`);
+  }
   if (document.proof.proofPurpose !== "assertionMethod") {
     throw new Error(`${what} proof purpose must be assertionMethod, got ${document.proof.proofPurpose}`);
   }
+  if (document.proof.created === undefined) throw new Error(`${what} proof carries no created`);
+  if (!isProgramTimestamp(document.validFrom)) {
+    throw new Error(`${what} validFrom must be the program's timestamp, YYYY-MM-DDThh:mm:ssZ on a day its month has`);
+  }
+  // A program timestamp, checked above, so it parses.
+  if (beyondSkew(Date.parse(document.validFrom), Date.now())) throw new Error(`${what} validFrom is 300s or more in the future, beyond the clock skew`);
+  if (document.validUntil !== undefined) throw new Error(`unexpected validUntil on the ${what}: the program's documents have no expiry`);
 }
 
 // ── state resolution ────────────────────────────────────────────────────────
@@ -185,6 +248,20 @@ async function fetchJson(url, fetchImpl, what) {
   const response = await fetchImpl(url);
   if (!response.ok) throw new Error(`${what} fetch ${response.status}`);
   return response.json();
+}
+
+/**
+ * Fetch one purpose's status list from its canonical URL and verify it. The
+ * list is a signed credential in its own right, verified against the pinned
+ * STATUS key its proof names BEFORE any bit is read, so neither the list
+ * host nor a stolen issuer key can clear (or set) revocation bits. Throws
+ * on any failure; the deploy preflight (preflight.mjs) calls it too.
+ */
+export async function fetchVerifiedStatusList(purpose, fetchImpl, statusKeys) {
+  const list = await fetchJson(STATUS_LIST_URLS[purpose], fetchImpl, `${purpose} list`);
+  await verifyAgainstPinned(list, statusKeys, `${purpose} list`);
+  if (list.credentialSubject?.statusPurpose !== purpose) throw new Error("status list purpose mismatch");
+  return list;
 }
 
 async function statusBit(credential, purpose, fetchImpl, statusKeys) {
@@ -197,15 +274,8 @@ async function statusBit(credential, purpose, fetchImpl, statusKeys) {
   if (entry.statusListCredential !== STATUS_LIST_URLS[purpose]) {
     throw new Error(`${purpose} status entry does not name the canonical list URL`);
   }
-  const list = await fetchJson(STATUS_LIST_URLS[purpose], fetchImpl, `${purpose} list`);
-  // The status list is a signed credential in its own right, verified
-  // against the pinned STATUS key its proof names BEFORE any bit is read,
-  // so neither the list host nor a stolen issuer key can clear (or set)
-  // revocation bits.
-  await verifyAgainstPinned(list, statusKeys, `${purpose} list`);
-  const subject = list.credentialSubject ?? {};
-  if (subject.statusPurpose !== purpose) throw new Error("status list purpose mismatch");
-  return bitstringStatusAt(subject.encodedList, entry.statusListIndex);
+  const list = await fetchVerifiedStatusList(purpose, fetchImpl, statusKeys);
+  return bitstringStatusAt(list.credentialSubject.encodedList, entry.statusListIndex);
 }
 
 /**
@@ -235,16 +305,6 @@ export async function resolveBadgeState(entry, { fetchImpl, issuerKeys, statusKe
   if (urlMatch === null) throw new Error("allowlist credentialUrl is not a canonical credential URL");
   const credential = await fetchJson(entry.credentialUrl, fetchImpl, "credential");
   await verifyAgainstPinned(credential, issuerKeys, "credential");
-
-  // Schema + temporal checks, fail closed. The credential must not claim to
-  // be from the future beyond clock skew, and validUntil must not exist -
-  // the design deliberately has no expiry (currency lives in suite
-  // supersession, recorded in termsOfUse), so an unexpected validUntil is a
-  // schema violation, never an "expired" state.
-  const validFrom = Date.parse(credential.validFrom);
-  if (!Number.isFinite(validFrom)) throw new Error("credential validFrom is missing or malformed");
-  if (validFrom > Date.now() + CLOCK_SKEW_MS) throw new Error("credential validFrom is in the future beyond clock skew");
-  if (credential.validUntil !== undefined) throw new Error("unexpected validUntil: the credential design has no expiry");
 
   // Binding: the served document must BE the credential the allowlist names
   // (deterministic id = the URL's id32), and its subject must reproduce the

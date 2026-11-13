@@ -12,10 +12,9 @@
  * the same primitives independently for the issuance and site-build side,
  * and neither side may import the other - this worker must stay
  * self-contained for Cloudflare bundling, and the repo's house style is
- * independent implementations cross-proving each other. The ONLY place both
- * sides meet is workers/badge/parity.test.mjs, which asserts byte-for-byte
- * JCS agreement and sign-here/verify-there interop; a divergence fails the
- * suite, never ships.
+ * independent implementations cross-proving each other. The two crypto
+ * implementations meet only in this directory's tests that README.md
+ * ("Independence note") names; a divergence fails the suite, never ships.
  *
  * Everything here is fail-closed: malformed input returns { ok: false } (or
  * throws to the caller's catch, which must map to the "unknown"/unverified
@@ -35,7 +34,7 @@ export function jcsCanonicalize(value) {
     return JSON.stringify(value);
   }
   if (typeof value === "number") {
-    if (!Number.isFinite(value)) throw new Error("JCS: non-finite number");
+    if (!Number.isFinite(value)) throw new Error("JCS: non-finite numbers have no canonical form");
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {
@@ -122,6 +121,66 @@ export function ed25519KeyToMultibase(rawKey) {
   return `z${base58btcEncode(prefixed)}`;
 }
 
+// ── XMLSCHEMA11-2 dateTimeStamp ─────────────────────────────────────────────
+
+const isDigits = (text) => text.length > 0 && [...text].every((c) => c >= "0" && c <= "9");
+const isTwoDigits = (text) => text.length === 2 && isDigits(text);
+
+/** Days in `month` (1 to 12) of a year whose last four digits are
+ * `lastFour`: leap years repeat every 400 years, and 400 divides 10000. */
+function daysInMonth(lastFour, month) {
+  if (month === 2) return lastFour % 400 === 0 || (lastFour % 4 === 0 && lastFour % 100 !== 0) ? 29 : 28;
+  return [4, 6, 9, 11].includes(month) ? 30 : 31;
+}
+
+/**
+ * Is `value` an [XMLSCHEMA11-2] dateTimeStamp, a dateTime whose timezone is
+ * required? VC Data Integrity 1.0, section 2.1, requires proof.created to be
+ * one, and lets a processor accept a value written without an offset, read
+ * as UTC; this one does not. EdDSA Cryptosuites v1.0, section 3.3.5 step 3,
+ * requires an error for a value that is not a valid datetime.
+ * Parsed field by field (the scripts side matches a pattern instead, so the
+ * two share no shortcut): a year of four or more digits, optionally
+ * negative, with no leading zero past four; a month and a day that exist,
+ * February 29 only in a leap year; hh:mm:ss with optional fractional
+ * seconds, or the end of the day, 24:00:00; and Z or an offset within
+ * 14:00 of UTC. worker.mjs builds the program's own timestamp on it.
+ */
+export function isDateTimeStamp(value) {
+  if (typeof value !== "string") return false;
+  const unsigned = value.startsWith("-") ? value.slice(1) : value;
+  const t = unsigned.indexOf("T");
+  if (t < 0) return false;
+  const date = unsigned.slice(0, t).split("-");
+  if (date.length !== 3) return false;
+  const [year, month, day] = date;
+  if (!isDigits(year) || year.length < 4 || (year.length > 4 && year.startsWith("0"))) return false;
+  if (!isTwoDigits(month) || !isTwoDigits(day)) return false;
+  const monthNumber = Number(month);
+  if (monthNumber < 1 || monthNumber > 12) return false;
+  if (Number(day) < 1 || Number(day) > daysInMonth(Number(year.slice(-4)), monthNumber)) return false;
+
+  let time = unsigned.slice(t + 1);
+  if (time.endsWith("Z")) {
+    time = time.slice(0, -1);
+  } else {
+    const sign = Math.max(time.lastIndexOf("+"), time.lastIndexOf("-"));
+    if (sign < 0) return false;
+    const offset = time.slice(sign + 1).split(":");
+    if (offset.length !== 2 || !offset.every(isTwoDigits)) return false;
+    const [hours, minutes] = offset.map(Number);
+    if (minutes > 59 || hours * 60 + minutes > 14 * 60) return false;
+    time = time.slice(0, sign);
+  }
+  const [clock, fraction, ...extra] = time.split(".");
+  if (extra.length > 0 || (fraction !== undefined && !isDigits(fraction))) return false;
+  const fields = clock.split(":");
+  if (fields.length !== 3 || !fields.every(isTwoDigits)) return false;
+  const [hour, minute, second] = fields.map(Number);
+  if (hour === 24) return minute === 0 && second === 0 && (fraction === undefined || Number(fraction) === 0);
+  return hour < 24 && minute < 60 && second < 60;
+}
+
 // ── eddsa-jcs-2022 ──────────────────────────────────────────────────────────
 
 async function sha256(bytes) {
@@ -131,15 +190,27 @@ async function sha256(bytes) {
 const encoder = new TextEncoder();
 
 /**
- * Compute the eddsa-jcs-2022 hashData for a document + proof options:
- * sha256(JCS(proofConfig)) || sha256(JCS(unsecuredDocument)).
- * The proof config carries the document's @context when present, per the
- * W3C DI eddsa-jcs-2022 cryptosuite.
+ * Compute the eddsa-jcs-2022 hashData for a document + proof options, per
+ * VC Data Integrity EdDSA Cryptosuites v1.0, sections 3.3.3 to 3.3.5:
+ * sha256(JCS(proofConfig)) || sha256(JCS(unsecuredDocument)), where
+ * proofConfig is the proof options exactly as given minus any proofValue.
+ * Nothing is copied in from the document: the only @context the
+ * configuration carries is the one the signer stored in the proof (3.3.1
+ * step 2). A set created that is not an [XMLSCHEMA11-2] dateTimeStamp
+ * throws, for the fixture signer and the verifier alike: EdDSA Cryptosuites
+ * v1.0 section 3.3.5 step 3 requires the error for an invalid datetime, such
+ * as 2023-02-29, and for a valid one with no Z or offset it is this
+ * program's choice under VC Data Integrity 1.0 section 2.1.
  */
 export async function eddsaJcs2022HashData(unsecuredDocument, proofOptions) {
   const proofConfig = { ...proofOptions };
   delete proofConfig.proofValue;
-  if (unsecuredDocument["@context"] !== undefined) proofConfig["@context"] = unsecuredDocument["@context"];
+  if (proofConfig.created !== undefined && !isDateTimeStamp(proofConfig.created)) {
+    throw new Error(
+      "proof.created must be an XMLSCHEMA11-2 dateTimeStamp: EdDSA Cryptosuites v1.0 section 3.3.5 step 3 makes an invalid datetime an error, " +
+        "and refusing a datetime with no Z or offset is this program's choice under VC Data Integrity 1.0 section 2.1",
+    );
+  }
   const proofHash = await sha256(encoder.encode(jcsCanonicalize(proofConfig)));
   const docHash = await sha256(encoder.encode(jcsCanonicalize(unsecuredDocument)));
   const hashData = new Uint8Array(proofHash.length + docHash.length);
@@ -149,8 +220,32 @@ export async function eddsaJcs2022HashData(unsecuredDocument, proofOptions) {
 }
 
 /**
+ * Section 3.3.2 step 4.1: the document's @context must start with all the
+ * values of the proof's @context, in the same order. Either side may be a
+ * single context (a list of one); an absent document @context is empty.
+ * Values match when their JCS forms match, compared in order, so the first
+ * that differs decides; a value with no JCS form throws when the loop
+ * reaches it, and the verifier refuses with that canonicalization failure
+ * as its reason, as the scripts side does.
+ */
+function documentContextStartsWithProof(documentContext, proofContext) {
+  const listOf = (value) => (value === undefined ? [] : Array.isArray(value) ? value : [value]);
+  const documentList = listOf(documentContext);
+  const proofList = listOf(proofContext);
+  if (documentList.length < proofList.length) return false;
+  for (let i = 0; i < proofList.length; i++) {
+    if (jcsCanonicalize(documentList[i]) !== jcsCanonicalize(proofList[i])) return false;
+  }
+  return true;
+}
+
+/**
  * Verify a W3C Data Integrity proof of type DataIntegrityProof /
- * eddsa-jcs-2022 on `document` against a raw Ed25519 public key.
+ * eddsa-jcs-2022 on `document` against a raw Ed25519 public key, per
+ * section 3.3.2: the proof configuration is the stored proof minus its
+ * proofValue, and when the proof carries an @context the document's
+ * @context must start with it and the document is hashed under the
+ * proof's.
  * Returns { ok: boolean, reason?: string } and never throws on bad input.
  */
 export async function verifyEddsaJcs2022(document, publicKeyBytes) {
@@ -165,6 +260,18 @@ export async function verifyEddsaJcs2022(document, publicKeyBytes) {
     const signature = base58btcDecode(proof.proofValue.slice(1));
     const unsecured = { ...document };
     delete unsecured.proof;
+    // Step 4 runs "if proofOptions.@context exists", read here as the key
+    // being present, whatever its value: a stored null, "", false, 0 or {}
+    // must prefix the document's @context like any other value. Digital
+    // Bazaar's eddsa-jcs-2022 cryptosuite 1.0.0 tests truthiness instead, and
+    // skips step 4 for null, "", false and 0; spec-conformance.test.mjs holds
+    // both verifiers in this repository to the cases.
+    if (proof["@context"] !== undefined) {
+      if (!documentContextStartsWithProof(document["@context"], proof["@context"])) {
+        return { ok: false, reason: 'the document\'s "@context" does not start with the proof\'s "@context"' };
+      }
+      unsecured["@context"] = proof["@context"];
+    }
     const hashData = await eddsaJcs2022HashData(unsecured, proof);
     const key = await crypto.subtle.importKey("raw", publicKeyBytes, { name: "Ed25519" }, false, ["verify"]);
     const ok = await crypto.subtle.verify({ name: "Ed25519" }, key, signature, hashData);

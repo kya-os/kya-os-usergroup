@@ -6,43 +6,56 @@ name: Deploy badge worker
 # hands the /badge/ paths from the static Pages tier to live verification,
 # and that handover is a human decision, not a push side effect.
 #
-# Fail-closed gates, in order, before anything reaches Cloudflare:
-#   1. the site build must pass (it validates the registries, verifies every
-#      committed credential cryptographically, and regenerates the worker's
-#      generated modules from committed state)
-#   2. the regenerated modules must match the committed bytes - a deploy can
-#      never ship pins or slugs that main does not carry
-#   3. the pinned program keys must be PROVISIONED - the pre-ceremony
-#      sentinel refuses here with "keys unprovisioned - merge the
-#      provisioning PR first", so merging that PR is the arming step and
-#      this workflow cannot front-run it
-#   4. the full test suite must pass (badge worker + cross-implementation
-#      parity + conformance program suites)
+# The runbook's step 4 says what each step below refuses. The guards this
+# job carries, and what they do not check, are listed once, in its "What the
+# workflows check", after the deploy and rollback order ("Deploy order");
+# workers/badge/deploy-guards.test.mjs pins them in this file.
 #
-# One-time setup (details in workers/badge/README.md):
-#   - repository secret CLOUDFLARE_API_TOKEN_WORKER: a DEDICATED token with
+# One-time setup (details in workers/badge/README.md, "Deploy runbook"), in
+# the `production` environment, never as repository secrets:
+#   - secret CLOUDFLARE_API_TOKEN_WORKER: a DEDICATED token with
 #     Account > Workers Scripts > Edit plus Zone > Workers Routes > Edit on
 #     the kya-os.org zone (the Pages deploy token stays Pages-only; the
 #     maintainer creates this one at deploy time)
-#   - repository secret CLOUDFLARE_ACCOUNT_ID (shared with the Pages deploy)
+#   - secret CLOUDFLARE_ACCOUNT_ID (shared with the Pages deploy)
 on:
   workflow_dispatch:
 
 permissions:
   contents: read
 
+# Scoped to the ref, so a run of this workflow on another ref cannot cancel
+# main's deploy.
 concurrency:
-  group: deploy-worker
+  group: deploy-worker-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      # A failing step rather than a job-level if: a run on another ref must
+      # show as failed, never as a skipped run that looks green.
+      - name: Deploy from main only
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::This workflow deploys from refs/heads/main only, and this run is on $GITHUB_REF."
+          exit 1
+      # No later step pushes or calls GitHub, so the checkout leaves no
+      # token in the working copy for them to read.
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
-          node-version: 20
+          persist-credentials: false
+      # Node 24, an LTS line; the locked wrangler needs Node 22 or later.
+      # Caching off, so no npm cache saved by another run reaches the install.
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      # The locked toolchain, installed as the Pages deploy installs it.
+      - name: Install the locked deploy toolchain
+        run: npm ci --ignore-scripts --prefix tools/deploy
       - name: Build (validates registries, regenerates the worker's generated modules)
         run: node site/build-pages.mjs
       - name: Generated modules are committed and current
@@ -59,12 +72,13 @@ jobs:
           '
       - name: Full test suite (validate + build + badge/parity + conformance)
         run: npm test
-      # A plain wrangler invocation instead of cloudflare/wrangler-action,
-      # for the same reason as the Pages deploy: the action's internal npx
-      # install cancels on this lockfile-less zero-dependency repo.
+      - name: Live credentials and status lists verify under this worker
+        run: node workers/badge/preflight.mjs
+      # The only step whose environment holds the Cloudflare token: it runs
+      # the toolchain installed above and installs nothing.
       - name: Deploy the worker to the /badge/* zone route
         working-directory: workers/badge
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN_WORKER }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: npx --yes wrangler@4 deploy
+        run: ../../tools/deploy/node_modules/.bin/wrangler deploy

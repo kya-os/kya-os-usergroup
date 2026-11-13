@@ -9,6 +9,17 @@ name: Probe
 # Fail-closed by construction: if this workflow never runs, probes.json goes
 # stale visibly (the rendered "checked <date>" ages) - the site never invents
 # enforcement language without committed probe data behind it.
+#
+# Main only: the commit step pushes the run's tree to main, so the job's
+# first step fails a run on any other ref, naming it, where a dispatch on
+# another branch would otherwise push that branch's commits to main. A
+# scheduled run starts on the default branch, main, and passes it. A
+# dispatch runs the workflow file of the ref it names, so the step binds
+# only refs whose file carries it; keeping every other push off main is the
+# job of main's ruleset, and step 3 of the runbook (workers/badge/README.md,
+# "Deploy runbook") says what becomes of this push once it is in place.
+# workers/badge/deploy-guards.test.mjs pins that first step, the triggers,
+# the token's permissions, the concurrency group and the one push.
 on:
   schedule:
     - cron: "23 5 * * *"
@@ -16,18 +27,28 @@ on:
 
 permissions:
   contents: write
-  actions: write # gh workflow run deploy.yml after the bot push
+  # gh workflow run deploy.yml after the bot push
+  actions: write
 
+# Scoped to the ref, so a run of this workflow on another ref cannot take the
+# place of main's run waiting in the group.
 concurrency:
-  group: probe-live
+  group: probe-live-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      # A failing step rather than a job-level if: a run on another ref must
+      # show as failed, never as a skipped run that looks green.
+      - name: Push to main from main only
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::This workflow pushes to refs/heads/main from refs/heads/main only, and this run is on $GITHUB_REF."
+          exit 1
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 20
       - name: Probe live service endpoints

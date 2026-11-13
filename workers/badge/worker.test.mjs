@@ -6,13 +6,17 @@
  * trusted): fetch is injected as a URL->payload map, the cache is omitted,
  * and the throwaway issuer/status keys stand in for the pinned sets in the
  * generated-keys shape ({id, publicKeyMultibase}). Covers: proof verify
- * accept and reject-on-tamper, rotation-aware key resolution by the id the
- * proof NAMES, issuer/status purpose separation, status list proof
- * enforcement before any bit is read, every render state through the HTTP
- * handler (the non-credential rungs provably fetch nothing), the
- * unprovisioned fail-close, allowlist rejection, and the honesty rules
- * (KYA-OS label, subset never bare, no expired state). The badge's signature
- * wave has its own file: wave.test.mjs.
+ * accept and reject-on-tamper (a proof stripped of its @context included),
+ * rotation-aware key resolution by the id the proof NAMES, issuer/status
+ * purpose separation, status list proof enforcement before any bit is read,
+ * the program context policy (a document or proof @context other than the
+ * program's, a proof signed with none included, on a credential or either
+ * list, renders unverified even when the proof verifies), every render
+ * state through the HTTP handler (the
+ * non-credential rungs provably fetch nothing), the unprovisioned
+ * fail-close, allowlist rejection, and the honesty rules (KYA-OS label,
+ * subset never bare, no expired state). The badge's signature wave has its
+ * own file: wave.test.mjs.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -24,8 +28,10 @@ import {
   credentialDocument,
   encodedListWithBits,
   signDocument,
+  signWithoutProofContext,
   statusListDocument,
   throwawayKey,
+  withoutProofContext,
 } from "./fixtures/mint.mjs";
 
 // ── minted fixtures (throwaway keys, this run only) ─────────────────────────
@@ -60,11 +66,14 @@ const ALLOWLIST = {
   "just-listed": { name: "Just Listed", claim: null, status: null, credentialUrl: null },
 };
 
-/** Injected fetch: a plain URL->JSON-value map; anything else 404s. */
+/** Injected fetch: a plain URL->JSON-value map, where a string is JSON text
+ * served as it is (for text no value serializes to, such as 1e999);
+ * anything else 404s. */
 function fakeFetch(map) {
   return async (url) => {
-    if (url in map) return new Response(JSON.stringify(map[url]), { status: 200, headers: { "content-type": "application/json" } });
-    return new Response("not found", { status: 404 });
+    if (!(url in map)) return new Response("not found", { status: 404 });
+    const body = typeof map[url] === "string" ? map[url] : JSON.stringify(map[url]);
+    return new Response(body, { status: 200, headers: { "content-type": "application/json" } });
   };
 }
 
@@ -125,6 +134,19 @@ test("verify rejects on tampered subject, tampered proofValue, wrong key", async
   assert.equal((await verifyEddsaJcs2022(flipped, issuerKeyBytes)).ok, false);
 
   assert.equal((await verifyEddsaJcs2022(credential, new Uint8Array(32))).ok, false);
+});
+
+test("a credential or status list whose proof dropped the @context it was signed over renders unverified", async () => {
+  for (const signed of [credential, lists.revocation.allZero, lists.suspension.allZero]) {
+    assert.deepEqual(signed.proof["@context"], signed["@context"], "the minted proof carries the document's @context");
+  }
+  for (const overrides of [
+    { [CREDENTIAL_URL]: withoutProofContext(credential) },
+    { [STATUS_LIST_URLS.revocation]: withoutProofContext(lists.revocation.allZero) },
+    { [STATUS_LIST_URLS.suspension]: withoutProofContext(lists.suspension.allZero) },
+  ]) {
+    await expectBadge(happyMap(overrides), "/badge/fixture-impl.svg", { message: "unverified", color: "999999" });
+  }
 });
 
 // ── render states through the HTTP handler ─────────────────────────────────
@@ -255,6 +277,48 @@ test("proofPurpose other than assertionMethod renders unverified", async () => {
   const wrongPurpose = await signDocument(credentialDocument(SUBJECT), issuer, "conformance-issuer-1", { proofPurpose: "authentication" });
   assert.equal((await verifyEddsaJcs2022(wrongPurpose, issuerKeyBytes)).ok, true, "fixture must be validly signed so the purpose check is what rejects");
   await expectBadge(happyMap({ [CREDENTIAL_URL]: wrongPurpose }), "/badge/fixture-impl.svg", { message: "unverified" });
+});
+
+test("a credential or status list whose @context was appended to or turned into a bare string after signing renders unverified, though its proof still verifies", async () => {
+  const V2 = "https://www.w3.org/ns/credentials/v2";
+  const statusKeyBytes = ed25519KeyFromMultibase(statusSigner.publicKeyMultibase);
+  const documents = [
+    [CREDENTIAL_URL, credential, issuerKeyBytes],
+    [STATUS_LIST_URLS.revocation, lists.revocation.allZero, statusKeyBytes],
+    [STATUS_LIST_URLS.suspension, lists.suspension.allZero, statusKeyBytes],
+  ];
+  for (const [url, signed, keyBytes] of documents) {
+    // Appended, a bare string, and appended with a value that has no JCS
+    // form: 1e999, which JSON.parse reads as Infinity, served as that text.
+    for (const context of [`["${V2}", "https://example.org/extra/v1"]`, `"${V2}"`, `["${V2}", 1e999]`]) {
+      const served = JSON.stringify({ ...signed, "@context": "__CONTEXT__" }).replace('"__CONTEXT__"', context);
+      assert.equal((await verifyEddsaJcs2022(JSON.parse(served), keyBytes)).ok, true, `${url}: the proof still verifies, so the context policy is what refuses`);
+      await expectBadge(happyMap({ [url]: served }), "/badge/fixture-impl.svg", { message: "unverified", color: "999999" });
+    }
+  }
+});
+
+test("a credential or status list signed over a proof configuration with no @context renders unverified, though its proof verifies", async () => {
+  const statusKeyBytes = ed25519KeyFromMultibase(statusSigner.publicKeyMultibase);
+  const documents = [
+    [CREDENTIAL_URL, await signWithoutProofContext(credentialDocument(SUBJECT), issuer, "conformance-issuer-1"), issuerKeyBytes],
+    [STATUS_LIST_URLS.revocation, await signWithoutProofContext(statusListDocument("revocation", allZero), statusSigner, "conformance-status-1"), statusKeyBytes],
+    [STATUS_LIST_URLS.suspension, await signWithoutProofContext(statusListDocument("suspension", allZero), statusSigner, "conformance-status-1"), statusKeyBytes],
+  ];
+  for (const [url, signed, keyBytes] of documents) {
+    assert.equal(signed.proof["@context"], undefined, url);
+    assert.equal((await verifyEddsaJcs2022(signed, keyBytes)).ok, true, `${url}: the proof verifies, so the context policy is what refuses`);
+    await expectBadge(happyMap({ [url]: signed }), "/badge/fixture-impl.svg", { message: "unverified", color: "999999" });
+  }
+});
+
+test("a proof whose @context is not the program's renders unverified, though it verifies", async () => {
+  // Signed over an empty @context, which the program's starts with (section
+  // 3.3.2 step 4.1), then served under the program's own.
+  const signedOverEmpty = await signDocument({ ...credentialDocument(SUBJECT), "@context": [] }, issuer, "conformance-issuer-1");
+  const served = { ...signedOverEmpty, "@context": ["https://www.w3.org/ns/credentials/v2"] };
+  assert.equal((await verifyEddsaJcs2022(served, issuerKeyBytes)).ok, true, "the proof verifies, so the context policy is what refuses");
+  await expectBadge(happyMap({ [CREDENTIAL_URL]: served }), "/badge/fixture-impl.svg", { message: "unverified", color: "999999" });
 });
 
 test("validFrom in the future beyond the 300s skew renders unverified", async () => {

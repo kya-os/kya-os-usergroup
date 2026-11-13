@@ -20,12 +20,12 @@ The build asserts the worker's renderer against the shipped `dist/badge/` bytes 
 The worker is armed and waits on a manual deploy.
 
 - **Keys.** The program's public keys are provisioned in [`registry/keys/program-keys.json`](../registry/keys/program-keys.json), and the build regenerates [`workers/badge/generated-keys.mjs`](../workers/badge/generated-keys.mjs) from them: `PROVISIONED` is `true`, with the issuer key and the status key pinned as separate sets (so a stolen issuer key can never clear its own revocation bits); the reserved log key is never pinned.
-- **Deployment.** Deploying is a `workflow_dispatch` of [`deploy-worker.yml`](../.github/workflows/deploy-worker.yml), never automatic: handing the `/badge/` paths from the static tier to request-time verification is a human decision.
-  The workflow refuses unprovisioned keys, refuses stale generated modules, and refuses on any test failure.
+- **Deployment.** Deploying is a `workflow_dispatch` of [`deploy-worker.yml`](../.github/workflows/deploy-worker.yml) from `main`, never automatic: handing the `/badge/` paths from the static tier to request-time verification is a human decision.
+  What it refuses before it deploys, the guards it carries and what they do not check are listed once, in the runbook: its step 4, and "What the workflows check" in its [Deploy order](../workers/badge/README.md#deploy-order) section.
 - **Until it runs**, the static tier answers on these paths.
   The [workflow's run history](https://github.com/kya-os/kya-os-usergroup/actions/workflows/deploy-worker.yml) is the record of whether it has.
 
-The step-by-step runbook (the dedicated Cloudflare token, the repository secrets, the first-deploy check, rollback) is in [`workers/badge/README.md`](../workers/badge/README.md#deploy-runbook).
+The step-by-step runbook (the dedicated Cloudflare token, the `production` environment, the first-deploy check, removing the worker, and the deploy and rollback order) is in [`workers/badge/README.md`](../workers/badge/README.md#deploy-runbook).
 
 ## What makes a badge green
 
@@ -34,8 +34,14 @@ Only a verified credential, on either tier.
 1. The slug must be in the generated allowlist ([`workers/badge/generated-allowlist.mjs`](../workers/badge/generated-allowlist.mjs), emitted by the build from the rendered registry entries); an unlisted slug is a 404.
 2. For an entry at status `verified` or `revoked`, the worker fetches the credential from its canonical URL, `https://builders.kya-os.org/credentials/<id32>.json` (the build reads the committed copy instead).
 3. Its Ed25519 `eddsa-jcs-2022` proof is checked against the pinned issuer key the proof names, never a key the credential carries.
-4. Schema and binding checks: `proofPurpose` must be `assertionMethod`; `validFrom` must exist and not sit in the future beyond a 300 second clock skew; any `validUntil` is a schema violation, because the credential has no expiry (currency lives in suite supersession, recorded in its `termsOfUse`); the credential `id` must recompute from the URL; and the subject's claim must reproduce the allowlist's honest label, so a subset never renders as a bare level.
-5. The revocation and suspension bits are read from the two signed Bitstring status lists, each verified against a separate pinned status key before any bit is read.
+   The check is section 3.3.2 of [VC Data Integrity EdDSA Cryptosuites v1.0](https://www.w3.org/TR/vc-di-eddsa/#eddsa-jcs-2022): the proof carries the `@context` it was signed over, and the credential's `@context` must start with it.
+   Once the proof verifies, the credential's `@context` and its proof's must each be exactly the program's, `["https://www.w3.org/ns/credentials/v2"]`, since the signature binds only the proof's.
+4. Schema and binding checks: `proofPurpose` must be `assertionMethod`, and `proof.created` must be present.
+   `validFrom` must be the program's own timestamp, `YYYY-MM-DDThh:mm:ssZ` on a day its month has, and be less than 300 seconds in the future (the clock skew).
+   Any `validUntil` is a schema violation, because the credential has no expiry (currency lives in suite supersession, recorded in its `termsOfUse`).
+   The credential `id` must recompute from the URL, and the subject's claim must reproduce the allowlist's honest label, so a subset never renders as a bare level.
+5. The revocation and suspension bits are read from the two signed Bitstring status lists, each verified against a separate pinned status key and held to the same policy before any bit is read.
+   That is the same `@context`, purpose and `created` rules, a `validFrom` in the program's timestamp form less than the same clock skew in the future, and no `validUntil`.
 
 Entries below the credential rungs (`listed`, `self-reported`, `in verification`) render straight from the allowlist, with no fetch at all, exactly as the static tier renders them.
 

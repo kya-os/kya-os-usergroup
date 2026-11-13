@@ -29,7 +29,8 @@
  * Verification runs through scripts/lib/attest.mjs (node:crypto, sync). The
  * badge worker's independent implementation never imports this code or vice
  * versa (deliberate redundancy rule - see workers/badge/verify.mjs);
- * workers/badge/parity.test.mjs proves the two agree.
+ * workers/badge/parity.test.mjs and spec-conformance.test.mjs prove the two
+ * agree.
  */
 import { CREDENTIALS_BASE, ISSUER_DID, decodeStatusList, statusBitAt, verifyCredential } from "../../scripts/lib/attest.mjs";
 import { credentialWaveSeed } from "./waveform.mjs";

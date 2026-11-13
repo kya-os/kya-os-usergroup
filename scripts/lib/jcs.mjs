@@ -92,3 +92,17 @@ export function canonicalize(value) {
   }
   throw new Error(`JCS: unsupported type ${typeof value}`);
 }
+
+/**
+ * Do two values have the same RFC 8785 canonical form? Never throws: a value
+ * with no canonical form (a non-finite number, undefined, a function) equals
+ * nothing, so a hostile document fails the comparison instead of crashing
+ * the check that makes it.
+ */
+export function jcsEqual(a, b) {
+  try {
+    return canonicalize(a) === canonicalize(b);
+  } catch {
+    return false;
+  }
+}
