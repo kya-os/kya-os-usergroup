@@ -151,7 +151,7 @@ test("sign -> verify roundtrip; every tamper class rejects", () => {
   assert.equal(verifyCredential(tamperedSubject, key.public).ok, false);
 
   const tamperedProof = structuredClone(signed);
-  tamperedProof.proof.proofValue = `z1${tamperedProof.proof.proofValue.slice(2)}`;
+  tamperedProof.proof.proofValue = tamperedProof.proof.proofValue.replace(/.$/, (last) => (last === "2" ? "3" : "2"));
   assert.equal(verifyCredential(tamperedProof, key.public).ok, false);
 
   const wrongKey = throwawayKey();

@@ -130,7 +130,7 @@ test("verify rejects on tampered subject, tampered proofValue, wrong key", async
   assert.equal((await verifyEddsaJcs2022(promoted, issuerKeyBytes)).ok, false);
 
   const flipped = structuredClone(credential);
-  flipped.proof.proofValue = `z1${flipped.proof.proofValue.slice(2)}`;
+  flipped.proof.proofValue = flipped.proof.proofValue.replace(/.$/, (last) => (last === "2" ? "3" : "2"));
   assert.equal((await verifyEddsaJcs2022(flipped, issuerKeyBytes)).ok, false);
 
   assert.equal((await verifyEddsaJcs2022(credential, new Uint8Array(32))).ok, false);
