@@ -1,0 +1,42 @@
+{
+  "name": "StillOS KYA-OS Verifier",
+  "slug": "stillos-kyaos-verifier",
+  "description": "Independent verify-only KYA-OS v1 implementation, zero @kya-os deps. Card ladder, L3-minus: all 9 vector categories pass on suite 1.2.0 including 29 must-reject vectors; live cnf.jkt fusion and live revocation fetch NOT asserted. Primitives rebuilt from the specs.",
+  "homepage": "https://github.com/stillmarcus24/stillos-kyaos-verifier",
+  "repo": "https://github.com/stillmarcus24/stillos-kyaos-verifier",
+  "kind": "implementation",
+  "buildsOn": [
+    "spec"
+  ],
+  "standards": [
+    "rfc-8785",
+    "rfc-9162",
+    "statuslist2021",
+    "di-eddsa-jcs-2022",
+    "did-methods",
+    "w3c-vc-2-0"
+  ],
+  "conformance": {
+    "level": "L3",
+    "scope": "subset",
+    "categories": [
+      "signed-proof",
+      "delegation-chain",
+      "status-list",
+      "did-key-resolution",
+      "did-web-resolution",
+      "card-proof",
+      "entity-card",
+      "audit-integrity",
+      "negotiation"
+    ],
+    "suiteVersion": "1.2.0",
+    "status": "in-verification",
+    "evidenceUrl": "https://github.com/kya-os/kya-os-usergroup/issues/48"
+  },
+  "contact": {
+    "github": "stillmarcus24",
+    "email": "stillmarcus24@gmail.com"
+  },
+  "listedAt": "2026-10-19"
+}
